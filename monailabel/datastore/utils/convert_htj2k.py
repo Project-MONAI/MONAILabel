@@ -258,6 +258,16 @@ def transcode_dicom_to_htj2k(
     progression_order: str = "RPCL",
     max_batch_size: int = 256,
     add_basic_offset_table: bool = True,
+    skip_transfer_syntaxes: list = (
+        _get_transfer_syntax_constants()['HTJ2K'] |
+        frozenset([
+            # Lossy JPEG 2000
+            "1.2.840.10008.1.2.4.91",  # JPEG 2000 Image Compression (lossy allowed)
+            # Lossy JPEG
+            "1.2.840.10008.1.2.4.50",  # JPEG Baseline (Process 1) - always lossy
+            "1.2.840.10008.1.2.4.51",  # JPEG Extended (Process 2 & 4, can be lossy)
+        ])
+    ),
 ) -> str:
     """
     Transcode DICOM files to HTJ2K (High Throughput JPEG 2000) lossless compression.
@@ -280,7 +290,7 @@ def transcode_dicom_to_htj2k(
     in memory simultaneously.
     
     Supported source transfer syntaxes:
-    - HTJ2K (High-Throughput JPEG 2000) - decoded and re-encoded to add BOT if needed
+    - HTJ2K (High-Throughput JPEG 2000) - decoded and re-encoded (add bot if needed)
     - JPEG 2000 (lossless and lossy)
     - JPEG (baseline, extended, lossless)
     - Uncompressed (Explicit/Implicit VR Little/Big Endian)
@@ -307,6 +317,10 @@ def transcode_dicom_to_htj2k(
         add_basic_offset_table: If True, creates Basic Offset Table for multi-frame DICOMs (default: True)
                                BOT enables O(1) frame access without parsing entire pixel data stream
                                Per DICOM Part 5 Section A.4. Only affects multi-frame files.
+        skip_transfer_syntaxes: Optional list of Transfer Syntax UIDs to skip transcoding (default: HTJ2K, lossy JPEG 2000, and lossy JPEG)
+                               Files with these transfer syntaxes will be copied directly to output
+                               without transcoding. Useful for preserving already-compressed formats.
+                               Example: ["1.2.840.10008.1.2.4.201", "1.2.840.10008.1.2.4.202"]
         
     Returns:
         str: Path to output directory containing transcoded DICOM files
@@ -335,6 +349,12 @@ def transcode_dicom_to_htj2k(
         ...     input_dir="/path/to/dicoms",
         ...     code_block_size=(32, 32),
         ...     max_batch_size=5
+        ... )
+        
+        >>> # Skip transcoding for files already in HTJ2K format
+        >>> output_dir = transcode_dicom_to_htj2k(
+        ...     input_dir="/path/to/dicoms",
+        ...     skip_transfer_syntaxes=["1.2.840.10008.1.2.4.201", "1.2.840.10008.1.2.4.202"]
         ... )
         
     Note:
@@ -396,8 +416,17 @@ def transcode_dicom_to_htj2k(
     ts_constants = _get_transfer_syntax_constants()
     NVIMGCODEC_SYNTAXES = ts_constants['NVIMGCODEC']
 
+    # Initialize skip list
+    if skip_transfer_syntaxes is None:
+        skip_transfer_syntaxes = []
+    else:
+        # Convert to set of strings for faster lookup
+        skip_transfer_syntaxes = set(str(ts) for ts in skip_transfer_syntaxes)
+        logger.info(f"Files with these transfer syntaxes will be copied without transcoding: {skip_transfer_syntaxes}")
+
     start_time = time.time()
     transcoded_count = 0
+    skipped_count = 0
     
     # Calculate batch info for logging
     total_files = len(valid_dicom_files)
@@ -411,6 +440,7 @@ def transcode_dicom_to_htj2k(
         batch_datasets = [pydicom.dcmread(file) for file in batch_files]
         nvimgcodec_batch = []
         pydicom_batch = []
+        skip_batch = []  # Indices of files to skip (copy directly)
         
         for idx, ds in enumerate(batch_datasets):
             current_ts = getattr(ds, 'file_meta', {}).get('TransferSyntaxUID', None)
@@ -418,6 +448,13 @@ def transcode_dicom_to_htj2k(
                 raise ValueError(f"DICOM file {os.path.basename(batch_files[idx])} does not have a Transfer Syntax UID")
             
             ts_str = str(current_ts)
+            
+            # Check if this transfer syntax should be skipped
+            if ts_str in skip_transfer_syntaxes:
+                skip_batch.append(idx)
+                logger.info(f"  Skipping {os.path.basename(batch_files[idx])} (Transfer Syntax: {ts_str})")
+                continue
+            
             if ts_str in NVIMGCODEC_SYNTAXES:
                 if not hasattr(ds, "PixelData") or ds.PixelData is None:
                     raise ValueError(f"DICOM file {os.path.basename(batch_files[idx])} does not have a PixelData member")
@@ -425,6 +462,15 @@ def transcode_dicom_to_htj2k(
             else:
                 pydicom_batch.append(idx)
 
+        # Handle skip_batch: copy files directly to output
+        if skip_batch:
+            for idx in skip_batch:
+                source_file = batch_files[idx]
+                output_file = os.path.join(output_dir, os.path.basename(source_file))
+                shutil.copy2(source_file, output_file)
+                skipped_count += 1
+                logger.info(f"  Copied {os.path.basename(source_file)} to output (skipped transcoding)")
+        
         num_frames = []
         encoded_data = []
         
@@ -545,12 +591,7 @@ def transcode_dicom_to_htj2k(
             
             # Update dataset with HTJ2K encoded data
             # Create Basic Offset Table for multi-frame files if requested
-            if add_basic_offset_table and nframes > 1:
-                batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames, has_bot=True)
-                logger.info(f"  ✓ Basic Offset Table included for efficient frame access")
-            else:
-                batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames)
-
+            batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames, has_bot=add_basic_offset_table)
             batch_datasets[dataset_idx].file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
 
             # Update PhotometricInterpretation to RGB for YBR images since we decoded with RGB color_spec
@@ -572,6 +613,7 @@ def transcode_dicom_to_htj2k(
     logger.info(f"Transcoding complete:")
     logger.info(f"  Total files: {len(valid_dicom_files)}")
     logger.info(f"  Successfully transcoded: {transcoded_count}")
+    logger.info(f"  Skipped (copied without transcoding): {skipped_count}")
     logger.info(f"  Time elapsed: {elapsed_time:.2f} seconds")
     logger.info(f"  Output directory: {output_dir}")
     
@@ -910,11 +952,7 @@ def convert_single_frame_dicom_series_to_multiframe(
             if encoded_frames_bytes is not None:
                 # Encapsulated data (HTJ2K or preserved compressed format)
                 # Use Basic Offset Table for multi-frame efficiency
-                if add_basic_offset_table:
-                    output_ds.PixelData = pydicom.encaps.encapsulate(encoded_frames_bytes, has_bot=True)
-                    logger.info(f"  ✓ Basic Offset Table included for efficient frame access")
-                else:
-                    output_ds.PixelData = pydicom.encaps.encapsulate(encoded_frames_bytes)
+                output_ds.PixelData = pydicom.encaps.encapsulate(encoded_frames_bytes, has_bot=add_basic_offset_table)
             else:
                 # Uncompressed mode: combine all frames into a 3D array
                 # Stack frames: (frames, rows, cols)

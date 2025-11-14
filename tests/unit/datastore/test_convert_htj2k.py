@@ -1481,6 +1481,415 @@ class TestConvertHTJ2K(unittest.TestCase):
                     if os.path.exists(output_dir):
                         shutil.rmtree(output_dir)
 
+    def test_skip_transfer_syntaxes_htj2k(self):
+        """Test skipping files with HTJ2K transfer syntax (copy instead of transcode) - using default skip list."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import shutil
+        import time
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_skip_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_skip_output_")
+        intermediate_dir = tempfile.mkdtemp(prefix="htj2k_intermediate_")
+        
+        try:
+            # First, create an HTJ2K file by transcoding a test file
+            import pydicom.examples as examples
+            source_file = str(examples.get_path('ct'))
+            test_filename = "ct_htj2k.dcm"
+            
+            # Copy to intermediate directory
+            shutil.copy2(source_file, os.path.join(intermediate_dir, test_filename))
+            
+            # Transcode to HTJ2K (disable default skip list to force transcoding)
+            print("\nStep 1: Creating HTJ2K file...")
+            htj2k_dir = tempfile.mkdtemp(prefix="htj2k_created_")
+            transcode_dicom_to_htj2k(
+                input_dir=intermediate_dir,
+                output_dir=htj2k_dir,
+                progression_order="RPCL",
+                skip_transfer_syntaxes=None  # Override default to force transcoding
+            )
+            
+            # Copy the HTJ2K file to input directory
+            htj2k_file = os.path.join(htj2k_dir, test_filename)
+            shutil.copy2(htj2k_file, os.path.join(input_dir, test_filename))
+            
+            # Read the HTJ2K file to get its transfer syntax and checksum
+            ds_htj2k = pydicom.dcmread(htj2k_file)
+            htj2k_ts = str(ds_htj2k.file_meta.TransferSyntaxUID)
+            print(f"HTJ2K Transfer Syntax: {htj2k_ts}")
+            
+            # Calculate checksum of original HTJ2K file
+            import hashlib
+            with open(os.path.join(input_dir, test_filename), 'rb') as f:
+                original_checksum = hashlib.md5(f.read()).hexdigest()
+            original_size = os.path.getsize(os.path.join(input_dir, test_filename))
+            original_mtime = os.path.getmtime(os.path.join(input_dir, test_filename))
+            
+            print(f"\nStep 2: Testing default skip functionality (HTJ2K should be skipped by default)...")
+            print(f"  Original file size: {original_size:,} bytes")
+            print(f"  Original checksum: {original_checksum}")
+            
+            # Sleep briefly to ensure timestamps differ if file is modified
+            time.sleep(0.1)
+            
+            # Now transcode with DEFAULT skip_transfer_syntaxes (should skip HTJ2K by default)
+            result_dir = transcode_dicom_to_htj2k(
+                input_dir=input_dir,
+                output_dir=output_dir
+                # Note: NOT passing skip_transfer_syntaxes, using default which includes HTJ2K
+            )
+            
+            self.assertEqual(result_dir, output_dir)
+            
+            # Verify output file exists
+            output_file = os.path.join(output_dir, test_filename)
+            self.assertTrue(os.path.exists(output_file), "Output file should exist")
+            
+            # Calculate checksum of output file
+            with open(output_file, 'rb') as f:
+                output_checksum = hashlib.md5(f.read()).hexdigest()
+            output_size = os.path.getsize(output_file)
+            output_mtime = os.path.getmtime(output_file)
+            
+            print(f"\nStep 3: Verifying file was copied, not transcoded...")
+            print(f"  Output file size: {output_size:,} bytes")
+            print(f"  Output checksum: {output_checksum}")
+            
+            # Verify file is identical (not re-encoded)
+            self.assertEqual(
+                original_checksum,
+                output_checksum,
+                "File should be identical (copied, not transcoded)"
+            )
+            self.assertEqual(
+                original_size,
+                output_size,
+                "File size should be identical"
+            )
+            
+            # Verify transfer syntax is still HTJ2K
+            ds_output = pydicom.dcmread(output_file)
+            self.assertEqual(
+                str(ds_output.file_meta.TransferSyntaxUID),
+                htj2k_ts,
+                "Transfer syntax should be preserved"
+            )
+            
+            print(f"✓ File was copied without transcoding (HTJ2K skipped by default)")
+            print(f"✓ Transfer syntax preserved: {htj2k_ts}")
+            print(f"✓ Default behavior correctly skips HTJ2K files")
+            
+        finally:
+            # Clean up
+            for temp_dir in [input_dir, output_dir, intermediate_dir]:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+            if 'htj2k_dir' in locals() and os.path.exists(htj2k_dir):
+                shutil.rmtree(htj2k_dir, ignore_errors=True)
+
+    def test_skip_transfer_syntaxes_mixed_batch(self):
+        """Test mixed batch with some files to skip and some to transcode - using default skip list."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import shutil
+        import hashlib
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_mixed_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_mixed_output_")
+        
+        try:
+            # Create two test files: one uncompressed CT, one uncompressed MR
+            import pydicom.examples as examples
+            ct_source = str(examples.get_path('ct'))
+            mr_source = str(examples.get_path('mr'))
+            
+            ct_filename = "ct_uncompressed.dcm"
+            mr_filename = "mr_uncompressed.dcm"
+            
+            # Copy both to input
+            shutil.copy2(ct_source, os.path.join(input_dir, ct_filename))
+            shutil.copy2(mr_source, os.path.join(input_dir, mr_filename))
+            
+            # First pass: transcode CT to HTJ2K with LRCP, keep MR uncompressed
+            print("\nStep 1: Creating HTJ2K file with LRCP progression order...")
+            first_pass_dir = tempfile.mkdtemp(prefix="htj2k_first_pass_")
+            transcode_dicom_to_htj2k(
+                input_dir=input_dir,
+                output_dir=first_pass_dir,
+                progression_order="LRCP",  # This will create 1.2.840.10008.1.2.4.201
+                skip_transfer_syntaxes=None  # Override default to force transcoding
+            )
+            
+            # Now use the CT HTJ2K file and MR uncompressed for the mixed test
+            input_dir2 = tempfile.mkdtemp(prefix="htj2k_mixed2_input_")
+            
+            # Copy HTJ2K CT to new input
+            htj2k_ct_file = os.path.join(first_pass_dir, ct_filename)
+            shutil.copy2(htj2k_ct_file, os.path.join(input_dir2, ct_filename))
+            
+            # Copy uncompressed MR to new input
+            shutil.copy2(mr_source, os.path.join(input_dir2, mr_filename))
+            
+            # Get checksums before processing
+            with open(os.path.join(input_dir2, ct_filename), 'rb') as f:
+                ct_original_checksum = hashlib.md5(f.read()).hexdigest()
+            
+            ds_ct = pydicom.dcmread(os.path.join(input_dir2, ct_filename))
+            ct_ts = str(ds_ct.file_meta.TransferSyntaxUID)
+            
+            ds_mr_orig = pydicom.dcmread(os.path.join(input_dir2, mr_filename))
+            mr_ts_orig = str(ds_mr_orig.file_meta.TransferSyntaxUID)
+            mr_pixels_orig = ds_mr_orig.pixel_array.copy()
+            
+            print(f"\nStep 2: Processing mixed batch with DEFAULT skip list...")
+            print(f"  CT file: {ct_filename} (Transfer Syntax: {ct_ts}) - SKIP (by default)")
+            print(f"  MR file: {mr_filename} (Transfer Syntax: {mr_ts_orig}) - TRANSCODE")
+            
+            # Transcode with DEFAULT skip list (HTJ2K files will be skipped by default)
+            result_dir = transcode_dicom_to_htj2k(
+                input_dir=input_dir2,
+                output_dir=output_dir,
+                # Using default skip list which includes HTJ2K formats
+                progression_order="RPCL"  # Will use 1.2.840.10008.1.2.4.202 for transcoded files
+            )
+            
+            self.assertEqual(result_dir, output_dir)
+            
+            print("\nStep 3: Verifying results...")
+            
+            # Verify CT file was copied (not transcoded)
+            ct_output = os.path.join(output_dir, ct_filename)
+            self.assertTrue(os.path.exists(ct_output), "CT output should exist")
+            
+            with open(ct_output, 'rb') as f:
+                ct_output_checksum = hashlib.md5(f.read()).hexdigest()
+            
+            self.assertEqual(
+                ct_original_checksum,
+                ct_output_checksum,
+                "CT file should be identical (copied, not transcoded)"
+            )
+            
+            ds_ct_output = pydicom.dcmread(ct_output)
+            self.assertEqual(
+                str(ds_ct_output.file_meta.TransferSyntaxUID),
+                ct_ts,
+                "CT transfer syntax should be preserved (LRCP)"
+            )
+            print(f"✓ CT file copied without transcoding (HTJ2K skipped by default: {ct_ts})")
+            
+            # Verify MR file was transcoded to RPCL HTJ2K
+            mr_output = os.path.join(output_dir, mr_filename)
+            self.assertTrue(os.path.exists(mr_output), "MR output should exist")
+            
+            ds_mr_output = pydicom.dcmread(mr_output)
+            mr_ts_output = str(ds_mr_output.file_meta.TransferSyntaxUID)
+            
+            self.assertEqual(
+                mr_ts_output,
+                "1.2.840.10008.1.2.4.202",
+                "MR should be transcoded to RPCL HTJ2K"
+            )
+            
+            # Verify MR pixels are lossless
+            mr_pixels_output = ds_mr_output.pixel_array
+            np.testing.assert_array_equal(
+                mr_pixels_orig,
+                mr_pixels_output,
+                err_msg="MR pixels should be lossless"
+            )
+            print(f"✓ MR file transcoded to HTJ2K RPCL ({mr_ts_output})")
+            print(f"✓ MR pixels are lossless")
+            print(f"✓ Mixed batch correctly handles default skip list")
+            
+        finally:
+            # Clean up
+            for temp_dir in [input_dir, output_dir]:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+            if 'first_pass_dir' in locals() and os.path.exists(first_pass_dir):
+                shutil.rmtree(first_pass_dir, ignore_errors=True)
+            if 'input_dir2' in locals() and os.path.exists(input_dir2):
+                shutil.rmtree(input_dir2, ignore_errors=True)
+
+    def test_skip_transfer_syntaxes_multiple(self):
+        """Test skipping multiple transfer syntax UIDs - using default skip list."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import shutil
+        import hashlib
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_multi_skip_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_multi_skip_output_")
+        
+        try:
+            import pydicom.examples as examples
+            ct_source = str(examples.get_path('ct'))
+            
+            # Create two HTJ2K files with different progression orders
+            file1_name = "file_lrcp.dcm"
+            file2_name = "file_rpcl.dcm"
+            
+            # Create LRCP HTJ2K file
+            print("\nStep 1: Creating LRCP HTJ2K file...")
+            temp_dir1 = tempfile.mkdtemp(prefix="htj2k_temp1_")
+            shutil.copy2(ct_source, os.path.join(temp_dir1, file1_name))
+            htj2k_dir1 = tempfile.mkdtemp(prefix="htj2k_lrcp_")
+            transcode_dicom_to_htj2k(
+                input_dir=temp_dir1,
+                output_dir=htj2k_dir1,
+                progression_order="LRCP",
+                skip_transfer_syntaxes=None  # Override default to force transcoding
+            )
+            shutil.copy2(
+                os.path.join(htj2k_dir1, file1_name),
+                os.path.join(input_dir, file1_name)
+            )
+            
+            # Create RPCL HTJ2K file
+            print("Step 2: Creating RPCL HTJ2K file...")
+            temp_dir2 = tempfile.mkdtemp(prefix="htj2k_temp2_")
+            shutil.copy2(ct_source, os.path.join(temp_dir2, file2_name))
+            htj2k_dir2 = tempfile.mkdtemp(prefix="htj2k_rpcl_")
+            transcode_dicom_to_htj2k(
+                input_dir=temp_dir2,
+                output_dir=htj2k_dir2,
+                progression_order="RPCL",
+                skip_transfer_syntaxes=None  # Override default to force transcoding
+            )
+            shutil.copy2(
+                os.path.join(htj2k_dir2, file2_name),
+                os.path.join(input_dir, file2_name)
+            )
+            
+            # Get checksums
+            with open(os.path.join(input_dir, file1_name), 'rb') as f:
+                checksum1 = hashlib.md5(f.read()).hexdigest()
+            with open(os.path.join(input_dir, file2_name), 'rb') as f:
+                checksum2 = hashlib.md5(f.read()).hexdigest()
+            
+            ds1 = pydicom.dcmread(os.path.join(input_dir, file1_name))
+            ds2 = pydicom.dcmread(os.path.join(input_dir, file2_name))
+            
+            ts1 = str(ds1.file_meta.TransferSyntaxUID)
+            ts2 = str(ds2.file_meta.TransferSyntaxUID)
+            
+            print(f"\nStep 3: Processing with DEFAULT skip list (both HTJ2K formats should be skipped)...")
+            print(f"  File 1: {file1_name} - {ts1}")
+            print(f"  File 2: {file2_name} - {ts2}")
+            
+            # Use DEFAULT skip list (includes all HTJ2K transfer syntaxes)
+            result_dir = transcode_dicom_to_htj2k(
+                input_dir=input_dir,
+                output_dir=output_dir
+                # Using default skip list which includes all HTJ2K formats
+            )
+            
+            self.assertEqual(result_dir, output_dir)
+            
+            print("\nStep 4: Verifying both files were copied...")
+            
+            # Verify both files were copied
+            output1 = os.path.join(output_dir, file1_name)
+            output2 = os.path.join(output_dir, file2_name)
+            
+            self.assertTrue(os.path.exists(output1), "File 1 should exist")
+            self.assertTrue(os.path.exists(output2), "File 2 should exist")
+            
+            # Verify checksums match (files were copied, not transcoded)
+            with open(output1, 'rb') as f:
+                output_checksum1 = hashlib.md5(f.read()).hexdigest()
+            with open(output2, 'rb') as f:
+                output_checksum2 = hashlib.md5(f.read()).hexdigest()
+            
+            self.assertEqual(checksum1, output_checksum1, "File 1 should be identical")
+            self.assertEqual(checksum2, output_checksum2, "File 2 should be identical")
+            
+            # Verify transfer syntaxes preserved
+            ds_out1 = pydicom.dcmread(output1)
+            ds_out2 = pydicom.dcmread(output2)
+            
+            self.assertEqual(str(ds_out1.file_meta.TransferSyntaxUID), ts1)
+            self.assertEqual(str(ds_out2.file_meta.TransferSyntaxUID), ts2)
+            
+            print(f"✓ Both files copied without transcoding (HTJ2K skipped by default)")
+            print(f"✓ File 1 preserved: {ts1}")
+            print(f"✓ File 2 preserved: {ts2}")
+            print(f"✓ Default skip list correctly handles multiple HTJ2K formats")
+            
+        finally:
+            # Clean up
+            for temp_dir in [input_dir, output_dir]:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+            for var in ['temp_dir1', 'temp_dir2', 'htj2k_dir1', 'htj2k_dir2']:
+                if var in locals() and os.path.exists(locals()[var]):
+                    shutil.rmtree(locals()[var], ignore_errors=True)
+
+    def test_skip_transfer_syntaxes_override_to_transcode_all(self):
+        """Test that explicitly overriding skip list to None/empty transcodes all files (overrides default)."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import shutil
+        import pydicom.examples as examples
+        
+        input_dir = tempfile.mkdtemp(prefix="htj2k_override_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_override_output_")
+        
+        try:
+            source_file = str(examples.get_path('ct'))
+            test_filename = "ct_test.dcm"
+            shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+            
+            # Read original
+            ds_original = pydicom.dcmread(source_file)
+            original_pixels = ds_original.pixel_array.copy()
+            original_ts = str(ds_original.file_meta.TransferSyntaxUID)
+            
+            print(f"\nOriginal transfer syntax: {original_ts}")
+            print(f"Testing override of default skip list to force transcoding...")
+            
+            # Transcode with None (override default skip list to force transcoding)
+            result_dir = transcode_dicom_to_htj2k(
+                input_dir=input_dir,
+                output_dir=output_dir,
+                skip_transfer_syntaxes=None  # Override default to force transcoding
+            )
+            
+            self.assertEqual(result_dir, output_dir)
+            
+            # Verify file was transcoded
+            output_file = os.path.join(output_dir, test_filename)
+            self.assertTrue(os.path.exists(output_file))
+            
+            ds_output = pydicom.dcmread(output_file)
+            output_ts = str(ds_output.file_meta.TransferSyntaxUID)
+            output_pixels = ds_output.pixel_array
+            
+            print(f"Output transfer syntax: {output_ts}")
+            
+            # Should be transcoded to HTJ2K
+            self.assertIn(output_ts, HTJ2K_TRANSFER_SYNTAXES)
+            self.assertNotEqual(original_ts, output_ts, "Transfer syntax should have changed")
+            
+            # Pixels should still be lossless
+            np.testing.assert_array_equal(original_pixels, output_pixels)
+            
+            print("✓ Override with None successfully forces transcoding (bypasses default skip list)")
+            
+        finally:
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()
