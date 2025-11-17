@@ -22,6 +22,7 @@ from monailabel.datastore.utils.convert import dicom_to_nifti
 from monailabel.datastore.utils.convert_htj2k import (
     transcode_dicom_to_htj2k,
     convert_single_frame_dicom_series_to_multiframe,
+    DicomFileLoader,
 )
 
 # Check if nvimgcodec is available
@@ -94,16 +95,14 @@ class TestConvertHTJ2K(unittest.TestCase):
             start_time = time.time()
             
             # Override default skip list to force transcoding of JPEG files
-            result_dir = transcode_dicom_to_htj2k(
-                input_dir=input_dir,
-                output_dir=output_dir,
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader,
                 skip_transfer_syntaxes=None  # Override default to test JPEG transcoding
             )
             
             elapsed_time = time.time() - start_time
             print(f"Transcoding completed in {elapsed_time:.2f} seconds")
-            
-            self.assertEqual(result_dir, output_dir, "Output directory should match requested directory")
             
             # Find transcoded file
             transcoded_file = os.path.join(output_dir, test_filename)
@@ -204,8 +203,8 @@ class TestConvertHTJ2K(unittest.TestCase):
             print(f"  Shape: {original_pixels.shape}")
             
             # Transcode
-            result_dir = transcode_dicom_to_htj2k(input_dir=input_dir, output_dir=output_dir)
-            self.assertEqual(result_dir, output_dir)
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(file_loader=file_loader)
             
             # Read transcoded
             transcoded_file = os.path.join(output_dir, test_filename)
@@ -256,8 +255,8 @@ class TestConvertHTJ2K(unittest.TestCase):
             print(f"  Shape: {original_pixels.shape}")
             
             # Transcode
-            result_dir = transcode_dicom_to_htj2k(input_dir=input_dir, output_dir=output_dir)
-            self.assertEqual(result_dir, output_dir)
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(file_loader=file_loader)
             
             # Read transcoded
             transcoded_file = os.path.join(output_dir, test_filename)
@@ -308,8 +307,8 @@ class TestConvertHTJ2K(unittest.TestCase):
             print(f"  Shape: {original_pixels.shape}")
             
             # Transcode
-            result_dir = transcode_dicom_to_htj2k(input_dir=input_dir, output_dir=output_dir)
-            self.assertEqual(result_dir, output_dir)
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(file_loader=file_loader)
             
             # Read transcoded
             transcoded_file = os.path.join(output_dir, test_filename)
@@ -363,8 +362,8 @@ class TestConvertHTJ2K(unittest.TestCase):
             print(f"  Shape: {original_pixels.shape}")
             
             # Transcode
-            result_dir = transcode_dicom_to_htj2k(input_dir=input_dir, output_dir=output_dir)
-            self.assertEqual(result_dir, output_dir)
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(file_loader=file_loader)
             
             # Read transcoded
             transcoded_file = os.path.join(output_dir, test_filename)
@@ -428,12 +427,10 @@ class TestConvertHTJ2K(unittest.TestCase):
         try:
             # Perform batch transcoding
             print("\nTranscoding DICOM series to HTJ2K...")
-            result_dir = transcode_dicom_to_htj2k(
-                input_dir=dicom_dir,
-                output_dir=output_dir,
+            file_loader = DicomFileLoader(dicom_dir, output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader,
             )
-            
-            self.assertEqual(result_dir, output_dir, "Output directory should match requested directory")
             
             # Find transcoded files
             transcoded_files = sorted(list(Path(output_dir).glob("*.dcm")))
@@ -585,15 +582,16 @@ class TestConvertHTJ2K(unittest.TestCase):
                 shutil.copy2(str(f), os.path.join(htj2k_source_dir, f.name))
             
             # Transcode this subset to HTJ2K
-            htj2k_transcoded_dir = transcode_dicom_to_htj2k(
-                input_dir=htj2k_source_dir,
-                output_dir=None,  # Use temp dir
+            htj2k_output_dir = tempfile.mkdtemp(prefix="htj2k_subset_output_")
+            file_loader_subset = DicomFileLoader(htj2k_source_dir, htj2k_output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader_subset,
             )
             
             # Copy the transcoded HTJ2K files to mixed directory
-            htj2k_files_to_copy = list(Path(htj2k_transcoded_dir).glob("*.dcm"))
+            htj2k_files_to_copy = list(Path(htj2k_output_dir).glob("*.dcm"))
             if not htj2k_files_to_copy:
-                htj2k_files_to_copy = [f for f in Path(htj2k_transcoded_dir).iterdir() if f.is_file()]
+                htj2k_files_to_copy = [f for f in Path(htj2k_output_dir).iterdir() if f.is_file()]
             
             for f in htj2k_files_to_copy:
                 shutil.copy2(str(f), os.path.join(mixed_dir, f.name))
@@ -636,12 +634,10 @@ class TestConvertHTJ2K(unittest.TestCase):
             
             # Now transcode the mixed directory
             print(f"\nTranscoding mixed directory...")
-            result_dir = transcode_dicom_to_htj2k(
-                input_dir=mixed_dir,
-                output_dir=output_dir,
+            file_loader = DicomFileLoader(mixed_dir, output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader,
             )
-            
-            self.assertEqual(result_dir, output_dir, "Output directory should match requested directory")
             
             # Verify all files are in output
             output_files = sorted(list(Path(output_dir).iterdir()))
@@ -1152,9 +1148,9 @@ class TestConvertHTJ2K(unittest.TestCase):
             shutil.copy2(source_file, os.path.join(input_dir, test_filename))
             
             # Transcode WITHOUT specifying progression_order (should default to RPCL)
-            result_dir = transcode_dicom_to_htj2k(
-                input_dir=input_dir,
-                output_dir=output_dir
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader
             )
             
             # Read transcoded
@@ -1211,12 +1207,11 @@ class TestConvertHTJ2K(unittest.TestCase):
                     original_pixels = ds_original.pixel_array.copy()
                     
                     # Transcode with specific progression order
-                    result_dir = transcode_dicom_to_htj2k(
-                        input_dir=input_dir,
-                        output_dir=output_dir,
+                    file_loader = DicomFileLoader(input_dir, output_dir)
+                    transcode_dicom_to_htj2k(
+                        file_loader=file_loader,
                         progression_order=prog_order
                     )
-                    self.assertEqual(result_dir, output_dir)
                     
                     # Read transcoded
                     transcoded_file = os.path.join(output_dir, test_filename)
@@ -1283,9 +1278,9 @@ class TestConvertHTJ2K(unittest.TestCase):
                     
                     # Transcode with specific progression order
                     # Override default skip list to force transcoding of JPEG files
-                    result_dir = transcode_dicom_to_htj2k(
-                        input_dir=input_dir,
-                        output_dir=output_dir,
+                    file_loader = DicomFileLoader(input_dir, output_dir)
+                    transcode_dicom_to_htj2k(
+                        file_loader=file_loader,
                         progression_order=prog_order,
                         skip_transfer_syntaxes=None  # Override default to test JPEG transcoding
                     )
@@ -1351,9 +1346,9 @@ class TestConvertHTJ2K(unittest.TestCase):
                     original_pixels = ds_original.pixel_array.copy()
                     
                     # Transcode with specific progression order
-                    result_dir = transcode_dicom_to_htj2k(
-                        input_dir=input_dir,
-                        output_dir=output_dir,
+                    file_loader = DicomFileLoader(input_dir, output_dir)
+                    transcode_dicom_to_htj2k(
+                        file_loader=file_loader,
                         progression_order=prog_order
                     )
                     
@@ -1403,9 +1398,9 @@ class TestConvertHTJ2K(unittest.TestCase):
                     print(f"\nTesting invalid progression_order={repr(invalid_order)}")
                     
                     with self.assertRaises(ValueError) as context:
+                        file_loader = DicomFileLoader(input_dir, output_dir)
                         transcode_dicom_to_htj2k(
-                            input_dir=input_dir,
-                            output_dir=output_dir,
+                            file_loader=file_loader,
                             progression_order=invalid_order
                         )
                     
@@ -1510,9 +1505,9 @@ class TestConvertHTJ2K(unittest.TestCase):
             # Transcode to HTJ2K (disable default skip list to force transcoding)
             print("\nStep 1: Creating HTJ2K file...")
             htj2k_dir = tempfile.mkdtemp(prefix="htj2k_created_")
+            file_loader = DicomFileLoader(intermediate_dir, htj2k_dir)
             transcode_dicom_to_htj2k(
-                input_dir=intermediate_dir,
-                output_dir=htj2k_dir,
+                file_loader=file_loader,
                 progression_order="RPCL",
                 skip_transfer_syntaxes=None  # Override default to force transcoding
             )
@@ -1541,13 +1536,11 @@ class TestConvertHTJ2K(unittest.TestCase):
             time.sleep(0.1)
             
             # Now transcode with DEFAULT skip_transfer_syntaxes (should skip HTJ2K by default)
-            result_dir = transcode_dicom_to_htj2k(
-                input_dir=input_dir,
-                output_dir=output_dir
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader
                 # Note: NOT passing skip_transfer_syntaxes, using default which includes HTJ2K
             )
-            
-            self.assertEqual(result_dir, output_dir)
             
             # Verify output file exists
             output_file = os.path.join(output_dir, test_filename)
@@ -1623,9 +1616,9 @@ class TestConvertHTJ2K(unittest.TestCase):
             # First pass: transcode CT to HTJ2K with LRCP, keep MR uncompressed
             print("\nStep 1: Creating HTJ2K file with LRCP progression order...")
             first_pass_dir = tempfile.mkdtemp(prefix="htj2k_first_pass_")
+            file_loader_first = DicomFileLoader(input_dir, first_pass_dir)
             transcode_dicom_to_htj2k(
-                input_dir=input_dir,
-                output_dir=first_pass_dir,
+                file_loader=file_loader_first,
                 progression_order="LRCP",  # This will create 1.2.840.10008.1.2.4.201
                 skip_transfer_syntaxes=None  # Override default to force transcoding
             )
@@ -1656,14 +1649,12 @@ class TestConvertHTJ2K(unittest.TestCase):
             print(f"  MR file: {mr_filename} (Transfer Syntax: {mr_ts_orig}) - TRANSCODE")
             
             # Transcode with DEFAULT skip list (HTJ2K files will be skipped by default)
-            result_dir = transcode_dicom_to_htj2k(
-                input_dir=input_dir2,
-                output_dir=output_dir,
+            file_loader = DicomFileLoader(input_dir2, output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader,
                 # Using default skip list which includes HTJ2K formats
                 progression_order="RPCL"  # Will use 1.2.840.10008.1.2.4.202 for transcoded files
             )
-            
-            self.assertEqual(result_dir, output_dir)
             
             print("\nStep 3: Verifying results...")
             
@@ -1747,9 +1738,9 @@ class TestConvertHTJ2K(unittest.TestCase):
             temp_dir1 = tempfile.mkdtemp(prefix="htj2k_temp1_")
             shutil.copy2(ct_source, os.path.join(temp_dir1, file1_name))
             htj2k_dir1 = tempfile.mkdtemp(prefix="htj2k_lrcp_")
+            file_loader1 = DicomFileLoader(temp_dir1, htj2k_dir1)
             transcode_dicom_to_htj2k(
-                input_dir=temp_dir1,
-                output_dir=htj2k_dir1,
+                file_loader=file_loader1,
                 progression_order="LRCP",
                 skip_transfer_syntaxes=None  # Override default to force transcoding
             )
@@ -1763,9 +1754,9 @@ class TestConvertHTJ2K(unittest.TestCase):
             temp_dir2 = tempfile.mkdtemp(prefix="htj2k_temp2_")
             shutil.copy2(ct_source, os.path.join(temp_dir2, file2_name))
             htj2k_dir2 = tempfile.mkdtemp(prefix="htj2k_rpcl_")
+            file_loader2 = DicomFileLoader(temp_dir2, htj2k_dir2)
             transcode_dicom_to_htj2k(
-                input_dir=temp_dir2,
-                output_dir=htj2k_dir2,
+                file_loader=file_loader2,
                 progression_order="RPCL",
                 skip_transfer_syntaxes=None  # Override default to force transcoding
             )
@@ -1791,13 +1782,11 @@ class TestConvertHTJ2K(unittest.TestCase):
             print(f"  File 2: {file2_name} - {ts2}")
             
             # Use DEFAULT skip list (includes all HTJ2K transfer syntaxes)
-            result_dir = transcode_dicom_to_htj2k(
-                input_dir=input_dir,
-                output_dir=output_dir
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader
                 # Using default skip list which includes all HTJ2K formats
             )
-            
-            self.assertEqual(result_dir, output_dir)
             
             print("\nStep 4: Verifying both files were copied...")
             
@@ -1863,13 +1852,11 @@ class TestConvertHTJ2K(unittest.TestCase):
             print(f"Testing override of default skip list to force transcoding...")
             
             # Transcode with None (override default skip list to force transcoding)
-            result_dir = transcode_dicom_to_htj2k(
-                input_dir=input_dir,
-                output_dir=output_dir,
+            file_loader = DicomFileLoader(input_dir, output_dir)
+            transcode_dicom_to_htj2k(
+                file_loader=file_loader,
                 skip_transfer_syntaxes=None  # Override default to force transcoding
             )
-            
-            self.assertEqual(result_dir, output_dir)
             
             # Verify file was transcoded
             output_file = os.path.join(output_dir, test_filename)
@@ -1891,6 +1878,137 @@ class TestConvertHTJ2K(unittest.TestCase):
             print("✓ Override with None successfully forces transcoding (bypasses default skip list)")
             
         finally:
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_transcode_with_pytorch_dataloader(self):
+        """Test transcoding using PyTorch DataLoader as file_loader."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        try:
+            import torch
+            from torch.utils.data import Dataset, DataLoader
+        except ImportError:
+            self.skipTest("PyTorch not available")
+        
+        import shutil
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_pytorch_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_pytorch_output_")
+        
+        try:
+            # Copy test files
+            source_dir = os.path.join(
+                self.dicom_dataset,
+                "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721"
+            )
+            
+            # Copy a subset of files for testing
+            test_files = []
+            for i, filename in enumerate(sorted(os.listdir(source_dir))):
+                if i >= 5:  # Only copy 5 files for this test
+                    break
+                src = os.path.join(source_dir, filename)
+                dst = os.path.join(input_dir, filename)
+                shutil.copy2(src, dst)
+                test_files.append(filename)
+            
+            print(f"\nTesting with PyTorch DataLoader using {len(test_files)} files")
+            
+            # Create a custom Dataset that yields (input_paths, output_paths) tuples
+            class DicomFileDataset(Dataset):
+                """Custom Dataset that yields batches of (input_paths, output_paths)."""
+                
+                def __init__(self, input_dir, output_dir, files):
+                    self.input_dir = input_dir
+                    self.output_dir = output_dir
+                    self.files = files
+                
+                def __len__(self):
+                    return len(self.files)
+                
+                def __getitem__(self, idx):
+                    """Return a single file path tuple."""
+                    filename = self.files[idx]
+                    input_path = os.path.join(self.input_dir, filename)
+                    output_path = os.path.join(self.output_dir, filename)
+                    return input_path, output_path
+            
+            # Custom collate function to group paths into batches
+            def collate_paths(batch):
+                """Collate function that returns (batch_input_paths, batch_output_paths)."""
+                input_paths = [item[0] for item in batch]
+                output_paths = [item[1] for item in batch]
+                return input_paths, output_paths
+            
+            # Create Dataset and DataLoader
+            dataset = DicomFileDataset(input_dir, output_dir, test_files)
+            dataloader = DataLoader(
+                dataset,
+                batch_size=2,  # Process 2 files per batch
+                shuffle=False,
+                collate_fn=collate_paths,
+                num_workers=0  # Use 0 for compatibility in tests
+            )
+            
+            print(f"Created PyTorch DataLoader with batch_size=2")
+            print(f"Number of batches: {len(dataloader)}")
+            
+            # Read original files to verify later
+            original_data = {}
+            for filename in test_files:
+                filepath = os.path.join(input_dir, filename)
+                ds = pydicom.dcmread(filepath)
+                original_data[filename] = {
+                    'pixels': ds.pixel_array.copy(),
+                    'transfer_syntax': ds.file_meta.TransferSyntaxUID
+                }
+            
+            # Run transcoding with PyTorch DataLoader
+            transcode_dicom_to_htj2k(
+                file_loader=dataloader,
+                num_resolutions=6,
+                code_block_size=(64, 64),
+                progression_order="RPCL",
+                max_batch_size=256,
+                add_basic_offset_table=True
+            )
+            
+            print(f"✓ Transcoding completed, output_dir: {output_dir}")
+            
+            # Verify all files were transcoded
+            output_files = os.listdir(output_dir)
+            self.assertEqual(len(output_files), len(test_files))
+            print(f"✓ All {len(test_files)} files were processed")
+            
+            # Verify transcoding was correct
+            for filename in test_files:
+                output_path = os.path.join(output_dir, filename)
+                self.assertTrue(os.path.exists(output_path), f"Output file {filename} should exist")
+                
+                # Read transcoded file
+                ds_transcoded = pydicom.dcmread(output_path)
+                transcoded_pixels = ds_transcoded.pixel_array
+                
+                # Verify transfer syntax changed to HTJ2K
+                transcoded_ts = ds_transcoded.file_meta.TransferSyntaxUID
+                self.assertIn(str(transcoded_ts), HTJ2K_TRANSFER_SYNTAXES)
+                
+                # Verify pixels are identical (lossless)
+                original_pixels = original_data[filename]['pixels']
+                np.testing.assert_array_equal(
+                    original_pixels,
+                    transcoded_pixels,
+                    err_msg=f"Pixels should match for {filename}"
+                )
+            
+            print(f"✓ All files transcoded to HTJ2K with lossless compression")
+            print(f"✓ PyTorch DataLoader test passed!")
+            
+        finally:
+            # Clean up
             shutil.rmtree(input_dir, ignore_errors=True)
             shutil.rmtree(output_dir, ignore_errors=True)
 

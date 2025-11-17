@@ -5,6 +5,7 @@ import time
 
 import numpy as np
 import pydicom
+from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -250,9 +251,78 @@ def _get_transfer_syntax_constants():
     }
 
 
+class DicomFileLoader:
+    """
+    Simple iterable that auto-discovers DICOM files from a directory and yields batches.
+    
+    This class provides a simple interface for batch processing DICOM files without
+    requiring external dependencies like PyTorch. It can be used with any function
+    that accepts an iterable of (input_batch, output_batch) tuples.
+    
+    Args:
+        input_dir: Path to directory containing DICOM files to process
+        output_dir: Path to output directory. Output paths will preserve the directory
+                   structure relative to input_dir.
+        batch_size: Number of files to include in each batch (default: 256)
+    
+    Yields:
+        tuple: (batch_input, batch_output) where both are lists of file paths
+               batch_input contains source file paths
+               batch_output contains corresponding output file paths with preserved directory structure
+    
+    Example:
+        >>> loader = DicomFileLoader("/path/to/dicoms", "/path/to/output", batch_size=50)
+        >>> for batch_in, batch_out in loader:
+        ...     print(f"Processing {len(batch_in)} files")
+        ...     print(f"Input: {batch_in[0]}")
+        ...     print(f"Output: {batch_out[0]}")
+    """
+    
+    def __init__(self, input_dir: str, output_dir: str, batch_size: int = 256):
+        self.input_dir = input_dir
+        self.output_dir = output_dir
+        self.batch_size = batch_size
+        self._files = None
+    
+    def _discover_files(self):
+        """Discover DICOM files in the input directory."""
+        if self._files is None:
+            # Validate input
+            if not os.path.exists(self.input_dir):
+                raise ValueError(f"Input directory does not exist: {self.input_dir}")
+            
+            if not os.path.isdir(self.input_dir):
+                raise ValueError(f"Input path is not a directory: {self.input_dir}")
+            
+            # Find all valid DICOM files
+            self._files = _find_dicom_files(self.input_dir)
+            if not self._files:
+                raise ValueError(f"No valid DICOM files found in {self.input_dir}")
+            
+            logger.info(f"Found {len(self._files)} DICOM files to process")
+    
+    def __iter__(self):
+        """Iterate over batches of DICOM files."""
+        self._discover_files()
+        
+        total_files = len(self._files)
+        for batch_start in range(0, total_files, self.batch_size):
+            batch_end = min(batch_start + self.batch_size, total_files)
+            batch_input = self._files[batch_start:batch_end]
+            
+            # Compute output paths preserving directory structure
+            batch_output = []
+            for input_path in batch_input:
+                relative_path = os.path.relpath(input_path, self.input_dir)
+                output_path = os.path.join(self.output_dir, relative_path)
+                batch_output.append(output_path)
+            
+            yield batch_input, batch_output
+
+
+
 def transcode_dicom_to_htj2k(
-    input_dir: str,
-    output_dir: str = None,
+    file_loader: Iterable[tuple[list[str], list[str]]],
     num_resolutions: int = 6,
     code_block_size: tuple = (64, 64),
     progression_order: str = "RPCL",
@@ -268,19 +338,19 @@ def transcode_dicom_to_htj2k(
             "1.2.840.10008.1.2.4.51",  # JPEG Extended (Process 2 & 4, can be lossy)
         ])
     ),
-) -> str:
+):
     """
     Transcode DICOM files to HTJ2K (High Throughput JPEG 2000) lossless compression.
     
     HTJ2K is a faster variant of JPEG 2000 that provides better compression performance
-    for medical imaging applications. This function uses nvidia-nvimgcodec for hardware-
+    for medical imaging applications. This function uses NVIDIA's nvimgcodec for hardware-
     accelerated decoding and encoding with batch processing for optimal performance.
     All transcoding is performed using lossless compression to preserve image quality.
     
     The function processes files with streaming decode-encode batches:
     1. Categorizes files by transfer syntax (HTJ2K/JPEG2000/JPEG/uncompressed)
     2. Extracts all frames from source files
-    3. Processes frames in batches of max_batch_size:
+    3. Processes frames in batches for efficient encoding:
        - Decodes batch using nvimgcodec (compressed) or pydicom (uncompressed)
        - Immediately encodes batch to HTJ2K
        - Discards decoded frames to save memory (streaming)
@@ -299,8 +369,23 @@ def transcode_dicom_to_htj2k(
     Processing speed depends on batch size and GPU capabilities.
     
     Args:
-        input_dir: Path to directory containing DICOM files to transcode
-        output_dir: Path to output directory for transcoded files. If None, creates temp directory
+        file_loader: 
+            Iterable of (input_files, output_files) tuples, where:
+                - input_files: List[str] of input DICOM file paths to transcode as a batch.
+                - output_files: List[str] of output file paths to write the transcoded DICOMs.
+            The recommended usage is to provide a DicomFileLoader instance, which automatically yields
+            appropriately sized batches of file paths for efficient streaming. Custom iterables can also
+            be used to precisely control batching or file selection.
+            
+            Each yielded tuple should contain two lists of identical length, specifying the correspondence
+            between input and output files for each batch. The function will read each input file,
+            transcode to HTJ2K if necessary, and write the result to the corresponding output file.
+            
+            Example:
+                for batch_input, batch_output in file_loader:
+                    # len(batch_input) == len(batch_output)
+                    # batch_input: ['a.dcm', 'b.dcm'], batch_output: ['a_out.dcm', 'b_out.dcm']
+            The loader should guarantee that input and output lists are aligned and consistent across batches.
         num_resolutions: Number of wavelet decomposition levels (default: 6)
                         Higher values = better compression but slower encoding
         code_block_size: Code block size as (height, width) tuple (default: (64, 64))
@@ -312,8 +397,10 @@ def transcode_dicom_to_htj2k(
                           - "RPCL": Resolution-Position-Component-Layer (progressive by resolution)
                           - "PCRL": Position-Component-Resolution-Layer (progressive by spatial area)
                           - "CPRL": Component-Position-Resolution-Layer (component scalability)
-        max_batch_size: Maximum number of DICOM files to process in each batch (default: 256)
-                       Lower values reduce memory usage, higher values may improve speed
+        max_batch_size: Maximum number of frames to decode/encode in parallel (default: 256)
+                       This controls internal frame-level batching for GPU operations, not file-level batching.
+                       Lower values reduce memory usage, higher values may improve GPU utilization.
+                       Note: File-level batching is controlled by the DicomFileLoader's batch_size parameter.
         add_basic_offset_table: If True, creates Basic Offset Table for multi-frame DICOMs (default: True)
                                BOT enables O(1) frame access without parsing entire pixel data stream
                                Per DICOM Part 5 Section A.4. Only affects multi-frame files.
@@ -322,38 +409,29 @@ def transcode_dicom_to_htj2k(
                                without transcoding. Useful for preserving already-compressed formats.
                                Example: ["1.2.840.10008.1.2.4.201", "1.2.840.10008.1.2.4.202"]
         
-    Returns:
-        str: Path to output directory containing transcoded DICOM files
-        
     Raises:
         ImportError: If nvidia-nvimgcodec is not available
-        ValueError: If input directory doesn't exist or contains no valid DICOM files
         ValueError: If DICOM files are missing required attributes (TransferSyntaxUID, PixelData)
         ValueError: If progression_order is not one of: "LRCP", "RLCP", "RPCL", "PCRL", "CPRL"
         
     Example:
-        >>> # Basic usage with default settings
-        >>> output_dir = transcode_dicom_to_htj2k("/path/to/dicoms")
-        >>> print(f"Transcoded files saved to: {output_dir}")
+        >>> # Basic usage with DicomFileLoader
+        >>> loader = DicomFileLoader("/path/to/input", "/path/to/output")
+        >>> transcode_dicom_to_htj2k(loader)
+        >>> print(f"Transcoded files saved to: {loader.output_dir}")
         
-        >>> # Custom output directory and batch size
-        >>> output_dir = transcode_dicom_to_htj2k(
-        ...     input_dir="/path/to/dicoms",
-        ...     output_dir="/path/to/output",
-        ...     max_batch_size=50,
-        ...     num_resolutions=5
-        ... )
-        
-        >>> # Process with smaller code blocks for memory efficiency
-        >>> output_dir = transcode_dicom_to_htj2k(
-        ...     input_dir="/path/to/dicoms",
-        ...     code_block_size=(32, 32),
-        ...     max_batch_size=5
+        >>> # Custom settings with DicomFileLoader
+        >>> loader = DicomFileLoader("/path/to/input", "/path/to/output", batch_size=50)
+        >>> transcode_dicom_to_htj2k(
+        ...     file_loader=loader,
+        ...     num_resolutions=5,
+        ...     code_block_size=(32, 32)
         ... )
         
         >>> # Skip transcoding for files already in HTJ2K format
-        >>> output_dir = transcode_dicom_to_htj2k(
-        ...     input_dir="/path/to/dicoms",
+        >>> loader = DicomFileLoader("/path/to/input", "/path/to/output")
+        >>> transcode_dicom_to_htj2k(
+        ...     file_loader=loader,
         ...     skip_transfer_syntaxes=["1.2.840.10008.1.2.4.201", "1.2.840.10008.1.2.4.202"]
         ... )
         
@@ -365,9 +443,7 @@ def transcode_dicom_to_htj2k(
         The function preserves all DICOM metadata including Patient, Study, and Series
         information. Only the transfer syntax and pixel data encoding are modified.
     """
-    import glob
     import shutil
-    from pathlib import Path
     
     # Check for nvidia-nvimgcodec
     try:
@@ -378,26 +454,6 @@ def transcode_dicom_to_htj2k(
             "Install it with: pip install nvidia-nvimgcodec-cu{XX}[all] "
             "(replace {XX} with your CUDA version, e.g., cu13)"
         )
-    
-    # Validate input
-    if not os.path.exists(input_dir):
-        raise ValueError(f"Input directory does not exist: {input_dir}")
-    
-    if not os.path.isdir(input_dir):
-        raise ValueError(f"Input path is not a directory: {input_dir}")
-
-    # Find all valid DICOM files
-    valid_dicom_files = _find_dicom_files(input_dir)
-    if not valid_dicom_files:
-        raise ValueError(f"No valid DICOM files found in {input_dir}")
-    
-    logger.info(f"Found {len(valid_dicom_files)} DICOM files to transcode")
-    
-    # Create output directory
-    if output_dir is None:
-        output_dir = tempfile.mkdtemp(prefix="htj2k_")
-    else:
-        os.makedirs(output_dir, exist_ok=True)
     
     # Create encoder and decoder instances (reused for all files)
     encoder = _get_nvimgcodec_encoder()
@@ -427,17 +483,12 @@ def transcode_dicom_to_htj2k(
     start_time = time.time()
     transcoded_count = 0
     skipped_count = 0
+    total_files = 0
     
-    # Calculate batch info for logging
-    total_files = len(valid_dicom_files)
-    total_batches = (total_files + max_batch_size - 1) // max_batch_size
-    
-    for batch_start in range(0, total_files, max_batch_size):
-        batch_end = min(batch_start + max_batch_size, total_files)
-        current_batch = batch_start // max_batch_size + 1
-        logger.info(f"[{batch_start}..{batch_end}] Processing batch {current_batch}/{total_batches}")
-        batch_files = valid_dicom_files[batch_start:batch_end]
-        batch_datasets = [pydicom.dcmread(file) for file in batch_files]
+    # Iterate over batches from file_loader
+    for batch_in, batch_out in file_loader:
+        batch_datasets = [pydicom.dcmread(file) for file in batch_in]
+        total_files += len(batch_datasets)
         nvimgcodec_batch = []
         pydicom_batch = []
         skip_batch = []  # Indices of files to skip (copy directly)
@@ -445,19 +496,19 @@ def transcode_dicom_to_htj2k(
         for idx, ds in enumerate(batch_datasets):
             current_ts = getattr(ds, 'file_meta', {}).get('TransferSyntaxUID', None)
             if current_ts is None:
-                raise ValueError(f"DICOM file {os.path.basename(batch_files[idx])} does not have a Transfer Syntax UID")
+                raise ValueError(f"DICOM file {os.path.basename(batch_in[idx])} does not have a Transfer Syntax UID")
             
             ts_str = str(current_ts)
             
             # Check if this transfer syntax should be skipped
             if ts_str in skip_transfer_syntaxes:
                 skip_batch.append(idx)
-                logger.info(f"  Skipping {os.path.basename(batch_files[idx])} (Transfer Syntax: {ts_str})")
+                logger.info(f"  Skipping {os.path.basename(batch_in[idx])} (Transfer Syntax: {ts_str})")
                 continue
             
             if ts_str in NVIMGCODEC_SYNTAXES:
                 if not hasattr(ds, "PixelData") or ds.PixelData is None:
-                    raise ValueError(f"DICOM file {os.path.basename(batch_files[idx])} does not have a PixelData member")
+                    raise ValueError(f"DICOM file {os.path.basename(batch_in[idx])} does not have a PixelData member")
                 nvimgcodec_batch.append(idx)
             else:
                 pydicom_batch.append(idx)
@@ -465,8 +516,11 @@ def transcode_dicom_to_htj2k(
         # Handle skip_batch: copy files directly to output
         if skip_batch:
             for idx in skip_batch:
-                source_file = batch_files[idx]
-                output_file = os.path.join(output_dir, os.path.basename(source_file))
+                source_file = batch_in[idx]
+                output_file = batch_out[idx]
+                
+                # Ensure output directory exists
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
                 shutil.copy2(source_file, output_file)
                 skipped_count += 1
                 logger.info(f"  Copied {os.path.basename(source_file)} to output (skipped transcoding)")
@@ -481,23 +535,38 @@ def transcode_dicom_to_htj2k(
             # First, extract all compressed frames and group by PhotometricInterpretation
             grouped_frames = defaultdict(list)  # Key: PhotometricInterpretation, Value: list of (file_idx, frame_data)
             frame_counts = {}  # Track number of frames per file
+            successful_nvimgcodec_batch = []  # Track successfully processed files
             
             logger.info(f"  Extracting frames from {len(nvimgcodec_batch)} nvimgcodec files:")
             for idx in nvimgcodec_batch:
-                ds = batch_datasets[idx]
-                number_of_frames = int(ds.NumberOfFrames) if hasattr(ds, 'NumberOfFrames') else None
-                frames = _extract_frames_from_compressed(ds, number_of_frames)
-                logger.info(f"    File idx={idx} ({os.path.basename(batch_files[idx])}): extracted {len(frames)} frames (expected: {number_of_frames})")
-                
-                # Get PhotometricInterpretation for this file
-                photometric = getattr(ds, 'PhotometricInterpretation', 'UNKNOWN')
-                
-                # Store frames grouped by PhotometricInterpretation
-                for frame in frames:
-                    grouped_frames[photometric].append((idx, frame))
-                
-                frame_counts[idx] = len(frames)
-                num_frames.append(len(frames))
+                try:
+                    ds = batch_datasets[idx]
+                    number_of_frames = int(ds.NumberOfFrames) if hasattr(ds, 'NumberOfFrames') else None
+                    
+                    if "PixelData" not in ds:
+                        logger.warning(f"Skipping file {batch_in[idx]} (index {idx}): no PixelData found")
+                        skipped_count += 1
+                        continue
+                    
+                    frames = _extract_frames_from_compressed(ds, number_of_frames)
+                    logger.info(f"    File idx={idx} ({os.path.basename(batch_in[idx])}): extracted {len(frames)} frames (expected: {number_of_frames})")
+                    
+                    # Get PhotometricInterpretation for this file
+                    photometric = getattr(ds, 'PhotometricInterpretation', 'UNKNOWN')
+                    
+                    # Store frames grouped by PhotometricInterpretation
+                    for frame in frames:
+                        grouped_frames[photometric].append((idx, frame))
+                    
+                    frame_counts[idx] = len(frames)
+                    num_frames.append(len(frames))
+                    successful_nvimgcodec_batch.append(idx)  # Only add if successful
+                except Exception as e:
+                    logger.warning(f"Skipping file {batch_in[idx]} (index {idx}): {e}")
+                    skipped_count += 1
+            
+            # Update nvimgcodec_batch to only include successfully processed files
+            nvimgcodec_batch = successful_nvimgcodec_batch
             
             # Process each PhotometricInterpretation group separately
             logger.info(f"  Found {len(grouped_frames)} unique PhotometricInterpretation groups")
@@ -553,13 +622,24 @@ def transcode_dicom_to_htj2k(
         if pydicom_batch:
             # Extract all frames from uncompressed files
             all_decoded_frames = []
+            successful_pydicom_batch = []  # Track successfully processed files
             
             for idx in pydicom_batch:
-                ds = batch_datasets[idx]
-                num_frames_tag = int(ds.NumberOfFrames) if hasattr(ds, 'NumberOfFrames') else 1
-                frames = _extract_frames_from_uncompressed(ds.pixel_array, num_frames_tag)
-                all_decoded_frames.extend(frames)
-                num_frames.append(len(frames))
+                try:
+                    ds = batch_datasets[idx]
+                    num_frames_tag = int(ds.NumberOfFrames) if hasattr(ds, 'NumberOfFrames') else 1
+                    if "PixelData" in ds:
+                        frames = _extract_frames_from_uncompressed(ds.pixel_array, num_frames_tag)
+                        all_decoded_frames.extend(frames)
+                        num_frames.append(len(frames))
+                        successful_pydicom_batch.append(idx)  # Only add if successful
+                    else:
+                        # No PixelData - log warning and skip file completely
+                        logger.warning(f"Skipping file {batch_in[idx]} (index {idx}): no PixelData found")
+                        skipped_count += 1
+                except Exception as e:
+                    logger.warning(f"Skipping file {batch_in[idx]} (index {idx}): {e}")
+                    skipped_count += 1
             
             # Encode in batches (streaming)
             total_frames = len(all_decoded_frames)
@@ -579,6 +659,9 @@ def transcode_dicom_to_htj2k(
                     
                     # Store encoded frames
                     encoded_data.extend(encoded_batch)
+            
+            # Update pydicom_batch to only include successfully processed files
+            pydicom_batch = successful_pydicom_batch
 
         # Reassemble and save transcoded files
         frame_offset = 0
@@ -603,22 +686,28 @@ def transcode_dicom_to_htj2k(
                     batch_datasets[dataset_idx].PhotometricInterpretation = 'RGB'
                     logger.info(f"  Updated PhotometricInterpretation: {original_pi} -> RGB")
 
-            # Save transcoded file
-            output_file = os.path.join(output_dir, os.path.basename(batch_files[dataset_idx]))
-            batch_datasets[dataset_idx].save_as(output_file)
-            transcoded_count += 1
+            try:
+                # Save transcoded file using output path from file_loader
+                input_file = batch_in[dataset_idx]
+                output_file = batch_out[dataset_idx]
+                
+                # Ensure output directory exists
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
+                
+                batch_datasets[dataset_idx].save_as(output_file)
+                transcoded_count += 1
+                logger.info(f"#{transcoded_count}: Transcoded {input_file}, saving as: {output_file}")
+            except Exception as e:
+                logger.error(f"Error saving transcoded file {batch_in[dataset_idx]}: {output_file}")
+                logger.error(f"Error: {e}")
     
     elapsed_time = time.time() - start_time
-
+    
     logger.info(f"Transcoding complete:")
-    logger.info(f"  Total files: {len(valid_dicom_files)}")
+    logger.info(f"  Total files: {total_files}")
     logger.info(f"  Successfully transcoded: {transcoded_count}")
     logger.info(f"  Skipped (copied without transcoding): {skipped_count}")
     logger.info(f"  Time elapsed: {elapsed_time:.2f} seconds")
-    logger.info(f"  Output directory: {output_dir}")
-    
-    return output_dir
-
 
 def convert_single_frame_dicom_series_to_multiframe(
     input_dir: str,
