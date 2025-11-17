@@ -185,7 +185,7 @@ export default class MonaiLabelPanel extends Component {
     }
 
     const labelsOrdered = [...new Set(all_labels)].sort();
-    
+
     // Prepare initial segmentation configuration - will be created per-series on inference
     const initialSegs = labelsOrdered.reduce((acc, label, index) => {
             acc[index + 1] = {
@@ -232,7 +232,7 @@ export default class MonaiLabelPanel extends Component {
       }
     }
     this.setState({ action: name });
-    
+
     // Check if we switched series and need to reapply origin correction
     this.checkAndApplyOriginCorrectionOnSeriesSwitch();
   };
@@ -242,12 +242,12 @@ export default class MonaiLabelPanel extends Component {
     try {
       const currentViewportInfo = this.getActiveViewportInfo();
       const currentSeriesUID = currentViewportInfo?.displaySet?.SeriesInstanceUID;
-      
+
       // If series changed
       if (currentSeriesUID && currentSeriesUID !== this._currentSeriesUID) {
         this._currentSeriesUID = currentSeriesUID;
         const segmentationId = `seg-${currentSeriesUID}`;
-        
+
         // Check if this series already has a segmentation
         const { segmentationService } = this.props.servicesManager.services;
         try {
@@ -278,11 +278,11 @@ export default class MonaiLabelPanel extends Component {
       // Simply copy the image volume's origin to the segmentation
       // This way the segmentation matches whatever origin OHIF has set for the image
       volumeLoadObject.origin = [...imageVolume.origin];
-      
+
       if (volumeLoadObject.imageData) {
         volumeLoadObject.imageData.setOrigin(volumeLoadObject.origin);
       }
-      
+
       // Trigger render to show the corrected segmentation
       const renderingEngine = this.props.servicesManager.services.cornerstoneViewportService.getRenderingEngine();
       if (renderingEngine) {
@@ -353,7 +353,7 @@ export default class MonaiLabelPanel extends Component {
 
     const { segmentationService } = this.props.servicesManager.services;
     let volumeLoadObject = null;
-    
+
     try {
       volumeLoadObject = segmentationService.getLabelmapVolume(segmentationId);
     } catch (e) {
@@ -370,11 +370,11 @@ export default class MonaiLabelPanel extends Component {
             segments: initialSegs
           }
         }];
-        
+
         this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
           segmentations
         });
-        
+
         // Wait a bit for segmentation to be created, then try again
         setTimeout(() => {
           try {
@@ -392,7 +392,7 @@ export default class MonaiLabelPanel extends Component {
 
     if (volumeLoadObject) {
       let convertedData = data;
-      
+
       // Convert label indices
       for (let i = 0; i < convertedData.length; i++) {
         const midx = convertedData[i];
@@ -418,7 +418,7 @@ export default class MonaiLabelPanel extends Component {
         const sliceLength = scalarData.length / numImageFrames;
         const sliceBegin = sliceLength * sidx;
         const sliceEnd = sliceBegin + sliceLength;
-        
+
         for (let i = 0; i < convertedData.length; i++) {
           if (sidx >= 0 && (i < sliceBegin || i >= sliceEnd)) {
             continue;
@@ -478,10 +478,10 @@ export default class MonaiLabelPanel extends Component {
     }
 
     console.log('(Component Mounted) Ready to Connect to MONAI Server...');
-    
+
     // Subscribe to viewport grid state changes to detect series switches
     const { viewportGridService } = this.props.servicesManager.services;
-    
+
     // Listen to any state change in the viewport grid
     const handleViewportChange = () => {
       // Multiple attempts with delays to catch the viewport at the right time
@@ -489,15 +489,15 @@ export default class MonaiLabelPanel extends Component {
       setTimeout(() => this.checkAndApplyOriginCorrectionOnSeriesSwitch(), 200);
       setTimeout(() => this.checkAndApplyOriginCorrectionOnSeriesSwitch(), 500);
     };
-    
+
     this._unsubscribeFromViewportGrid = viewportGridService.subscribe(
       viewportGridService.EVENTS.ACTIVE_VIEWPORT_ID_CHANGED,
       handleViewportChange
     );
-    
+
     // await this.onInfo();
   }
-  
+
   componentWillUnmount() {
     if (this._unsubscribeFromViewportGrid) {
       this._unsubscribeFromViewportGrid();

@@ -35,11 +35,13 @@ except ImportError:
     nvimgcodec = None
 
 # HTJ2K Transfer Syntax UIDs
-HTJ2K_TRANSFER_SYNTAXES = frozenset([
-    "1.2.840.10008.1.2.4.201",  # High-Throughput JPEG 2000 Image Compression (Lossless Only)
-    "1.2.840.10008.1.2.4.202",  # High-Throughput JPEG 2000 with RPCL Options Image Compression (Lossless Only)
-    "1.2.840.10008.1.2.4.203",  # High-Throughput JPEG 2000 Image Compression
-])
+HTJ2K_TRANSFER_SYNTAXES = frozenset(
+    [
+        "1.2.840.10008.1.2.4.201",  # High-Throughput JPEG 2000 Image Compression (Lossless Only)
+        "1.2.840.10008.1.2.4.202",  # High-Throughput JPEG 2000 with RPCL Options Image Compression (Lossless Only)
+        "1.2.840.10008.1.2.4.203",  # High-Throughput JPEG 2000 Image Compression
+    ]
+)
 
 
 class TestConvert(unittest.TestCase):

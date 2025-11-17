@@ -60,13 +60,16 @@ def run_main():
         import sys
 
         sys.path.insert(0, TEST_DIR)
-        from monailabel.datastore.utils.convert import transcode_dicom_to_htj2k, convert_single_frame_dicom_series_to_multiframe
+        from monailabel.datastore.utils.convert import (
+            convert_single_frame_dicom_series_to_multiframe,
+            transcode_dicom_to_htj2k,
+        )
 
         # Create regular HTJ2K files (preserving file structure)
         logger.info("Creating HTJ2K test data (single-frame per file)...")
         source_base_dir = Path(TEST_DATA) / "dataset" / "dicomweb"
         htj2k_base_dir = Path(TEST_DATA) / "dataset" / "dicomweb_htj2k"
-        
+
         if source_base_dir.exists() and not (htj2k_base_dir.exists() and any(htj2k_base_dir.rglob("*.dcm"))):
             series_dirs = [d for d in source_base_dir.rglob("*") if d.is_dir() and any(d.glob("*.dcm"))]
             for series_dir in series_dirs:
@@ -88,8 +91,10 @@ def run_main():
         # Create multi-frame HTJ2K files (one file per series)
         logger.info("Creating multi-frame HTJ2K test data...")
         htj2k_multiframe_dir = Path(TEST_DATA) / "dataset" / "dicomweb_htj2k_multiframe"
-        
-        if source_base_dir.exists() and not (htj2k_multiframe_dir.exists() and any(htj2k_multiframe_dir.rglob("*.dcm"))):
+
+        if source_base_dir.exists() and not (
+            htj2k_multiframe_dir.exists() and any(htj2k_multiframe_dir.rglob("*.dcm"))
+        ):
             convert_single_frame_dicom_series_to_multiframe(
                 input_dir=str(source_base_dir),
                 output_dir=str(htj2k_multiframe_dir),
@@ -100,7 +105,7 @@ def run_main():
             logger.info(f"✓ Multi-frame HTJ2K test data created at: {htj2k_multiframe_dir}")
         else:
             logger.info("Multi-frame HTJ2K test data already exists, skipping.")
-            
+
     except ImportError as e:
         if "nvidia" in str(e).lower() or "nvimgcodec" in str(e).lower():
             logger.info("Note: nvidia-nvimgcodec not installed. HTJ2K test data will not be created.")

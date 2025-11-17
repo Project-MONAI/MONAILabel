@@ -42,6 +42,7 @@ from monailabel.transform.writer import write_itk
 
 logger = logging.getLogger(__name__)
 
+
 class SegmentDescription:
     """Wrapper class for segment description following MONAI Deploy pattern.
 
@@ -170,7 +171,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
 
         try:
             from monailabel.transform.reader import NvDicomReader
-            
+
             # Use NvDicomReader with LoadImage
             reader = NvDicomReader()
             loader = LoadImage(reader=reader, image_only=False)
@@ -511,8 +512,9 @@ def nifti_to_dicom_seg(
 
 
 def itk_image_to_dicom_seg(label, series_dir, template) -> str:
-    from monailabel.utils.others.generic import run_command
     import shutil
+
+    from monailabel.utils.others.generic import run_command
 
     command = "itkimage2segimage"
     if not shutil.which(command):
