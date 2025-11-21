@@ -401,7 +401,7 @@ the [contributing guidelines](https://github.com/Project-MONAI/MONAILabel/blob/m
 ## Community
 
 Join the conversation on Twitter [@ProjectMONAI](https://twitter.com/ProjectMONAI) or join
-our [Slack channel](https://projectmonai.slack.com/archives/C031QRE0M1C).
+our [Slack channel](https://join.slack.com/t/projectmonai/shared_invite/zt-3hucgm02q-i8Bn9XofDZs2UGOH4jUl4w).
 
 Ask and answer questions over
 on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAILabel/discussions).
