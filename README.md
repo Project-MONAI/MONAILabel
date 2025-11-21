@@ -14,7 +14,7 @@ limitations under the License.
 # MONAI Label
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI Build](https://github.com/Project-MONAI/MONAILabel/workflows/build/badge.svg?branch=main)](https://github.com/Project-MONAI/MONAILabel/commits/main)
-[![Documentation Status](https://readthedocs.org/projects/monailabel/badge/?version=latest)](https://docs.monai.io/projects/label/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/monailabel/badge/?version=latest)](https://monai.readthedocs.io/projects/label/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/monailabel.svg)](https://badge.fury.io/py/monailabel)
 [![Azure DevOps tests (compact)](https://img.shields.io/azure-devops/tests/projectmonai/monai-label/10?compact_message)](https://dev.azure.com/projectmonai/monai-label/_test/analytics?definitionId=10&contextType=build)
 [![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/projectmonai/monai-label/10)](https://dev.azure.com/projectmonai/monai-label/_build?definitionId=10)
@@ -27,7 +27,7 @@ open-source and easy-to-install ecosystem that can run locally on a machine with
 and client work on the same/different machine. It shares the same principles
 with [MONAI](https://github.com/Project-MONAI).
 
-Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/en/latest/index.html) for more details or check out our [MONAI Label Deep Dive videos series](https://www.youtube.com/playlist?list=PLtoSVSQ2XzyD4lc-lAacFBzOdv5Ou-9IA).
+Refer to full [MONAI Label documentations](https://monai.readthedocs.io/projects/label/en/latest/index.html) for more details or check out our [MONAI Label Deep Dive videos series](https://www.youtube.com/playlist?list=PLtoSVSQ2XzyD4lc-lAacFBzOdv5Ou-9IA).
 
 Refer to [MONAI Label Tutorial](https://github.com/Project-MONAI/tutorials/tree/main/monailabel) series for application and viewer workflows with different medical image tasks. Notebook-like tutorials are created for detailed instructions.
 
@@ -182,8 +182,8 @@ In addition, you can find a table of the basic supported fields, modalities, vie
 <pre>pip install -U monailabel</pre>
 
 MONAI Label supports the following OS with **GPU/CUDA** enabled. For more details instruction, please see the installation guides.
-- [Ubuntu](https://docs.monai.io/projects/label/en/latest/installation.html)
-- [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
+- [Ubuntu](https://monai.readthedocs.io/projects/label/en/latest/installation.html)
+- [Windows](https://monai.readthedocs.io/projects/label/en/latest/installation.html#windows)
 
 ### GPU Acceleration (Optional Dependencies)
 Following are the optional dependencies which can help you to accelerate some GPU based transforms from MONAI. These dependencies are enabled by default if you are using `projectmonai/monailabel` docker.
@@ -408,8 +408,8 @@ on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAI
 
 ## Additional Resources
 
-- Website: https://monai.io/
-- API documentation: https://docs.monai.io/projects/label
+- Website: https://project-monai.github.io/
+- API documentation: https://monai.readthedocs.io/projects/label
 - Code: https://github.com/Project-MONAI/MONAILabel
 - Project tracker: https://github.com/Project-MONAI/MONAILabel/projects
 - Issue tracker: https://github.com/Project-MONAI/MONAILabel/issues
