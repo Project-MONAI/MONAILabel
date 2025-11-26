@@ -1099,15 +1099,25 @@ def convert_single_frame_dicom_series_to_multiframe(
                     setattr(output_ds, attr, default)
                     logger.warning(f"  ⚠️  Added missing {attr} = {default}")
 
-            # Keep first frame's spatial attributes as top-level (represents volume origin)
-            if hasattr(datasets[0], "ImagePositionPatient"):
-                output_ds.ImagePositionPatient = datasets[0].ImagePositionPatient
-                logger.info(f"  ✓ Top-level ImagePositionPatient: {output_ds.ImagePositionPatient}")
-                logger.info(f"    (This is Frame[0], the FIRST slice in Z-order)")
-
-            if hasattr(datasets[0], "ImageOrientationPatient"):
-                output_ds.ImageOrientationPatient = datasets[0].ImageOrientationPatient
-                logger.info(f"  ✓ ImageOrientationPatient: {output_ds.ImageOrientationPatient}")
+            # CRITICAL: Do NOT add top-level ImagePositionPatient or ImageOrientationPatient!
+            # These tags interfere with OHIF/Cornerstone3D multi-frame parsing
+            # OHIF will read the top-level value for ALL frames instead of per-frame values
+            # Result: spacing[2] = 0 and "1/Infinity" display in MPR views
+            
+            # Remove them if they exist (from template dataset)
+            if hasattr(output_ds, "ImagePositionPatient"):
+                delattr(output_ds, "ImagePositionPatient")
+                logger.info(f"  ✓ Removed top-level ImagePositionPatient (use per-frame only)")
+            
+            if hasattr(output_ds, "ImageOrientationPatient"):
+                delattr(output_ds, "ImageOrientationPatient")
+                logger.info(f"  ✓ Removed top-level ImageOrientationPatient (use SharedFunctionalGroupsSequence only)")
+            
+            # CRITICAL: Set correct SOPClassUID for Enhanced multi-frame CT
+            # Use Enhanced CT Image Storage (not legacy CT Image Storage)
+            # This tells DICOM viewers to use Enhanced multi-frame parsing logic
+            output_ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2.1"  # Enhanced CT Image Storage
+            logger.info(f"  ✓ Set SOPClassUID to Enhanced CT Image Storage")
 
             # Keep pixel spacing and slice thickness
             if hasattr(datasets[0], "PixelSpacing"):
@@ -1143,9 +1153,11 @@ def convert_single_frame_dicom_series_to_multiframe(
                     output_ds.SpacingBetweenSlices = spacing
                     logger.info(f"  ✓ Added SpacingBetweenSlices: {spacing:.6f} mm")
 
-            # Add minimal PerFrameFunctionalGroupsSequence for OHIF compatibility
-            # OHIF's cornerstone3D expects this even for simple multi-frame CT
-            logger.info(f"  Adding minimal per-frame functional groups for OHIF compatibility...")
+            # Add PerFrameFunctionalGroupsSequence for OHIF/Cornerstone3D compatibility
+            # CRITICAL: Structure must be exactly right to avoid "1/Infinity" MPR display bug
+            # - Per-frame: PlanePositionSequence ONLY (unique position per frame)
+            # - Shared: PlaneOrientationSequence (common orientation for all frames)
+            logger.info(f"  Adding per-frame functional groups (OHIF-compatible structure)...")
             from pydicom.dataset import Dataset as DicomDataset
             from pydicom.sequence import Sequence
 
@@ -1154,18 +1166,17 @@ def convert_single_frame_dicom_series_to_multiframe(
                 frame_item = DicomDataset()
 
                 # PlanePositionSequence - ImagePositionPatient for this frame
-                # CRITICAL: Best defense against Cornerstone3D bugs
+                # This is REQUIRED - each frame needs its own position
                 if hasattr(ds_frame, "ImagePositionPatient"):
                     plane_pos_item = DicomDataset()
                     plane_pos_item.ImagePositionPatient = ds_frame.ImagePositionPatient
                     frame_item.PlanePositionSequence = Sequence([plane_pos_item])
 
-                # PlaneOrientationSequence - ImageOrientationPatient for this frame
-                # CRITICAL: Best defense against Cornerstone3D bugs
-                if hasattr(ds_frame, "ImageOrientationPatient"):
-                    plane_orient_item = DicomDataset()
-                    plane_orient_item.ImageOrientationPatient = ds_frame.ImageOrientationPatient
-                    frame_item.PlaneOrientationSequence = Sequence([plane_orient_item])
+                # CRITICAL: Do NOT add per-frame PlaneOrientationSequence!
+                # PlaneOrientationSequence should ONLY be in SharedFunctionalGroupsSequence
+                # Having it per-frame triggers different parsing logic in OHIF/Cornerstone3D
+                # Result: metadata not read correctly, spacing[2] = 0
+                # (The orientation is shared across all frames anyway)
 
                 # FrameContentSequence - helps with frame identification
                 frame_content_item = DicomDataset()
@@ -1178,7 +1189,7 @@ def convert_single_frame_dicom_series_to_multiframe(
 
             output_ds.PerFrameFunctionalGroupsSequence = Sequence(per_frame_seq)
             logger.info(f"  ✓ Added PerFrameFunctionalGroupsSequence with {len(per_frame_seq)} frame items")
-            logger.info(f"    Each frame includes: PlanePositionSequence + PlaneOrientationSequence")
+            logger.info(f"    Each frame includes: PlanePositionSequence only (orientation in shared)")
 
             # Add SharedFunctionalGroupsSequence for additional Cornerstone3D compatibility
             # This defines attributes that are common to ALL frames
@@ -1203,7 +1214,7 @@ def convert_single_frame_dicom_series_to_multiframe(
 
             output_ds.SharedFunctionalGroupsSequence = Sequence([shared_item])
             logger.info(f"  ✓ Added SharedFunctionalGroupsSequence (common attributes for all frames)")
-            logger.info(f"    (Additional defense against Cornerstone3D < v2.0 bugs)")
+            logger.info(f"    Includes PlaneOrientationSequence (ONLY location for orientation!)")
 
             # Verify frame ordering
             if len(per_frame_seq) > 0:
