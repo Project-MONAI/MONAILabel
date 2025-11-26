@@ -786,7 +786,9 @@ class TestConvertHTJ2K(unittest.TestCase):
             first_original = original_datasets[0]
 
             # Check ImagePositionPatient is NOT there at top level DICOM file
-            self.assertFalse(hasattr(ds_multiframe, "ImagePositionPatient"), "Should not have ImagePositionPatient at top level")
+            self.assertFalse(
+                hasattr(ds_multiframe, "ImagePositionPatient"), "Should not have ImagePositionPatient at top level"
+            )
 
             # Check PixelSpacing
             self.assertTrue(hasattr(ds_multiframe, "PixelSpacing"), "Should have PixelSpacing")
@@ -812,23 +814,23 @@ class TestConvertHTJ2K(unittest.TestCase):
             # Check SOPClassUID conversion to Enhanced/Multi-frame
             self.assertTrue(hasattr(ds_multiframe, "SOPClassUID"), "Should have SOPClassUID")
             self.assertTrue(hasattr(first_original, "SOPClassUID"), "Original should have SOPClassUID")
-            
+
             # Map of single-frame to enhanced/multi-frame SOPClassUIDs
             sopclass_map = {
-                "1.2.840.10008.5.1.4.1.1.2": "1.2.840.10008.5.1.4.1.1.2.1",     # CT -> Enhanced CT
-                "1.2.840.10008.5.1.4.1.1.4": "1.2.840.10008.5.1.4.1.1.4.1",     # MR -> Enhanced MR
-                "1.2.840.10008.5.1.4.1.1.6.1": "1.2.840.10008.5.1.4.1.1.3.1",   # US -> Ultrasound Multi-frame
+                "1.2.840.10008.5.1.4.1.1.2": "1.2.840.10008.5.1.4.1.1.2.1",  # CT -> Enhanced CT
+                "1.2.840.10008.5.1.4.1.1.4": "1.2.840.10008.5.1.4.1.1.4.1",  # MR -> Enhanced MR
+                "1.2.840.10008.5.1.4.1.1.6.1": "1.2.840.10008.5.1.4.1.1.3.1",  # US -> Ultrasound Multi-frame
             }
-            
+
             original_sopclass = str(first_original.SOPClassUID)
             multiframe_sopclass = str(ds_multiframe.SOPClassUID)
-            
+
             if original_sopclass in sopclass_map:
                 expected_sopclass = sopclass_map[original_sopclass]
                 self.assertEqual(
                     multiframe_sopclass,
                     expected_sopclass,
-                    f"SOPClassUID should be converted from {original_sopclass} to {expected_sopclass}"
+                    f"SOPClassUID should be converted from {original_sopclass} to {expected_sopclass}",
                 )
                 print(f"✓ SOPClassUID converted: {original_sopclass} -> {multiframe_sopclass}")
             else:
@@ -836,7 +838,7 @@ class TestConvertHTJ2K(unittest.TestCase):
                 self.assertEqual(
                     multiframe_sopclass,
                     original_sopclass,
-                    "SOPClassUID should remain unchanged if not in conversion map"
+                    "SOPClassUID should remain unchanged if not in conversion map",
                 )
                 print(f"✓ SOPClassUID unchanged: {multiframe_sopclass}")
 

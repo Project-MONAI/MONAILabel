@@ -507,7 +507,9 @@ def transcode_dicom_to_htj2k(
             has_pixel_data = hasattr(ds, "PixelData") and ds.PixelData is not None
             if ts_str in skip_transfer_syntaxes or not has_pixel_data:
                 skip_batch.append(idx)
-                logger.info(f"  Skipping {os.path.basename(batch_in[idx])} (Transfer Syntax: {ts_str}, has_pixel_data: {has_pixel_data})")
+                logger.info(
+                    f"  Skipping {os.path.basename(batch_in[idx])} (Transfer Syntax: {ts_str}, has_pixel_data: {has_pixel_data})"
+                )
                 continue
 
             assert has_pixel_data, f"DICOM file {os.path.basename(batch_in[idx])} does not have a PixelData member"
@@ -1049,9 +1051,13 @@ def convert_single_frame_dicom_series_to_multiframe(
             # Save ImageOrientationPatient and ImagePositionPatient BEFORE creating output_ds
             # The shallow copy + delattr will affect the original datasets objects
             # Save these values now so we can use them in functional groups later
-            original_image_orientation = datasets[0].ImageOrientationPatient if hasattr(datasets[0], "ImageOrientationPatient") else None
-            original_image_positions = [ds.ImagePositionPatient if hasattr(ds, "ImagePositionPatient") else None for ds in datasets]
-            
+            original_image_orientation = (
+                datasets[0].ImageOrientationPatient if hasattr(datasets[0], "ImageOrientationPatient") else None
+            )
+            original_image_positions = [
+                ds.ImagePositionPatient if hasattr(ds, "ImagePositionPatient") else None for ds in datasets
+            ]
+
             # Create SIMPLE multi-frame DICOM file (like the user's example)
             # Use first dataset as template, keeping its metadata
             logger.info(f"  Creating simple multi-frame DICOM from {total_frame_count} frames...")
@@ -1108,19 +1114,28 @@ def convert_single_frame_dicom_series_to_multiframe(
             # CRITICAL: Remove top-level ImagePositionPatient and ImageOrientationPatient
             # Working files (that display correctly in OHIF MPR) have NEITHER at top level
             # These should ONLY exist in functional groups for Enhanced CT
-            
+
             if hasattr(output_ds, "ImagePositionPatient"):
                 delattr(output_ds, "ImagePositionPatient")
                 logger.info(f"  ✓ Removed top-level ImagePositionPatient (use per-frame only)")
-            
+
             if hasattr(output_ds, "ImageOrientationPatient"):
                 delattr(output_ds, "ImageOrientationPatient")
                 logger.info(f"  ✓ Removed top-level ImageOrientationPatient (use SharedFunctionalGroupsSequence only)")
             # Set correct SOPClassUID for multi-frame (Enhanced/Multiframe) conversion
             sopclass_map = {
-                "1.2.840.10008.5.1.4.1.1.2":   ("1.2.840.10008.5.1.4.1.1.2.1",   "Enhanced CT Image Storage"),                  # CT -> Enhanced CT
-                "1.2.840.10008.5.1.4.1.1.4":   ("1.2.840.10008.5.1.4.1.1.4.1",   "Enhanced MR Image Storage"),                  # MR -> Enhanced MR
-                "1.2.840.10008.5.1.4.1.1.6.1": ("1.2.840.10008.5.1.4.1.1.3.1",   "Ultrasound Multi-frame Image Storage"),       # US -> Ultrasound Multi-frame
+                "1.2.840.10008.5.1.4.1.1.2": (
+                    "1.2.840.10008.5.1.4.1.1.2.1",
+                    "Enhanced CT Image Storage",
+                ),  # CT -> Enhanced CT
+                "1.2.840.10008.5.1.4.1.1.4": (
+                    "1.2.840.10008.5.1.4.1.1.4.1",
+                    "Enhanced MR Image Storage",
+                ),  # MR -> Enhanced MR
+                "1.2.840.10008.5.1.4.1.1.6.1": (
+                    "1.2.840.10008.5.1.4.1.1.3.1",
+                    "Ultrasound Multi-frame Image Storage",
+                ),  # US -> Ultrasound Multi-frame
             }
 
             original_sopclass = getattr(datasets[0], "SOPClassUID", None)
@@ -1186,7 +1201,9 @@ def convert_single_frame_dicom_series_to_multiframe(
                 else:
                     # If missing, use default (0,0,frame_idx * spacing)
                     # This shouldn't happen for valid CT series, but ensures MPR compatibility
-                    default_spacing = float(output_ds.SpacingBetweenSlices) if hasattr(output_ds, 'SpacingBetweenSlices') else 1.0
+                    default_spacing = (
+                        float(output_ds.SpacingBetweenSlices) if hasattr(output_ds, "SpacingBetweenSlices") else 1.0
+                    )
                     plane_pos_item.ImagePositionPatient = [0.0, 0.0, frame_idx * default_spacing]
                     logger.warning(f"    Frame {frame_idx} missing ImagePositionPatient, using default")
                 frame_item.PlanePositionSequence = Sequence([plane_pos_item])
