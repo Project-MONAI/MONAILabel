@@ -504,14 +504,14 @@ def transcode_dicom_to_htj2k(
             ts_str = str(current_ts)
 
             # Check if this transfer syntax should be skipped
-            if ts_str in skip_transfer_syntaxes:
+            has_pixel_data = hasattr(ds, "PixelData") and ds.PixelData is not None
+            if ts_str in skip_transfer_syntaxes or not has_pixel_data:
                 skip_batch.append(idx)
-                logger.info(f"  Skipping {os.path.basename(batch_in[idx])} (Transfer Syntax: {ts_str})")
+                logger.info(f"  Skipping {os.path.basename(batch_in[idx])} (Transfer Syntax: {ts_str}, has_pixel_data: {has_pixel_data})")
                 continue
 
+            assert has_pixel_data, f"DICOM file {os.path.basename(batch_in[idx])} does not have a PixelData member"
             if ts_str in NVIMGCODEC_SYNTAXES:
-                if not hasattr(ds, "PixelData") or ds.PixelData is None:
-                    raise ValueError(f"DICOM file {os.path.basename(batch_in[idx])} does not have a PixelData member")
                 nvimgcodec_batch.append(idx)
             else:
                 pydicom_batch.append(idx)
