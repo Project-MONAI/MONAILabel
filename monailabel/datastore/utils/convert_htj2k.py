@@ -1162,11 +1162,17 @@ def convert_single_frame_dicom_series_to_multiframe(
                 frame_item = DicomDataset()
 
                 # PlanePositionSequence - ImagePositionPatient for this frame
-                # This is REQUIRED - each frame needs its own position
+                # This is MANDATORY for Enhanced CT multi-frame
+                plane_pos_item = DicomDataset()
                 if hasattr(ds_frame, "ImagePositionPatient"):
-                    plane_pos_item = DicomDataset()
                     plane_pos_item.ImagePositionPatient = ds_frame.ImagePositionPatient
-                    frame_item.PlanePositionSequence = Sequence([plane_pos_item])
+                else:
+                    # If missing, use default (0,0,frame_idx * spacing)
+                    # This shouldn't happen for valid CT series, but ensures MPR compatibility
+                    default_spacing = float(output_ds.SpacingBetweenSlices) if hasattr(output_ds, 'SpacingBetweenSlices') else 1.0
+                    plane_pos_item.ImagePositionPatient = [0.0, 0.0, frame_idx * default_spacing]
+                    logger.warning(f"    Frame {frame_idx} missing ImagePositionPatient, using default")
+                frame_item.PlanePositionSequence = Sequence([plane_pos_item])
 
                 # CRITICAL: Do NOT add per-frame PlaneOrientationSequence!
                 # PlaneOrientationSequence should ONLY be in SharedFunctionalGroupsSequence
@@ -1191,11 +1197,16 @@ def convert_single_frame_dicom_series_to_multiframe(
             # This defines attributes that are common to ALL frames
             shared_item = DicomDataset()
 
-            # PlaneOrientationSequence - same for all frames
+            # PlaneOrientationSequence - MANDATORY for Enhanced CT multi-frame
+            shared_orient_item = DicomDataset()
             if hasattr(datasets[0], "ImageOrientationPatient"):
-                shared_orient_item = DicomDataset()
                 shared_orient_item.ImageOrientationPatient = datasets[0].ImageOrientationPatient
-                shared_item.PlaneOrientationSequence = Sequence([shared_orient_item])
+            else:
+                # If missing, use standard axial orientation
+                # This ensures MPR button is enabled in OHIF
+                shared_orient_item.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+                logger.warning(f"  Source files missing ImageOrientationPatient, using standard axial orientation")
+            shared_item.PlaneOrientationSequence = Sequence([shared_orient_item])
 
             # PixelMeasuresSequence - pixel spacing and slice thickness
             if hasattr(datasets[0], "PixelSpacing") or hasattr(datasets[0], "SliceThickness"):
