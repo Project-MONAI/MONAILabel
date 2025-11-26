@@ -1099,21 +1099,19 @@ def convert_single_frame_dicom_series_to_multiframe(
                     setattr(output_ds, attr, default)
                     logger.warning(f"  ⚠️  Added missing {attr} = {default}")
 
-            # CRITICAL FIX #1: Remove top-level ImagePositionPatient
-            # OHIF reads this for ALL frames instead of per-frame values → spacing[2] = 0
+            # CRITICAL: Remove top-level ImagePositionPatient and ImageOrientationPatient
+            # Working files (that display correctly in OHIF MPR) have NEITHER at top level
+            # These should ONLY exist in functional groups for Enhanced CT
+            
             if hasattr(output_ds, "ImagePositionPatient"):
                 delattr(output_ds, "ImagePositionPatient")
                 logger.info(f"  ✓ Removed top-level ImagePositionPatient (use per-frame only)")
             
-            # CRITICAL FIX #2: Keep ImageOrientationPatient at top level
-            # OHIF needs this to recognize file as MPR-capable
-            # Safe to keep since orientation is the same for all frames
-            if hasattr(datasets[0], "ImageOrientationPatient"):
-                output_ds.ImageOrientationPatient = datasets[0].ImageOrientationPatient
-                logger.info(f"  ✓ Kept top-level ImageOrientationPatient: {output_ds.ImageOrientationPatient}")
+            if hasattr(output_ds, "ImageOrientationPatient"):
+                delattr(output_ds, "ImageOrientationPatient")
+                logger.info(f"  ✓ Removed top-level ImageOrientationPatient (use SharedFunctionalGroupsSequence only)")
             
-            # CRITICAL FIX #3: Set correct SOPClassUID for Enhanced multi-frame CT
-            # Use Enhanced CT Image Storage (not legacy CT Image Storage)
+            # CRITICAL: Set correct SOPClassUID for Enhanced multi-frame CT
             output_ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2.1"  # Enhanced CT Image Storage
             logger.info(f"  ✓ Set SOPClassUID to Enhanced CT Image Storage")
 
