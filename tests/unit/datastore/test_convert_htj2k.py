@@ -785,25 +785,8 @@ class TestConvertHTJ2K(unittest.TestCase):
             # Verify top-level metadata matches first frame
             first_original = original_datasets[0]
 
-            # Check ImagePositionPatient (top-level should match first frame)
-            self.assertTrue(hasattr(ds_multiframe, "ImagePositionPatient"), "Should have ImagePositionPatient")
-            np.testing.assert_array_almost_equal(
-                np.array([float(x) for x in ds_multiframe.ImagePositionPatient]),
-                np.array([float(x) for x in first_original.ImagePositionPatient]),
-                decimal=6,
-                err_msg="Top-level ImagePositionPatient should match first original file",
-            )
-            print(f"✓ ImagePositionPatient matches first frame: {ds_multiframe.ImagePositionPatient}")
-
-            # Check ImageOrientationPatient
-            self.assertTrue(hasattr(ds_multiframe, "ImageOrientationPatient"), "Should have ImageOrientationPatient")
-            np.testing.assert_array_almost_equal(
-                np.array([float(x) for x in ds_multiframe.ImageOrientationPatient]),
-                np.array([float(x) for x in first_original.ImageOrientationPatient]),
-                decimal=6,
-                err_msg="ImageOrientationPatient should match original",
-            )
-            print(f"✓ ImageOrientationPatient matches original: {ds_multiframe.ImageOrientationPatient}")
+            # Check ImagePositionPatient is NOT there at top level DICOM file
+            self.assertFalse(hasattr(ds_multiframe, "ImagePositionPatient"), "Should not have ImagePositionPatient at top level")
 
             # Check PixelSpacing
             self.assertTrue(hasattr(ds_multiframe, "PixelSpacing"), "Should have PixelSpacing")
@@ -825,6 +808,37 @@ class TestConvertHTJ2K(unittest.TestCase):
                     msg="SliceThickness should match original",
                 )
                 print(f"✓ SliceThickness matches original: {ds_multiframe.SliceThickness}")
+
+            # Check SOPClassUID conversion to Enhanced/Multi-frame
+            self.assertTrue(hasattr(ds_multiframe, "SOPClassUID"), "Should have SOPClassUID")
+            self.assertTrue(hasattr(first_original, "SOPClassUID"), "Original should have SOPClassUID")
+            
+            # Map of single-frame to enhanced/multi-frame SOPClassUIDs
+            sopclass_map = {
+                "1.2.840.10008.5.1.4.1.1.2": "1.2.840.10008.5.1.4.1.1.2.1",     # CT -> Enhanced CT
+                "1.2.840.10008.5.1.4.1.1.4": "1.2.840.10008.5.1.4.1.1.4.1",     # MR -> Enhanced MR
+                "1.2.840.10008.5.1.4.1.1.6.1": "1.2.840.10008.5.1.4.1.1.3.1",   # US -> Ultrasound Multi-frame
+            }
+            
+            original_sopclass = str(first_original.SOPClassUID)
+            multiframe_sopclass = str(ds_multiframe.SOPClassUID)
+            
+            if original_sopclass in sopclass_map:
+                expected_sopclass = sopclass_map[original_sopclass]
+                self.assertEqual(
+                    multiframe_sopclass,
+                    expected_sopclass,
+                    f"SOPClassUID should be converted from {original_sopclass} to {expected_sopclass}"
+                )
+                print(f"✓ SOPClassUID converted: {original_sopclass} -> {multiframe_sopclass}")
+            else:
+                # If not in map, should remain unchanged
+                self.assertEqual(
+                    multiframe_sopclass,
+                    original_sopclass,
+                    "SOPClassUID should remain unchanged if not in conversion map"
+                )
+                print(f"✓ SOPClassUID unchanged: {multiframe_sopclass}")
 
             # Check for PerFrameFunctionalGroupsSequence
             self.assertTrue(
@@ -868,30 +882,31 @@ class TestConvertHTJ2K(unittest.TestCase):
                 except AssertionError as e:
                     mismatches.append(f"Frame {frame_idx}: {e}")
 
-                # Check PlaneOrientationSequence
-                self.assertTrue(
+                # PlaneOrientationSequence should ONLY be in SharedFunctionalGroupsSequence, not per-frame
+                self.assertFalse(
                     hasattr(frame_item, "PlaneOrientationSequence"),
-                    f"Frame {frame_idx} should have PlaneOrientationSequence",
-                )
-                plane_orient = frame_item.PlaneOrientationSequence[0]
-                self.assertTrue(
-                    hasattr(plane_orient, "ImageOrientationPatient"),
-                    f"Frame {frame_idx} should have ImageOrientationPatient in PlaneOrientationSequence",
+                    f"Frame {frame_idx} should not have PlaneOrientationSequence",
                 )
 
-                # Verify ImageOrientationPatient matches original
-                multiframe_iop = np.array([float(x) for x in plane_orient.ImageOrientationPatient])
-                original_iop = np.array([float(x) for x in original_ds.ImageOrientationPatient])
+            # Verify ImageOrientationPatient in SharedFunctionalGroupsSequence matches original
+            shared_fg = ds_multiframe.SharedFunctionalGroupsSequence[0]
+            self.assertTrue(
+                hasattr(shared_fg, "PlaneOrientationSequence"),
+                "SharedFunctionalGroupsSequence should have PlaneOrientationSequence",
+            )
+            plane_orient = shared_fg.PlaneOrientationSequence[0]
+            multiframe_iop = np.array([float(x) for x in plane_orient.ImageOrientationPatient])
+            original_iop = np.array([float(x) for x in original_datasets[0].ImageOrientationPatient])  # Use first frame
 
-                try:
-                    np.testing.assert_array_almost_equal(
-                        multiframe_iop,
-                        original_iop,
-                        decimal=6,
-                        err_msg=f"Frame {frame_idx} ImageOrientationPatient should match original",
-                    )
-                except AssertionError as e:
-                    mismatches.append(f"Frame {frame_idx}: {e}")
+            try:
+                np.testing.assert_array_almost_equal(
+                    multiframe_iop,
+                    original_iop,
+                    decimal=6,
+                    err_msg="SharedFunctionalGroupsSequence ImageOrientationPatient should match original",  # Remove frame_idx
+                )
+            except AssertionError as e:
+                mismatches.append(f"Shared orientation: {e}")  # Remove frame_idx reference
 
             # Report any mismatches
             if mismatches:

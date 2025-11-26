@@ -1046,10 +1046,16 @@ def convert_single_frame_dicom_series_to_multiframe(
                     # Uncompressed numpy arrays
                     encoded_frames_bytes = None
 
+            # Save ImageOrientationPatient and ImagePositionPatient BEFORE creating output_ds
+            # The shallow copy + delattr will affect the original datasets objects
+            # Save these values now so we can use them in functional groups later
+            original_image_orientation = datasets[0].ImageOrientationPatient if hasattr(datasets[0], "ImageOrientationPatient") else None
+            original_image_positions = [ds.ImagePositionPatient if hasattr(ds, "ImagePositionPatient") else None for ds in datasets]
+            
             # Create SIMPLE multi-frame DICOM file (like the user's example)
             # Use first dataset as template, keeping its metadata
             logger.info(f"  Creating simple multi-frame DICOM from {total_frame_count} frames...")
-            output_ds = datasets[0].copy()  # Start from first dataset
+            output_ds = datasets[0].copy()  # shallow copy
 
             # CRITICAL: Set SOP Instance UID to match the SeriesInstanceUID (which will be the filename)
             # This ensures the file's internal SOP Instance UID matches its filename
@@ -1110,10 +1116,20 @@ def convert_single_frame_dicom_series_to_multiframe(
             if hasattr(output_ds, "ImageOrientationPatient"):
                 delattr(output_ds, "ImageOrientationPatient")
                 logger.info(f"  ✓ Removed top-level ImageOrientationPatient (use SharedFunctionalGroupsSequence only)")
-            
-            # CRITICAL: Set correct SOPClassUID for Enhanced multi-frame CT
-            output_ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2.1"  # Enhanced CT Image Storage
-            logger.info(f"  ✓ Set SOPClassUID to Enhanced CT Image Storage")
+            # Set correct SOPClassUID for multi-frame (Enhanced/Multiframe) conversion
+            sopclass_map = {
+                "1.2.840.10008.5.1.4.1.1.2":   ("1.2.840.10008.5.1.4.1.1.2.1",   "Enhanced CT Image Storage"),                  # CT -> Enhanced CT
+                "1.2.840.10008.5.1.4.1.1.4":   ("1.2.840.10008.5.1.4.1.1.4.1",   "Enhanced MR Image Storage"),                  # MR -> Enhanced MR
+                "1.2.840.10008.5.1.4.1.1.6.1": ("1.2.840.10008.5.1.4.1.1.3.1",   "Ultrasound Multi-frame Image Storage"),       # US -> Ultrasound Multi-frame
+            }
+
+            original_sopclass = getattr(datasets[0], "SOPClassUID", None)
+            if original_sopclass and str(original_sopclass) in sopclass_map:
+                new_uid, desc = sopclass_map[str(original_sopclass)]
+                output_ds.SOPClassUID = new_uid
+                logger.info(f"  ✓ Set SOPClassUID to {desc}")
+            else:
+                logger.info(f"  Keeping original SOPClassUID: {original_sopclass}")
 
             # Keep pixel spacing and slice thickness
             if hasattr(datasets[0], "PixelSpacing"):
@@ -1164,8 +1180,9 @@ def convert_single_frame_dicom_series_to_multiframe(
                 # PlanePositionSequence - ImagePositionPatient for this frame
                 # This is MANDATORY for Enhanced CT multi-frame
                 plane_pos_item = DicomDataset()
-                if hasattr(ds_frame, "ImagePositionPatient"):
-                    plane_pos_item.ImagePositionPatient = ds_frame.ImagePositionPatient
+                # Use saved value (before it was deleted from datasets)
+                if original_image_positions[frame_idx] is not None:
+                    plane_pos_item.ImagePositionPatient = original_image_positions[frame_idx]
                 else:
                     # If missing, use default (0,0,frame_idx * spacing)
                     # This shouldn't happen for valid CT series, but ensures MPR compatibility
@@ -1199,8 +1216,9 @@ def convert_single_frame_dicom_series_to_multiframe(
 
             # PlaneOrientationSequence - MANDATORY for Enhanced CT multi-frame
             shared_orient_item = DicomDataset()
-            if hasattr(datasets[0], "ImageOrientationPatient"):
-                shared_orient_item.ImageOrientationPatient = datasets[0].ImageOrientationPatient
+            # Use saved value (before it was deleted from datasets)
+            if original_image_orientation is not None:
+                shared_orient_item.ImageOrientationPatient = original_image_orientation
             else:
                 # If missing, use standard axial orientation
                 # This ensures MPR button is enabled in OHIF
@@ -1260,7 +1278,7 @@ def convert_single_frame_dicom_series_to_multiframe(
 
             # Save as single multi-frame file
             output_file = os.path.join(study_output_dir, f"{series_uid}.dcm")
-            output_ds.save_as(output_file, write_like_original=False)
+            output_ds.save_as(output_file, enforce_file_format=False)
 
             logger.info(f"  ✓ Saved multi-frame file: {output_file}")
             processed_series += 1
