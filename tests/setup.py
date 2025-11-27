@@ -61,9 +61,9 @@ def run_main():
 
         sys.path.insert(0, TEST_DIR)
         from monailabel.datastore.utils.convert_htj2k import (
+            DicomFileLoader,
             convert_single_frame_dicom_series_to_multiframe,
             transcode_dicom_to_htj2k,
-            DicomFileLoader,
         )
 
         # Create regular HTJ2K files (preserving file structure)
@@ -80,9 +80,7 @@ def run_main():
                     logger.info(f"  Processing series: {rel_path}")
                     # Create file_loader using DicomFileLoader
                     file_loader = DicomFileLoader(
-                        input_dir=str(series_dir),
-                        output_dir=str(output_series_dir),
-                        batch_size=256
+                        input_dir=str(series_dir), output_dir=str(output_series_dir), batch_size=256
                     )
                     transcode_dicom_to_htj2k(
                         file_loader=file_loader,
