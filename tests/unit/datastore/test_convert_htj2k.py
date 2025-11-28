@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -1970,6 +1971,139 @@ class TestConvertHTJ2K(unittest.TestCase):
 
             print(f"✓ All files transcoded to HTJ2K with lossless compression")
             print(f"✓ PyTorch DataLoader test passed!")
+
+        finally:
+            # Clean up
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_convert_multiframe_handles_missing_pixeldata(self):
+        """Test that convert_single_frame_dicom_series_to_multiframe handles datasets without PixelData."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest(
+                "nvimgcodec not available. Install nvidia-nvimgcodec-cu{XX} matching your CUDA version (e.g., nvidia-nvimgcodec-cu13 for CUDA 13.x)"
+            )
+
+        # Create temporary directory with mixed DICOM files
+        input_dir = tempfile.mkdtemp(prefix="test_missing_pixeldata_")
+        output_dir = tempfile.mkdtemp(prefix="test_missing_pixeldata_output_")
+
+        try:
+            # Create a series with some files having PixelData and some without
+            study_uid = pydicom.uid.generate_uid()
+            series_uid = pydicom.uid.generate_uid()
+
+            print(f"\nCreating test series with mixed PixelData presence...")
+
+            # Create 3 valid DICOM files with PixelData
+            valid_files = []
+            for i in range(3):
+                ds = pydicom.Dataset()
+                ds.StudyInstanceUID = study_uid
+                ds.SeriesInstanceUID = series_uid
+                ds.SOPInstanceUID = pydicom.uid.generate_uid()
+                ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"  # CT Image Storage
+                ds.InstanceNumber = i + 1
+                ds.Modality = "CT"
+                ds.PatientName = "Test^Patient"
+                ds.PatientID = "12345"
+
+                # Add spatial metadata
+                ds.ImagePositionPatient = [0.0, 0.0, float(i * 2.5)]
+                ds.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+                ds.PixelSpacing = [0.5, 0.5]
+                ds.SliceThickness = 2.5
+
+                # Add image data
+                ds.Rows = 64
+                ds.Columns = 64
+                ds.SamplesPerPixel = 1
+                ds.PhotometricInterpretation = "MONOCHROME2"
+                ds.BitsAllocated = 16
+                ds.BitsStored = 16
+                ds.HighBit = 15
+                ds.PixelRepresentation = 0
+
+                # Create pixel data
+                pixel_array = np.random.randint(0, 1000, (64, 64), dtype=np.uint16)
+                ds.PixelData = pixel_array.tobytes()
+
+                # Save file with proper file meta
+                ds.file_meta = pydicom.dataset.FileMetaDataset()
+                ds.file_meta.FileMetaInformationVersion = b"\x00\x01"
+                ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+                ds.file_meta.MediaStorageSOPClassUID = ds.SOPClassUID
+                ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
+                ds.file_meta.ImplementationClassUID = pydicom.uid.PYDICOM_IMPLEMENTATION_UID
+
+                filepath = os.path.join(input_dir, f"valid_{i:03d}.dcm")
+                # Use save_as which properly writes DICOM Part 10 format with preamble
+                ds.save_as(filepath, enforce_file_format=True)
+                valid_files.append(filepath)
+                print(f"  Created valid file: {os.path.basename(filepath)}")
+
+            # Create 2 DICOM files WITHOUT PixelData (like SR or metadata-only)
+            for i in range(2):
+                ds = pydicom.Dataset()
+                ds.StudyInstanceUID = study_uid
+                ds.SeriesInstanceUID = series_uid
+                ds.SOPInstanceUID = pydicom.uid.generate_uid()
+                ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"  # CT Image Storage
+                ds.InstanceNumber = i + 10
+                ds.Modality = "CT"
+                ds.PatientName = "Test^Patient"
+                ds.PatientID = "12345"
+
+                # Add spatial metadata but NO PixelData
+                ds.ImagePositionPatient = [0.0, 0.0, float((i + 10) * 2.5)]
+                ds.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+
+                # Save file with proper file meta
+                ds.file_meta = pydicom.dataset.FileMetaDataset()
+                ds.file_meta.FileMetaInformationVersion = b"\x00\x01"
+                ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+                ds.file_meta.MediaStorageSOPClassUID = ds.SOPClassUID
+                ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
+                ds.file_meta.ImplementationClassUID = pydicom.uid.PYDICOM_IMPLEMENTATION_UID
+
+                filepath = os.path.join(input_dir, f"no_pixel_{i:03d}.dcm")
+                # Use save_as which properly writes DICOM Part 10 format with preamble
+                ds.save_as(filepath, enforce_file_format=True)
+                print(f"  Created file without PixelData: {os.path.basename(filepath)}")
+
+            print(f"✓ Created {len(valid_files)} valid files and 2 files without PixelData")
+
+            # Convert to multiframe - should skip files without PixelData
+            result_dir = convert_single_frame_dicom_series_to_multiframe(
+                input_dir=input_dir,
+                output_dir=output_dir,
+                convert_to_htj2k=True,
+            )
+
+            # Verify multiframe file was created
+            multiframe_files = list(Path(result_dir).rglob("*.dcm"))
+            self.assertEqual(len(multiframe_files), 1, "Should create one multiframe file")
+            print(f"✓ Created multiframe file: {multiframe_files[0]}")
+
+            # Load and verify the multiframe file
+            ds_multiframe = pydicom.dcmread(str(multiframe_files[0]))
+
+            # Should have 3 frames (only the valid files)
+            self.assertTrue(hasattr(ds_multiframe, "NumberOfFrames"), "Should have NumberOfFrames")
+            num_frames = int(ds_multiframe.NumberOfFrames)
+            self.assertEqual(num_frames, 3, "Should have 3 frames (files without PixelData excluded)")
+            print(f"✓ NumberOfFrames: {num_frames} (correctly excluded files without PixelData)")
+
+            # Verify PerFrameFunctionalGroupsSequence has correct number of items
+            self.assertTrue(
+                hasattr(ds_multiframe, "PerFrameFunctionalGroupsSequence"),
+                "Should have PerFrameFunctionalGroupsSequence",
+            )
+            per_frame_seq = ds_multiframe.PerFrameFunctionalGroupsSequence
+            self.assertEqual(len(per_frame_seq), 3, "Should have 3 per-frame items")
+            print(f"✓ PerFrameFunctionalGroupsSequence has {len(per_frame_seq)} items")
+
+            print(f"✓ Test passed: Files without PixelData were correctly skipped")
 
         finally:
             # Clean up

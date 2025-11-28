@@ -920,6 +920,22 @@ def convert_single_frame_dicom_series_to_multiframe(
             file_paths = [fp for _, fp in file_list]
             datasets = [pydicom.dcmread(fp) for fp in file_paths]
 
+            # Filter out datasets without PixelData (e.g., DICOM SR, Presentation States, corrupted files)
+            datasets_with_pixels = []
+            for idx, ds in enumerate(datasets):
+                if hasattr(ds, "PixelData") and ds.PixelData is not None:
+                    datasets_with_pixels.append(ds)
+                else:
+                    logger.warning(f"  Skipping file {file_paths[idx]} (no PixelData found)")
+
+            if not datasets_with_pixels:
+                logger.error(f"  Series {series_uid}: No valid datasets with PixelData found, skipping series")
+                continue
+
+            # Replace datasets with filtered list
+            datasets = datasets_with_pixels
+            logger.info(f"  Loaded {len(datasets)} valid datasets with PixelData")
+
             # CRITICAL: Sort datasets by ImagePositionPatient Z-coordinate
             # This ensures Frame[0] is the first slice, Frame[N] is the last slice
             if all(hasattr(ds, "ImagePositionPatient") for ds in datasets):
@@ -948,9 +964,11 @@ def convert_single_frame_dicom_series_to_multiframe(
                 logger.info(f"  Using original transfer syntax: {target_transfer_syntax}")
 
             # Check if we're dealing with encapsulated (compressed) data
+            has_pixel_data = hasattr(template_ds, "PixelData") and template_ds.PixelData is not None
+            # At this point we have filtered out datasets without PixelData, so this should never happen
+            assert has_pixel_data, f"Template dataset {file_paths[0]} does not have a PixelData member"
             is_encapsulated = (
-                hasattr(template_ds, "PixelData")
-                and template_ds.file_meta.TransferSyntaxUID != pydicom.uid.ExplicitVRLittleEndian
+                has_pixel_data and template_ds.file_meta.TransferSyntaxUID != pydicom.uid.ExplicitVRLittleEndian
             )
 
             # Determine color_spec for this series based on PhotometricInterpretation
@@ -996,21 +1014,22 @@ def convert_single_frame_dicom_series_to_multiframe(
                 if first_ts in NVIMGCODEC_SYNTAXES or pydicom.encaps.encapsulate_extended:
                     # Encapsulated data - extract compressed frames
                     for ds in datasets:
-                        if hasattr(ds, "PixelData"):
-                            try:
-                                # Extract compressed frames
-                                frames = [fragment for fragment in pydicom.encaps.generate_frames(ds.PixelData)]
-                                all_frames.extend(frames)
-                            except:
-                                # Fall back to pixel_array for uncompressed
-                                pixel_array = ds.pixel_array
-                                if not isinstance(pixel_array, np.ndarray):
-                                    pixel_array = np.array(pixel_array)
-                                if pixel_array.ndim == 2:
-                                    all_frames.append(pixel_array)
-                                elif pixel_array.ndim == 3:
-                                    for frame_idx in range(pixel_array.shape[0]):
-                                        all_frames.append(pixel_array[frame_idx, :, :])
+                        has_pixel_data = hasattr(ds, "PixelData") and ds.PixelData is not None
+                        assert has_pixel_data, f"Dataset {file_paths[idx]} does not have a PixelData member"
+                        try:
+                            # Extract compressed frames
+                            frames = [fragment for fragment in pydicom.encaps.generate_frames(ds.PixelData)]
+                            all_frames.extend(frames)
+                        except:
+                            # Fall back to pixel_array for uncompressed
+                            pixel_array = ds.pixel_array
+                            if not isinstance(pixel_array, np.ndarray):
+                                pixel_array = np.array(pixel_array)
+                            if pixel_array.ndim == 2:
+                                all_frames.append(pixel_array)
+                            elif pixel_array.ndim == 3:
+                                for frame_idx in range(pixel_array.shape[0]):
+                                    all_frames.append(pixel_array[frame_idx, :, :])
                 else:
                     # Uncompressed data - use pixel arrays
                     for ds in datasets:
