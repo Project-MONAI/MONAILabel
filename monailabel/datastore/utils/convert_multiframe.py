@@ -93,6 +93,9 @@ import numpy as np
 import pydicom
 from pydicom.uid import generate_uid
 
+import pydicom.config
+pydicom.config.assume_implicit_vr_switch = True
+
 logger = logging.getLogger(__name__)
 
 # Constants for DICOM modalities
@@ -682,6 +685,21 @@ def convert_to_enhanced_dicom(
 
         # Set transfer syntax
         enhanced.file_meta.TransferSyntaxUID = transfer_syntax_uid
+
+        # After highdicom creates the enhanced image, ALSO set top-level tags
+        # for DICOMweb compatibility
+
+        # Add top-level Window/Level (from first legacy dataset)
+        if hasattr(datasets[0], "WindowCenter"):
+            enhanced.WindowCenter = datasets[0].WindowCenter
+        if hasattr(datasets[0], "WindowWidth"):
+            enhanced.WindowWidth = datasets[0].WindowWidth
+            
+        # Add top-level Rescale parameters
+        if hasattr(datasets[0], "RescaleSlope"):
+            enhanced.RescaleSlope = datasets[0].RescaleSlope
+        if hasattr(datasets[0], "RescaleIntercept"):
+            enhanced.RescaleIntercept = datasets[0].RescaleIntercept
 
         # Save the enhanced DICOM file
         enhanced.save_as(str(output_file), enforce_file_format=False)
