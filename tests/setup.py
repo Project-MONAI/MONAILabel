@@ -9,13 +9,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import shutil
+import tempfile
+from pathlib import Path
 
 from monai.apps import download_url, extractall
 
 TEST_DIR = os.path.realpath(os.path.dirname(__file__))
 TEST_DATA = os.path.join(TEST_DIR, "data")
+
+logger = logging.getLogger(__name__)
 
 
 def run_main():
@@ -50,11 +55,75 @@ def run_main():
         os.makedirs(os.path.join(TEST_DATA, "detection"))
         extractall(filepath=downloaded_detection_file, output_dir=os.path.join(TEST_DATA, "detection"))
 
-    downloaded_dicom_file = os.path.join(TEST_DIR, "downloads", "dicom.zip")
-    dicom_url = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/dicom.zip"
-    if not os.path.exists(downloaded_dicom_file):
-        download_url(url=dicom_url, filepath=downloaded_dicom_file)
+    # Create HTJ2K-encoded versions of dicomweb test data if nvimgcodec is available
+    try:
+        import sys
+
+        sys.path.insert(0, TEST_DIR)
+        from monailabel.datastore.utils.convert_htj2k import (
+            DicomFileLoader,
+            convert_single_frame_dicom_series_to_multiframe,
+            transcode_dicom_to_htj2k,
+        )
+
+        # Create regular HTJ2K files (preserving file structure)
+        logger.info("Creating HTJ2K test data (single-frame per file)...")
+        source_base_dir = Path(TEST_DATA) / "dataset" / "dicomweb"
+        htj2k_base_dir = Path(TEST_DATA) / "dataset" / "dicomweb_htj2k"
+
+        if source_base_dir.exists() and not (htj2k_base_dir.exists() and any(htj2k_base_dir.rglob("*.dcm"))):
+            series_dirs = [d for d in source_base_dir.rglob("*") if d.is_dir() and any(d.glob("*.dcm"))]
+            for series_dir in series_dirs:
+                rel_path = series_dir.relative_to(source_base_dir)
+                output_series_dir = htj2k_base_dir / rel_path
+                if not (output_series_dir.exists() and any(output_series_dir.glob("*.dcm"))):
+                    logger.info(f"  Processing series: {rel_path}")
+                    # Create file_loader using DicomFileLoader
+                    file_loader = DicomFileLoader(
+                        input_dir=str(series_dir), output_dir=str(output_series_dir), batch_size=256
+                    )
+                    transcode_dicom_to_htj2k(
+                        file_loader=file_loader,
+                        num_resolutions=6,
+                        code_block_size=(64, 64),
+                        add_basic_offset_table=False,
+                    )
+            logger.info(f"✓ HTJ2K test data created at: {htj2k_base_dir}")
+        else:
+            logger.info("HTJ2K test data already exists, skipping.")
+
+        # Create multi-frame HTJ2K files (one file per series)
+        logger.info("Creating multi-frame HTJ2K test data...")
+        htj2k_multiframe_dir = Path(TEST_DATA) / "dataset" / "dicomweb_htj2k_multiframe"
+
+        if source_base_dir.exists() and not (
+            htj2k_multiframe_dir.exists() and any(htj2k_multiframe_dir.rglob("*.dcm"))
+        ):
+            convert_single_frame_dicom_series_to_multiframe(
+                input_dir=str(source_base_dir),
+                output_dir=str(htj2k_multiframe_dir),
+                convert_to_htj2k=True,
+                num_resolutions=6,
+                code_block_size=(64, 64),
+            )
+            logger.info(f"✓ Multi-frame HTJ2K test data created at: {htj2k_multiframe_dir}")
+        else:
+            logger.info("Multi-frame HTJ2K test data already exists, skipping.")
+
+    except ImportError as e:
+        if "nvidia" in str(e).lower() or "nvimgcodec" in str(e).lower():
+            logger.info("Note: nvidia-nvimgcodec not installed. HTJ2K test data will not be created.")
+            logger.info("To enable HTJ2K support, install the package matching your CUDA version:")
+            logger.info("  pip install nvidia-nvimgcodec-cu{XX}[all]")
+            logger.info("  (Replace {XX} with your CUDA major version, e.g., cu13 for CUDA 13.x)")
+            logger.info("Installation guide: https://docs.nvidia.com/cuda/nvimagecodec/installation.html")
+        else:
+            logger.warning(f"Could not import HTJ2K creation module: {e}")
+    except Exception as e:
+        logger.warning(f"HTJ2K test data creation failed: {e}")
+        logger.info("You can manually run: python tests/prepare_htj2k_test_data.py")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     run_main()

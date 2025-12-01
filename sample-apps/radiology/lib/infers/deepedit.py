@@ -35,6 +35,7 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
+from monailabel.transform.reader import NvDicomReader
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class DeepEdit(BasicInferTask):
 
     def pre_transforms(self, data=None):
         t = [
-            LoadImaged(keys="image", reader="ITKReader", image_only=False),
+            LoadImaged(keys="image", reader=["ITKReader", NvDicomReader()], image_only=False),
             EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),

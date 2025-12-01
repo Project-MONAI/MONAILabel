@@ -141,6 +141,15 @@ def write_seg_nrrd(
         ]
     )
 
+    # Log NRRD geometry being written
+    logger.info(f"[NRRD Writer] Writing segmentation to: {output_file}")
+    logger.info(f"[NRRD Writer] Image shape: {image_np.shape}")
+    logger.info(f"[NRRD Writer] Affine matrix:\n{affine}")
+    logger.info(f"[NRRD Writer] Space origin: {origin}")
+    logger.info(f"[NRRD Writer] Space directions:\n{space_directions}")
+    logger.info(f"[NRRD Writer] Space: {space}")
+    logger.info(f"[NRRD Writer] Index order: {index_order}")
+
     header.update(
         {
             "kinds": kinds,

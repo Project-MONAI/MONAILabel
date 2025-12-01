@@ -39,6 +39,7 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import BoundingBoxd, LargestCCd
+from monailabel.transform.reader import NvDicomReader
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ class InferDeepgrowPipeline(BasicInferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
-            LoadImaged(keys="image", image_only=False),
+            LoadImaged(keys="image", reader=["ITKReader", NvDicomReader()], image_only=False),
             Transposed(keys="image", indices=[2, 0, 1]),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0], mode="bilinear"),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", spatial_dims=3),

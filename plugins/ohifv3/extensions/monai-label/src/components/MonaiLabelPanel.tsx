@@ -44,6 +44,8 @@ export default class MonaiLabelPanel extends Component {
     classprompts: any;
   };
   serverURI = 'http://127.0.0.1:8000';
+  private _currentSeriesUID: string | null = null;
+  private _unsubscribeFromViewportGrid: any = null;
 
   constructor(props) {
     super(props);
@@ -183,48 +185,18 @@ export default class MonaiLabelPanel extends Component {
     }
 
     const labelsOrdered = [...new Set(all_labels)].sort();
-    const segmentations = [
-      {
-        segmentationId: '1',
-        representation: {
-          type: Enums.SegmentationRepresentations.Labelmap,
-        },
-        config: {
-          label: 'Segmentations',
-          segments: labelsOrdered.reduce((acc, label, index) => {
+
+    // Prepare initial segmentation configuration - will be created per-series on inference
+    const initialSegs = labelsOrdered.reduce((acc, label, index) => {
             acc[index + 1] = {
               segmentIndex: index + 1,
               label: label,
-              active: index === 0, // First segment is active
+        active: index === 0,
               locked: false,
               color: this.segmentColor(label),
             };
             return acc;
-          }, {}),
-        },
-      },
-    ];
-
-    const initialSegs = segmentations[0].config.segments;
-    const volumeLoadObject = cache.getVolume('1');
-    if (!volumeLoadObject) {
-      this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
-        segmentations,
-      });
-
-      // Wait for Above Segmentations to be added/available
-      setTimeout(() => {
-        const { viewport } = this.getActiveViewportInfo();
-        for (const segmentIndex of Object.keys(initialSegs)) {
-          cornerstoneTools.segmentation.config.color.setSegmentIndexColor(
-            viewport.viewportId,
-            '1',
-            initialSegs[segmentIndex].segmentIndex,
-            initialSegs[segmentIndex].color
-          );
-        }
-      }, 1000);
-    }
+    }, {});
 
     const info = {
       models: models,
@@ -260,6 +232,63 @@ export default class MonaiLabelPanel extends Component {
       }
     }
     this.setState({ action: name });
+
+    // Check if we switched series and need to reapply origin correction
+    this.checkAndApplyOriginCorrectionOnSeriesSwitch();
+  };
+
+  // Check if series has changed and apply origin correction to existing segmentation
+  checkAndApplyOriginCorrectionOnSeriesSwitch = () => {
+    try {
+      const currentViewportInfo = this.getActiveViewportInfo();
+      const currentSeriesUID = currentViewportInfo?.displaySet?.SeriesInstanceUID;
+
+      // If series changed
+      if (currentSeriesUID && currentSeriesUID !== this._currentSeriesUID) {
+        this._currentSeriesUID = currentSeriesUID;
+        const segmentationId = `seg-${currentSeriesUID}`;
+
+        // Check if this series already has a segmentation
+        const { segmentationService } = this.props.servicesManager.services;
+        try {
+          const volumeLoadObject = segmentationService.getLabelmapVolume(segmentationId);
+          if (volumeLoadObject) {
+            // Segmentation exists, apply origin correction
+            this.applyOriginCorrection(volumeLoadObject);
+          }
+      } catch (e) {
+          // No segmentation for this series yet, which is fine
+        }
+      }
+    } catch (e) {
+      // Ignore errors (e.g., viewport not ready)
+    }
+  };
+
+  // Apply origin correction - match segmentation origin to image volume origin
+  applyOriginCorrection = (volumeLoadObject) => {
+    const { displaySet } = this.getActiveViewportInfo();
+    const imageVolumeId = displaySet.displaySetInstanceUID;
+    let imageVolume = cache.getVolume(imageVolumeId);
+    if (!imageVolume) {
+      imageVolume = cache.getVolume('cornerstoneStreamingImageVolume:' + imageVolumeId);
+    }
+
+    if (imageVolume && displaySet.isMultiFrame) {
+      // Simply copy the image volume's origin to the segmentation
+      // This way the segmentation matches whatever origin OHIF has set for the image
+      volumeLoadObject.origin = [...imageVolume.origin];
+
+      if (volumeLoadObject.imageData) {
+        volumeLoadObject.imageData.setOrigin(volumeLoadObject.origin);
+      }
+
+      // Trigger render to show the corrected segmentation
+      const renderingEngine = this.props.servicesManager.services.cornerstoneViewportService.getRenderingEngine();
+      if (renderingEngine) {
+        renderingEngine.render();
+      }
+    }
   };
 
   updateView = async (
@@ -314,16 +343,62 @@ export default class MonaiLabelPanel extends Component {
     console.log('Index Remap', labels, modelToSegMapping);
     const data = new Uint8Array(ret.image);
 
+    // Use series-specific segmentation ID to ensure each series has its own segmentation
+    const currentViewportInfo = this.getActiveViewportInfo();
+    const currentSeriesUID = currentViewportInfo?.displaySet?.SeriesInstanceUID;
+    const segmentationId = `seg-${currentSeriesUID || 'default'}`;
+
+    // Track current series
+    this._currentSeriesUID = currentSeriesUID;
+
     const { segmentationService } = this.props.servicesManager.services;
-    const volumeLoadObject = segmentationService.getLabelmapVolume('1');
+    let volumeLoadObject = null;
+
+    try {
+      volumeLoadObject = segmentationService.getLabelmapVolume(segmentationId);
+    } catch (e) {
+      // Segmentation doesn't exist yet - create it
+      const initialSegs = this.state.info?.initialSegs;
+      if (initialSegs) {
+        const segmentations = [{
+          segmentationId: segmentationId,
+          representation: {
+            type: Enums.SegmentationRepresentations.Labelmap
+          },
+          config: {
+            label: 'Segmentations',
+            segments: initialSegs
+          }
+        }];
+
+        this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
+          segmentations
+        });
+
+        // Wait a bit for segmentation to be created, then try again
+        setTimeout(() => {
+          try {
+            const vol = segmentationService.getLabelmapVolume(segmentationId);
+            if (vol) {
+              this.updateView(response, model_id, labels, override, label_class_unknown, sidx);
+            }
+          } catch (err) {
+            console.error('Failed to create segmentation volume:', err);
+          }
+        }, 500);
+        return;
+      }
+    }
+
     if (volumeLoadObject) {
-      // console.log('Volume Object is In Cache....');
       let convertedData = data;
+
+      // Convert label indices
       for (let i = 0; i < convertedData.length; i++) {
         const midx = convertedData[i];
-        const sidx = modelToSegMapping[midx];
-        if (midx && sidx) {
-          convertedData[i] = sidx;
+          const sidx_mapped = modelToSegMapping[midx];
+          if (midx && sidx_mapped) {
+            convertedData[i] = sidx_mapped;
         } else if (override && label_class_unknown && labels.length === 1) {
           convertedData[i] = midx ? labelNames[labels[0]] : 0;
         } else if (labels.length > 0) {
@@ -331,20 +406,15 @@ export default class MonaiLabelPanel extends Component {
         }
       }
 
+      // Handle override mode (partial update)
       if (override === true) {
-        const { segmentationService } = this.props.servicesManager.services;
-        const volumeLoadObject = segmentationService.getLabelmapVolume('1');
         const { voxelManager } = volumeLoadObject;
         const scalarData = voxelManager?.getCompleteScalarDataArray();
-
-        // console.log('Current ScalarData: ', scalarData);
         const currentSegArray = new Uint8Array(scalarData.length);
         currentSegArray.set(scalarData);
 
-        // get unique values to determine which organs to update, keep rest
         const updateTargets = new Set(convertedData);
-        const numImageFrames =
-          this.getActiveViewportInfo().displaySet.numImageFrames;
+        const numImageFrames = this.getActiveViewportInfo().displaySet.numImageFrames;
         const sliceLength = scalarData.length / numImageFrames;
         const sliceBegin = sliceLength * sidx;
         const sliceEnd = sliceBegin + sliceLength;
@@ -353,24 +423,36 @@ export default class MonaiLabelPanel extends Component {
           if (sidx >= 0 && (i < sliceBegin || i >= sliceEnd)) {
             continue;
           }
-
-          if (
-            convertedData[i] !== 255 &&
-            updateTargets.has(currentSegArray[i])
-          ) {
+          if (convertedData[i] !== 255 && updateTargets.has(currentSegArray[i])) {
             currentSegArray[i] = convertedData[i];
           }
         }
         convertedData = currentSegArray;
       }
-      const { voxelManager } = volumeLoadObject;
-      voxelManager?.setCompleteScalarDataArray(convertedData);
+
+      // Apply origin correction for multi-frame volumes
+      this.applyOriginCorrection(volumeLoadObject);
+
+      // Apply segment colors
+      const { viewport } = this.getActiveViewportInfo();
+      for (const label of labels) {
+        const segmentIndex = labelNames[label];
+        if (segmentIndex) {
+          const color = this.segmentColor(label);
+          cornerstoneTools.segmentation.config.color.setSegmentIndexColor(
+            viewport.viewportId,
+        segmentationId,
+            segmentIndex,
+            color
+          );
+        }
+      }
+
+      // Set the voxel data
+      volumeLoadObject.voxelManager.setCompleteScalarDataArray(convertedData);
       triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
-        segmentationId: '1',
+        segmentationId: segmentationId
       });
-      console.log("updated the segmentation's scalar data");
-    } else {
-      console.log('TODO:: Volume Object is NOT In Cache....');
     }
   };
 
@@ -396,7 +478,31 @@ export default class MonaiLabelPanel extends Component {
     }
 
     console.log('(Component Mounted) Ready to Connect to MONAI Server...');
+
+    // Subscribe to viewport grid state changes to detect series switches
+    const { viewportGridService } = this.props.servicesManager.services;
+
+    // Listen to any state change in the viewport grid
+    const handleViewportChange = () => {
+      // Multiple attempts with delays to catch the viewport at the right time
+      setTimeout(() => this.checkAndApplyOriginCorrectionOnSeriesSwitch(), 50);
+      setTimeout(() => this.checkAndApplyOriginCorrectionOnSeriesSwitch(), 200);
+      setTimeout(() => this.checkAndApplyOriginCorrectionOnSeriesSwitch(), 500);
+    };
+
+    this._unsubscribeFromViewportGrid = viewportGridService.subscribe(
+      viewportGridService.EVENTS.ACTIVE_VIEWPORT_ID_CHANGED,
+      handleViewportChange
+    );
+
     // await this.onInfo();
+  }
+
+  componentWillUnmount() {
+    if (this._unsubscribeFromViewportGrid) {
+      this._unsubscribeFromViewportGrid();
+      this._unsubscribeFromViewportGrid = null;
+    }
   }
 
   onOptionsConfig = () => {

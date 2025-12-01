@@ -24,8 +24,8 @@ expiringdict==1.2.2
 expiring_dict==1.1.0
 cachetools==5.3.3
 watchdog==4.0.0
-pydicom==2.4.4
-pydicom-seg==0.4.1
+pydicom==3.0.1
+highdicom==0.26.1
 pynetdicom==2.0.2
 pynrrd==1.0.0
 numpymaxflow==0.0.7
@@ -51,6 +51,14 @@ SAM-2 @ git+https://github.com/facebookresearch/sam2.git@c2ec8e14a185632b0a5d8b1
 
 # scipy and scikit-learn latest packages are missing on python 3.8
 # sudo apt-get install openslide-tools -y
+
+# Optional dependencies:
+# - nvidia-nvimgcodec-cu{XX}[all]  (replace {XX} with your CUDA major version, e.g., cu13 for CUDA 13.x)
+#   Required for HTJ2K DICOM support and accelerated DICOM decoding
+#   Installation guide: https://docs.nvidia.com/cuda/nvimagecodec/installation.html
+# - dcmqi  (provides itkimage2segimage command-line tool for legacy DICOM SEG conversion)
+#   Install with: pip install dcmqi
+#   More info: https://github.com/QIICR/dcmqi
 
 # How to auto update versions?
 # pip install pur

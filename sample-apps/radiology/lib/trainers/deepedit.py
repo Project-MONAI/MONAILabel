@@ -43,6 +43,7 @@ from monai.transforms import (
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
+from monailabel.transform.reader import NvDicomReader
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class DeepEdit(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="ITKReader", image_only=False),
+            LoadImaged(keys=("image", "label"), reader=["ITKReader", NvDicomReader()], image_only=False),
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
@@ -134,7 +135,7 @@ class DeepEdit(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            LoadImaged(keys=("image", "label"), reader=["ITKReader", NvDicomReader()]),
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
