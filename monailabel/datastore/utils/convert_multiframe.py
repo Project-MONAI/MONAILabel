@@ -91,9 +91,9 @@ from typing import Iterable, List, Optional, Union
 
 import numpy as np
 import pydicom
+import pydicom.config
 from pydicom.uid import generate_uid
 
-import pydicom.config
 pydicom.config.assume_implicit_vr_switch = True
 
 logger = logging.getLogger(__name__)
@@ -694,7 +694,7 @@ def convert_to_enhanced_dicom(
             enhanced.WindowCenter = datasets[0].WindowCenter
         if hasattr(datasets[0], "WindowWidth"):
             enhanced.WindowWidth = datasets[0].WindowWidth
-            
+
         # Add top-level Rescale parameters
         if hasattr(datasets[0], "RescaleSlope"):
             enhanced.RescaleSlope = datasets[0].RescaleSlope
