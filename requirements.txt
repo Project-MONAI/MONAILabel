@@ -35,7 +35,7 @@ girder-client==3.2.3
 ninja==1.11.1.1
 einops==0.7.0
 pyyaml==6.0.1
-filelock==3.11.0
+filelock==3.20.1
 passlib==1.7.4
 pyjwt==2.8.0
 bcrypt==4.1.2
