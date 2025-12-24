@@ -28,7 +28,6 @@ def app_instance(app_dir=None, studies=None, conf=None):
     studies = studies if studies else settings.MONAI_LABEL_STUDIES
     cache_key = f"{app_dir}{studies}"
 
-    global apps
     app = apps.get(cache_key)
     if app is not None:
         return app
@@ -53,7 +52,6 @@ def app_instance(app_dir=None, studies=None, conf=None):
 
 
 def clear_cache():
-    global apps
     apps.clear()
 
 
