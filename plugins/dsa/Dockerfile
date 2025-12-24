@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 RUN python -m pip install histomicstk --find-links https://girder.github.io/large_image_wheels
 
