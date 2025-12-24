@@ -194,7 +194,7 @@ class BundleInferTask(BasicInferTask):
         unload_module("scripts")
         self._update_device(data)
 
-        pre = []
+        pre: list[Callable[..., Any]] = []
         for k in self.const.key_preprocessing():
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
@@ -207,7 +207,7 @@ class BundleInferTask(BasicInferTask):
                 t._loader.image_only = False
 
         if pre and self.extend_load_image:
-            res = []
+            res: list[Callable[..., Any]] = []
             for t in pre:
                 if isinstance(t, LoadImaged):
                     res.append(LoadImageTensord(keys=t.keys, load_image_d=t))
@@ -257,7 +257,7 @@ class BundleInferTask(BasicInferTask):
         unload_module("scripts")
         self._update_device(data)
 
-        post = []
+        post: list[Callable[..., Any]] = []
         for k in self.const.key_postprocessing():
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)

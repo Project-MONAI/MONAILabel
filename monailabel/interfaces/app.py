@@ -102,7 +102,11 @@ class MONAILabelApp:
         self._trainers = self.init_trainers() if settings.MONAI_LABEL_TASKS_TRAIN else {}
         self._strategies = self.init_strategies() if settings.MONAI_LABEL_TASKS_STRATEGY else {}
         self._scoring_methods = self.init_scoring_methods() if settings.MONAI_LABEL_TASKS_SCORING else {}
-        self._batch_infer = self.init_batch_infer() if settings.MONAI_LABEL_TASKS_BATCH_INFER else {}
+        self._batch_infer: Callable = (
+            self.init_batch_infer()
+            if settings.MONAI_LABEL_TASKS_BATCH_INFER
+            else lambda *args, **kwargs: self._raise_batch_infer_disabled()
+        )
 
         self._auto_update_scoring = settings.MONAI_LABEL_AUTO_UPDATE_SCORING
         self._sessions = self._load_sessions(load=settings.MONAI_LABEL_SESSIONS)
@@ -318,6 +322,13 @@ class MONAILabelApp:
                 label_id = result_file_name
 
         return {"label": label_id, "tag": DefaultLabelTag.ORIGINAL, "file": result_file_name, "params": result_json}
+
+    def _raise_batch_infer_disabled(self):
+        """Raise an exception when batch inference is disabled."""
+        raise MONAILabelException(
+            MONAILabelError.INVALID_INPUT,
+            "Batch inference is disabled. Set MONAI_LABEL_TASKS_BATCH_INFER to true to enable it.",
+        )
 
     def batch_infer(self, request, datastore=None):
         """
