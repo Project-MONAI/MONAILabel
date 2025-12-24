@@ -67,7 +67,7 @@ monailabel start_server --app workspace/radiology --studies workspace/images --c
 
 ### Hybrid Radiology App with Models and Bundles
 
-Radiology app now supports loading models from local or from bundles in [MONAI Model Zoo](https://monai.io/model-zoo)
+Radiology app now supports loading models from local or from bundles in [MONAI Model Zoo](https://project-monai.github.io/model-zoo)
 
 ```bash
 # Example: Pick two models of spleen and multi-organ segmentation model, and two model-zoo bundles.
@@ -106,7 +106,7 @@ A command example to use active learning strategies with DeepEdit would be:
 
 > monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit --conf skip_scoring false --conf skip_strategies false --conf epistemic_enabled true
 
-- Network: This model uses the DynUNet as the default network. It also comes with pretrained model for [UNETR](https://docs.monai.io/en/latest/networks.html#unetr). Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
+- Network: This model uses the DynUNet as the default network. It also comes with pretrained model for [UNETR](https://monai.readthedocs.io/en/stable/networks.html#unetr). Researchers can define their own network or use one of the listed [here](https://monai.readthedocs.io/en/stable/networks.html)
 - Labels:
   ```json
   {
@@ -151,7 +151,7 @@ the model to learn on new organ.
 |----------------------|--------------------|-----------------------------------------------------------------|
 | preload              | true, **false**    | Preload model into GPU                                                                                |
 
-- Network: This App uses the [BasicUNet](https://docs.monai.io/en/latest/networks.html#basicunet) as the default network.
+- Network: This App uses the [BasicUNet](https://monai.readthedocs.io/en/stable/networks.html#basicunet) as the default network.
 - Labels:
   ```json
   [
@@ -191,7 +191,7 @@ the model to learn on new organ.
 | preload              | true, **false**    | Preload model into GPU                                          |
 | scribbles            | **true**, false    | Don't load the scribble models, useful for user studies         |
 
-- Network: This model uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network. Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
+- Network: This model uses the [UNet](https://monai.readthedocs.io/en/stable/networks.html#unet) as the default network. Researchers can define their own network or use one of the listed [here](https://monai.readthedocs.io/en/stable/networks.html)
 - Labels
   ```json
   {
@@ -242,7 +242,7 @@ A command example to use active learning strategies with segmentation_spleen wou
 > monailabel start_server --app workspace/radiology --studies workspace/images --conf models segmentation_spleen --conf skip_scoring false --conf skip_strategies false --conf epistemic_enabled true
 
 
-- Network: This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
+- Network: This App uses the [UNet](https://monai.readthedocs.io/en/stable/networks.html#unet) as the default network.
 - Labels: `{ "Spleen": 1 }`
 - Dataset: The model is pre-trained over dataset: http://medicaldecathlon.com/
 - Inputs: 1 channel for the image modality
@@ -280,7 +280,7 @@ The difference between second and third stage is that third stage get a more fin
 |----------------------|--------------------|-----------------------------------------------------------------|
 | use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                 |
 
-- Network: This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
+- Network: This App uses the [UNet](https://monai.readthedocs.io/en/stable/networks.html#unet) as the default network.
 - Labels:
   ```json
   {

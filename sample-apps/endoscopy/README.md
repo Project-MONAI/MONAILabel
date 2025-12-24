@@ -106,7 +106,7 @@ interactive and automated segmentation.
   </summary>
 This model is currently trained to segment **Tool** from 2D in-body images.
 
-- Network: This model uses the [BasicUNet](https://docs.monai.io/en/latest/networks.html#basicunet) as the default network.
+- Network: This model uses the [BasicUNet](https://monai.readthedocs.io/en/stable/networks.html#basicunet) as the default network.
 - Labels: `{ "Tool": 1 }`
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 3 channels.
@@ -119,7 +119,7 @@ This model is currently trained to segment **Tool** from 2D in-body images.
   <summary>
   <strong>ToolTracking</strong> is based on UNet for automated segmentation. This model works for single label segmentation tasks.
   </summary>
-- Network: This model uses the [FlexibleUNet](https://docs.monai.io/en/latest/networks.html#flexibleunet) as the default network.
+- Network: This model uses the [FlexibleUNet](https://monai.readthedocs.io/en/stable/networks.html#flexibleunet) as the default network.
 - Labels: `{ "Tool": 1 }`
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 1 channel for the image modality
@@ -130,7 +130,7 @@ This model is currently trained to segment **Tool** from 2D in-body images.
   <summary>
   <strong>InBody/OutBody</strong> is based on SEResNet50 for classification. This model determines if tool is present or not (in-body vs out-body).
   </summary>
-- Network: This model uses the [SEResNet50](https://docs.monai.io/en/latest/networks.html#seresnet50) as the default network.
+- Network: This model uses the [SEResNet50](https://monai.readthedocs.io/en/stable/networks.html#seresnet50) as the default network.
 - Labels: `{ "InBody": 0, "OutBody": 1 }`
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 1 channel for the image modality
