@@ -24,10 +24,10 @@ expiringdict==1.2.2
 expiring_dict==1.1.0
 cachetools==5.3.3
 watchdog==4.0.0
-pydicom==2.4.4
-pydicom-seg==0.4.1
+pydicom==3.0.1
+highdicom==0.26.1
 pynetdicom==2.0.2
-pynrrd==1.0.0
+pynrrd==1.1.3
 numpymaxflow==0.0.7
 setuptools>=61
 setuptools-scm<8.0.0
@@ -35,14 +35,14 @@ girder-client==3.2.3
 ninja==1.11.1.1
 einops==0.7.0
 pyyaml==6.0.1
-filelock==3.11.0
+filelock==3.20.1
 passlib==1.7.4
 pyjwt==2.8.0
 bcrypt==4.1.2
 shapely==2.0.4
 requests==2.32.4
 requests-toolbelt==1.0.0
-urllib3==2.5.0
+urllib3==2.6.0
 scikit-learn
 scipy
 google-auth==2.29.0
@@ -51,6 +51,11 @@ SAM-2 @ git+https://github.com/facebookresearch/sam2.git@c2ec8e14a185632b0a5d8b1
 
 # scipy and scikit-learn latest packages are missing on python 3.8
 # sudo apt-get install openslide-tools -y
+
+# Optional dependencies:
+# - dcmqi  (provides itkimage2segimage command-line tool for legacy DICOM SEG conversion)
+#   Install with: pip install dcmqi
+#   More info: https://github.com/QIICR/dcmqi
 
 # How to auto update versions?
 # pip install pur

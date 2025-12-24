@@ -14,7 +14,7 @@ limitations under the License.
 # MONAI Bundle Application
 The MONAIBundle App allows you to easily pull any MONAI Bundle from the [MONAI Model Zoo](https://github.com/Project-MONAI/model-zoo/tree/dev/models) and import it into MONAI Label. However, it's important to note that any MONAI Bundle used with MONAI Label must meet the following constraints:
 
-- It must comply with the [MONAI Bundle Specification](https://docs.monai.io/en/latest/mb_specification.html).
+- It must comply with the [MONAI Bundle Specification](https://monai.readthedocs.io/en/stable/mb_specification.html).
 - For inference, the bundle must define either an `inference.json` or `inference.yaml` file, and it must include the keys described in the bundle.py file located in the `monailabel/tasks/infer/` directory.
 - For training, the bundle must define either a `train.json` or `train.yaml file`, and it must include the keys described in the bundle.py file located in the `monailabel/tasks/train/` directory.
 - For multi-GPU training, the bundle must define either a `multi_gpu_train.json` or `multi_gpu_train.yaml` file.

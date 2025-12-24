@@ -15,7 +15,7 @@ ci:
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
+  rev: v6.0.0
   hooks:
   - id: check-merge-conflict
   - id: trailing-whitespace
@@ -33,27 +33,27 @@ repos:
   - id: mixed-line-ending
 
 - repo: https://github.com/pycqa/isort
-  rev: 6.0.1
+  rev: 6.1.0
   hooks:
   - id: isort
     name: isort (python)
     args: ["--line-length=120", "--profile=black"]
 
 - repo: https://github.com/pycqa/isort
-  rev: 6.0.1
+  rev: 6.1.0
   hooks:
   - id: isort
     name: isort (python) (check)
     args: ["--line-length=120", "--profile=black", "--check"]
 
-- repo: https://github.com/psf/black
-  rev: 25.1.0
+- repo: https://github.com/psf/black-pre-commit-mirror
+  rev: 25.9.0
   hooks:
   - id: black
     args: ["--line-length=120"]
 
-- repo: https://github.com/psf/black
-  rev: 25.1.0
+- repo: https://github.com/psf/black-pre-commit-mirror
+  rev: 25.9.0
   hooks:
   - id: black
     name: black (check)
@@ -66,7 +66,7 @@ repos:
     args: ["--count", "--statistics", "--config=setup.cfg"]
 
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.16.1
+  rev: v1.18.2
   hooks:
   - id: mypy
     exclude: (^tests/|^plugins/)
