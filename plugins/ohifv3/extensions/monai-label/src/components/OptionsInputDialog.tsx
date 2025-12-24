@@ -12,48 +12,69 @@ limitations under the License.
 */
 
 import React from 'react';
-import { Dialog, ButtonEnums } from '@ohif/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Button } from '@ohif/ui-next';
 import OptionsForm from './actions/OptionsForm';
 
-function optionsInputDialog(uiDialogService, config, info, callback) {
-  const dialogId = 'monai-label-options';
-  const optionsRef = React.createRef<OptionsForm>();
+function OptionsInputDialogComponent({ config, info, callback, hide }) {
+  const optionsRef = React.useRef<OptionsForm>(null);
 
-  const onSubmitHandler = ({ action }) => {
-    switch (action.id) {
-      case 'save':
-        callback(optionsRef.current.state.config, action.id);
-        uiDialogService.dismiss({ id: dialogId });
-        break;
-      case 'cancel':
-        callback({}, action.id);
-        uiDialogService.dismiss({ id: dialogId });
-        break;
-      case 'reset':
-        optionsRef.current.onReset();
-        break;
+  const handleSave = () => {
+    if (optionsRef.current) {
+      callback(optionsRef.current.state.config, 'save');
+    }
+    hide();
+  };
+
+  const handleCancel = () => {
+    callback({}, 'cancel');
+    hide();
+  };
+
+  const handleReset = () => {
+    if (optionsRef.current) {
+      optionsRef.current.onReset();
     }
   };
 
-  uiDialogService.create({
+  return (
+    <Dialog open={true} onOpenChange={(open) => !open && handleCancel()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Options / Configurations</DialogTitle>
+        </DialogHeader>
+
+        <div className="py-4">
+          <OptionsForm ref={optionsRef} config={config} info={info} />
+        </div>
+
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={handleReset}>
+            Reset
+          </Button>
+          <Button variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave}>
+            Confirm
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function optionsInputDialog(uiDialogService, config, info, callback) {
+  const dialogId = 'monai-label-options';
+
+  uiDialogService.show({
     id: dialogId,
-    centralize: true,
-    isDraggable: false,
-    showOverlay: true,
-    content: Dialog,
+    title: 'Options / Configurations',
+    content: OptionsInputDialogComponent,
+    shouldCloseOnEsc: true,
     contentProps: {
-      title: 'Options / Configurations',
-      noCloseButton: true,
-      onClose: () => uiDialogService.dismiss({ id: dialogId }),
-      actions: [
-        { id: 'reset', text: 'Reset', type: ButtonEnums.type.secondary },
-        { id: 'cancel', text: 'Cancel', type: ButtonEnums.type.secondary },
-        { id: 'save', text: 'Confirm', type: ButtonEnums.type.primary },
-      ],
-      onSubmit: onSubmitHandler,
-      body: () => {
-        return <OptionsForm ref={optionsRef} config={config} info={info} />;
-      },
+      config,
+      info,
+      callback,
     },
   });
 }
