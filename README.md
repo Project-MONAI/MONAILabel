@@ -14,7 +14,7 @@ limitations under the License.
 # MONAI Label
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI Build](https://github.com/Project-MONAI/MONAILabel/workflows/build/badge.svg?branch=main)](https://github.com/Project-MONAI/MONAILabel/commits/main)
-[![Documentation Status](https://readthedocs.org/projects/monailabel/badge/?version=latest)](https://docs.monai.io/projects/label/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/monailabel/badge/?version=latest)](https://monai.readthedocs.io/projects/label/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/monailabel.svg)](https://badge.fury.io/py/monailabel)
 [![Azure DevOps tests (compact)](https://img.shields.io/azure-devops/tests/projectmonai/monai-label/10?compact_message)](https://dev.azure.com/projectmonai/monai-label/_test/analytics?definitionId=10&contextType=build)
 [![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/projectmonai/monai-label/10)](https://dev.azure.com/projectmonai/monai-label/_build?definitionId=10)
@@ -27,7 +27,7 @@ open-source and easy-to-install ecosystem that can run locally on a machine with
 and client work on the same/different machine. It shares the same principles
 with [MONAI](https://github.com/Project-MONAI).
 
-Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/en/latest/index.html) for more details or check out our [MONAI Label Deep Dive videos series](https://www.youtube.com/playlist?list=PLtoSVSQ2XzyD4lc-lAacFBzOdv5Ou-9IA).
+Refer to full [MONAI Label documentations](https://monai.readthedocs.io/projects/label/en/latest/index.html) for more details or check out our [MONAI Label Deep Dive videos series](https://www.youtube.com/playlist?list=PLtoSVSQ2XzyD4lc-lAacFBzOdv5Ou-9IA).
 
 Refer to [MONAI Label Tutorial](https://github.com/Project-MONAI/tutorials/tree/main/monailabel) series for application and viewer workflows with different medical image tasks. Notebook-like tutorials are created for detailed instructions.
 
@@ -83,11 +83,13 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>Segmentation</li>
       <li>DeepGrow</li>
       <li>DeepEdit</li>
+      <li>SAM2 (2D/3D)</li>
     </ul>
   </td>
   <td>
     <ul>
       <li>3DSlicer</li>
+      <li>MITK</li>
       <li>OHIF</li>
     </ul>
   </td>
@@ -113,6 +115,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>NuClick</li>
       <li>Segmentation</li>
       <li>Classification</li>
+      <li>SAM2 (2D)</li>
     </ul>
   </td>
   <td>
@@ -142,6 +145,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>DeepEdit</li>
       <li>Tooltracking</li>
       <li>InBody/OutBody</li>
+      <li>SAM2 (2D)</li>
     </ul>
   </td>
   <td>
@@ -178,8 +182,8 @@ In addition, you can find a table of the basic supported fields, modalities, vie
 <pre>pip install -U monailabel</pre>
 
 MONAI Label supports the following OS with **GPU/CUDA** enabled. For more details instruction, please see the installation guides.
-- [Ubuntu](https://docs.monai.io/projects/label/en/latest/installation.html)
-- [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
+- [Ubuntu](https://monai.readthedocs.io/projects/label/en/latest/installation.html)
+- [Windows](https://monai.readthedocs.io/projects/label/en/latest/installation.html#windows)
 
 ### GPU Acceleration (Optional Dependencies)
 Following are the optional dependencies which can help you to accelerate some GPU based transforms from MONAI. These dependencies are enabled by default if you are using `projectmonai/monailabel` docker.
@@ -208,6 +212,19 @@ To install the _**latest features**_ using one of the following options:
   <br>
   <pre>docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest bash</pre>
 </details>
+
+### SAM-2
+
+> By default, [**SAM2**](https://github.com/facebookresearch/sam2/) model is included for all the Apps when **_python >= 3.10_**
+>  - **sam_2d**: for any organ or tissue and others over a given slice/2D image.
+>  - **sam_3d**: to support SAM2 propagation over multiple slices (Radiology/MONAI-Bundle).
+
+If you are using `pip install monailabel` by default it uses [SAM-2](https://huggingface.co/facebook/sam2-hiera-large) models.
+<br/>
+To use [SAM-2.1](https://huggingface.co/facebook/sam2.1-hiera-large) use one of following options.
+ - Use monailabel [Docker](https://hub.docker.com/r/projectmonai/monailabel) instead of pip package
+ - Run monailabel in dev mode (git checkout)
+ - If you have installed monailabel via pip then uninstall **_sam2_** package `pip uninstall sam2` and then run `pip install -r requirements.txt` or install latest **SAM-2** from it's [github](https://github.com/facebookresearch/sam2/tree/main?tab=readme-ov-file#installation).
 
 ## Step 2 MONAI Label Sample Applications
 
@@ -249,6 +266,11 @@ For a full list of supported bundles, see the <a href="https://github.com/Projec
 3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and algorithms, develpoment and integration.
 
 [3D Slicer Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
+
+#### MITK
+The Medical imaging Interaction ToolKit (MITK) is an open source, standalone, medical imaging platform. MONAI Label is partially integrated to MITK Workbench, a powerful and free application to view, process, and segment medical images. The MONAI Label tool in MITK is mostly tested for inferencing using radiology and bundle apps allowing for Auto and Click-based interactive models.
+
+[MITK Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/mitk)
 
 #### OHIF
 The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform. It aims to provide a core framework for building complex imaging applications.
@@ -379,15 +401,15 @@ the [contributing guidelines](https://github.com/Project-MONAI/MONAILabel/blob/m
 ## Community
 
 Join the conversation on Twitter [@ProjectMONAI](https://twitter.com/ProjectMONAI) or join
-our [Slack channel](https://projectmonai.slack.com/archives/C031QRE0M1C).
+our [Slack channel](https://join.slack.com/t/projectmonai/shared_invite/zt-3hucgm02q-i8Bn9XofDZs2UGOH4jUl4w).
 
 Ask and answer questions over
 on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAILabel/discussions).
 
 ## Additional Resources
 
-- Website: https://monai.io/
-- API documentation: https://docs.monai.io/projects/label
+- Website: https://project-monai.github.io/
+- API documentation: https://monai.readthedocs.io/projects/label
 - Code: https://github.com/Project-MONAI/MONAILabel
 - Project tracker: https://github.com/Project-MONAI/MONAILabel/projects
 - Issue tracker: https://github.com/Project-MONAI/MONAILabel/issues

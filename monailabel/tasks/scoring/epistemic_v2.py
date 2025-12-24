@@ -173,7 +173,7 @@ class EpistemicScoring(ScoringMethod):
 
         accum_unl_outputs = []
         for i in range(simulation_size):
-            data = self.infer_task(request=request)
+            _, data = self.infer_task(request=request)
             pred = data[self.infer_task.output_label_key] if isinstance(data, dict) else None
             if pred is not None:
                 logger.debug(f"EPISTEMIC:: {image_id} => {i} => pred: {pred.shape}; sum: {np.sum(pred)}")

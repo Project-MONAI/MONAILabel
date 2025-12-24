@@ -8,12 +8,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+from distutils.util import strtobool
+from importlib.metadata import distributions
 from typing import Any, Dict, List, Optional
 
 from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def is_package_installed(name):
+    return name in (x.metadata.get("Name") for x in distributions() if x.metadata is not None)
 
 
 class Settings(BaseSettings):
@@ -97,6 +102,23 @@ class Settings(BaseSettings):
     MONAI_ZOO_SOURCE: str = os.environ.get("BUNDLE_DOWNLOAD_SRC", "monaihosting")
     MONAI_ZOO_REPO: str = "Project-MONAI/model-zoo/hosting_storage_v1"
     MONAI_ZOO_AUTH_TOKEN: str = ""
+
+    # Refer: https://github.com/facebookresearch/sam2?tab=readme-ov-file#model-description
+    # Refer: https://huggingface.co/facebook/sam2-hiera-large
+    MONAI_SAM_MODEL_PT: str = (
+        "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_large.pt"
+        if is_package_installed("SAM-2")
+        else "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_large.pt"
+    )
+    MONAI_SAM_MODEL_CFG: str = (
+        "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_l.yaml"
+        if is_package_installed("SAM-2")
+        else "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_l.yaml"
+    )
+
+    MONAI_LABEL_USE_ITK_FOR_DICOM_SEG: bool = bool(
+        strtobool(os.environ.get("MONAI_LABEL_USE_ITK_FOR_DICOM_SEG", "True"))
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

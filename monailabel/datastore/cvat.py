@@ -136,15 +136,51 @@ class CVATDatastore(LocalDatastore):
         return task_id, task_name
 
     def task_status(self):
+        """
+        Fetches the status of a CVAT task based on the state of its jobs.
+        Returns:
+        - "completed" if all jobs are completed.
+        - "in_progress" if at least one job is not completed.
+        - None if an error occurs or the task does not exist.
+        """
+        # Get the project and task IDs
         project_id = self.get_cvat_project_id(create=False)
         if project_id is None:
             return None
+
         task_id, _ = self.get_cvat_task_id(project_id, create=False)
         if task_id is None:
             return None
 
-        r = requests.get(f"{self.api_url}/api/tasks/{task_id}", auth=self.auth).json()
-        return r.get("status")
+        # Fetch task details
+        task_url = f"{self.api_url}/api/tasks/{task_id}"
+        task_response = requests.get(task_url, auth=self.auth)
+
+        if task_response.status_code != 200:
+            return None  # Task could not be fetched
+
+        task_data = task_response.json()
+
+        # Get the jobs URL from the task details
+        jobs_url = task_data.get("jobs", {}).get("url")
+        if not jobs_url:
+            return None  # No jobs URL found for the task
+
+        # Fetch jobs for the task
+        jobs_response = requests.get(jobs_url, auth=self.auth)
+        if jobs_response.status_code != 200:
+            return None  # Jobs could not be fetched
+
+        # Parse jobs and check their states
+        jobs = jobs_response.json().get("results", [])
+        if not jobs:
+            return None  # No jobs found for the task
+
+        # Check if all jobs have state "completed"
+        all_completed = all(job.get("state") == "completed" for job in jobs)
+
+        # Return "completed" if all jobs are completed; otherwise "in_progress"
+        return "completed" if all_completed else "in_progress"
 
     def upload_to_cvat(self, samples):
         project_id = self.get_cvat_project_id(create=True)
@@ -189,7 +225,52 @@ class CVATDatastore(LocalDatastore):
         task_id, task_name = self.get_cvat_task_id(project_id, create=False)
         logger.info(f"Preparing to download/update final labels from: {project_id} => {task_id} => {task_name}")
 
-        download_url = f"{self.api_url}/api/tasks/{task_id}/annotations?action=download&format=Segmentation+mask+1.1"
+        # Step 1: Initiate export process using the new POST endpoint.
+        export_url = f"{self.api_url}/api/tasks/{task_id}/dataset/export?format=Segmentation+mask+1.1&location=local&save_images=false"
+        try:
+            response = requests.post(export_url, auth=self.auth)
+            if response.status_code not in [200, 202]:
+                logger.error(f"Failed to initiate export process: {response.status_code}, {response.text}")
+                return None
+
+            rq_id = response.json().get("rq_id")
+            if not rq_id:
+                logger.error("Export process did not return a request ID (rq_id).")
+                return None
+            logger.info(f"Export process initiated successfully with request ID: {rq_id}")
+        except Exception as e:
+            logger.exception(f"Error while initiating export process: {e}")
+            return None
+
+        # Step 2: Poll export status using the new GET endpoint.
+        status_url = f"{self.api_url}/api/requests/{rq_id}"
+        for _ in range(max_retry_count):
+            try:
+                status_response = requests.get(status_url, auth=self.auth)
+                status_data = status_response.json()
+                current_status = status_data.get("status")
+                if current_status == "finished":
+                    logger.info("Export process completed successfully.")
+                    break
+                elif current_status == "failed":
+                    logger.error(f"Export process failed: {status_data}")
+                    return None
+                logger.info(f"Export in progress... Retrying in {retry_wait_time} seconds.")
+                time.sleep(retry_wait_time)
+            except Exception as e:
+                logger.exception(f"Error checking export status: {e}")
+                time.sleep(retry_wait_time)
+        else:
+            logger.error("Export process did not complete within the maximum retries.")
+            return None
+
+        # Step 3: Retrieve the download URL from the export status.
+        result_url = status_data.get("result_url")
+        if not result_url:
+            logger.error("Export process finished but no result_url was provided.")
+            return None
+
+        # Step 4: Download the ZIP file from the result_url.
         tmp_folder = tempfile.TemporaryDirectory().name
         os.makedirs(tmp_folder, exist_ok=True)
 
@@ -197,37 +278,35 @@ class CVATDatastore(LocalDatastore):
         retry_count = 0
         for retry in range(max_retry_count):
             try:
-                r = requests.get(download_url, allow_redirects=True, auth=self.auth)
-                time.sleep(retry_wait_time)
-
+                logger.info(f"Downloading exported dataset from: {result_url}")
+                r = requests.get(result_url, allow_redirects=True, auth=self.auth)
                 with open(tmp_zip, "wb") as fp:
                     fp.write(r.content)
                 shutil.unpack_archive(tmp_zip, tmp_folder)
 
+                # Process the segmentation files
                 segmentations_dir = os.path.join(tmp_folder, "SegmentationClass")
                 final_labels = self._datastore.label_path(DefaultLabelTag.FINAL)
                 for f in os.listdir(segmentations_dir):
                     label = os.path.join(segmentations_dir, f)
                     if os.path.isfile(label) and label.endswith(".png"):
                         os.makedirs(final_labels, exist_ok=True)
-
                         dest = os.path.join(final_labels, f)
                         if self.normalize_label:
                             img = np.array(Image.open(label))
                             mask = np.zeros_like(img)
-
                             labelmap = self._load_labelmap_txt(os.path.join(tmp_folder, "labelmap.txt"))
                             for name, color in labelmap.items():
                                 if name in self.label_map:
                                     idx = self.label_map.get(name)
                                     mask[np.all(img == color, axis=-1)] = idx
-                            Image.fromarray(mask[:, :, 0]).save(dest)  # single channel
-                            logger.info(f"Copy Final Label: {label} to {dest}; unique: {np.unique(mask)}")
+                            Image.fromarray(mask[:, :, 0]).save(dest)
+                            logger.info(f"Copied Final Label: {label} to {dest}; unique: {np.unique(mask)}")
                         else:
                             Image.open(label).save(dest)
-                            logger.info(f"Copy Final Label: {label} to {dest}")
+                            logger.info(f"Copied Final Label: {label} to {dest}")
 
-                # Rename after consuming/downloading the labels
+                # Rename the task to indicate that labels have been processed.
                 patch_url = f"{self.api_url}/api/tasks/{task_id}"
                 body = {"name": f"{self.done_prefix}_{task_name}"}
                 requests.patch(patch_url, allow_redirects=True, auth=self.auth, json=body)
@@ -236,7 +315,7 @@ class CVATDatastore(LocalDatastore):
                 if retry_count:
                     logger.exception(e)
                 logger.error(f"{retry} => Failed to download...")
-            retry_count = retry_count + 1
+            retry_count += 1
         return None
 
 

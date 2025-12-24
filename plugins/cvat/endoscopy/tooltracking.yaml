@@ -24,7 +24,7 @@ metadata:
 spec:
   description: A pre-trained tool tracking model for Endoscopy
   runtime: 'python:3.8'
-  handler: main:handler
+  handler: detector:handler
   eventTimeout: 30s
 
   build:
@@ -34,13 +34,9 @@ spec:
     directives:
       preCopy:
         - kind: ENV
-          value: MONAI_LABEL_APP_DIR=/usr/local/monailabel/sample-apps/endoscopy
+          value: MONAI_LABEL_SERVER=http://monailabel.com
         - kind: ENV
-          value: MONAI_LABEL_MODELS=tooltracking
-        - kind: ENV
-          value: PYTHONPATH=/usr/local/monailabel/sample-apps/endoscopy
-        - kind: ENV
-          value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
+          value: MONAI_LABEL_MODEL=tooltracking
 
   triggers:
     myHttpTrigger:
@@ -49,11 +45,6 @@ spec:
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB
-        port: 8900
-
-  resources:
-    limits:
-      nvidia.com/gpu: 1
 
   platform:
     attributes:

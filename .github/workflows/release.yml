@@ -31,14 +31,14 @@ jobs:
     env:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v5
+      - uses: actions/setup-node@v6
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v6
         with:
-          python-version: 3.8
+          python-version: 3.10
       - name: Cache for pip
         uses: actions/cache@v4
         id: cache
@@ -49,12 +49,12 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
-          python -m pip install torch>=1.7 torchvision
+          python -m pip install torch torchvision
       - name: Build Package
         run: |
-          rm -rf /opt/hostedtoolcache
           ./runtests.sh --clean
           BUILD_OHIF=true python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
           ls -l dist
@@ -82,7 +82,7 @@ jobs:
           shell: bash
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dist
           path: dist/
@@ -91,7 +91,7 @@ jobs:
         run: |
           rm dist/monai*.tar.gz
 
-      - name: Publish distribution to Test PyPI
+      - name: Publish distribution to Test
         if: ${{ github.event.inputs.test_py == 'true' }}
         uses: pypa/gh-action-pypi-publish@master
         with:

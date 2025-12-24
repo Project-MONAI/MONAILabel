@@ -129,7 +129,7 @@ def create_asap_annotations_xml(json_data, loglevel="INFO"):
                 label = element["label"]
                 color = to_hex(color_map.get(label))
 
-                logger.info(f"Adding Contours for label: {label}; color: {color}; color_map: {color_map}")
+                logger.debug(f"Adding Contours for label: {label}; color: {color}; color_map: {color_map}")
                 labels[label] = color
 
                 contours = element["contours"]

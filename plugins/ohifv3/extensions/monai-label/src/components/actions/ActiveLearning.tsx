@@ -13,12 +13,8 @@ limitations under the License.
 
 import React from 'react';
 
-import './ActiveLearning.css';
 import BaseTab from './BaseTab';
 import NextSampleForm from './NextSampleForm';
-import {
-  createSegmentMetadata,
-} from '../../utils/SegmentationUtils';
 
 export default class OptionTable extends BaseTab {
   constructor(props) {
@@ -29,18 +25,6 @@ export default class OptionTable extends BaseTab {
       segmentId: 'liver',
     };
   }
-
-  onChangeStrategy = evt => {
-    this.setState({ strategy: evt.target.value });
-  };
-
-  onSegmentSelected = id => {
-    this.setState({ segmentId: id });
-  };
-
-  onSegmentDeleted = id => {
-    this.setState({ segmentId: null });
-  };
 
   onClickNextSample = async () => {
     const nid = this.notification.show({
@@ -111,86 +95,20 @@ export default class OptionTable extends BaseTab {
     }
   };
 
-  onClickSubmitLabel = async () => {
-
-    const labelmaps3D = cornerstone.cache.getVolume('1')
-
-    if (!labelmaps3D) {
-      console.info('LabelMap3D is empty.. so zero segments');
-      return;
-    }
-
-    this.notification.show({
-      title: 'MONAI Label',
-      message: 'Preparing the labelmap to submit',
-      type: 'info',
-      duration: 5000,
-    });
-
-    const labelNames = this.props.info.labels
-    const segments = [];
-    for (let i = 0; i < labelNames.length; i++) {
-      if (labelNames[i] === 'background') {
-        console.debug('Ignore Background...');
-        continue;
-      }
-      let segment  = createSegmentMetadata(
-        labelNames[i],
-        i,
-        ''
-      )
-      segments.push(segment)
-    }
-
-    const params = { label_info: segments };
-
-    const image = this.props.viewConstants.SeriesInstanceUID;
-
-    const label = new Blob([labelmaps3D.scalarData], {
-      type: 'application/octet-stream',
-    });
-
-    const response = await this.props
-      .client()
-      .save_label(image, label, params);
-
-    if (response.status !== 200) {
-      this.notification.show({
-        title: 'MONAI Label',
-        message: 'Failed to save label',
-        type: 'error',
-        duration: 5000,
-      });
-    } else {
-      this.notification.show({
-        title: 'MONAI Label',
-        message: 'Label submitted to server',
-        type: 'success',
-        duration: 2000,
-      });
-    }
-  };
-
   async componentDidMount() {
     const training = await this.props.client().is_train_running();
     this.setState({ training: training });
   }
 
   render() {
-    /* const segmentId = this.state.segmentId
-      ? this.state.segmentId
-      : getFirstSegmentId(this.props.viewConstants.element); */
-
-    const segmentId = this.state.segmentId
-
-    const ds = this.props.info.datastore;
+    const ds = this.props.info.data.datastore;
     const completed = ds && ds.completed ? ds.completed : 0;
     const total = ds && ds.total ? ds.total : 1;
     const activelearning = Math.round(100 * (completed / total)) + '%';
     const activelearningTip = completed + '/' + total + ' samples annotated';
 
-    const ts = this.props.info.train_stats
-      ? Object.values(this.props.info.train_stats)[0]
+    const ts = this.props.info.data.train_stats
+      ? Object.values(this.props.info.data.train_stats)[0]
       : null;
 
     const epochs = ts ? (ts.total_time ? 0 : ts.epoch ? ts.epoch : 1) : 0;
@@ -207,8 +125,8 @@ export default class OptionTable extends BaseTab {
         ? accuracy + ' is current best metric'
         : 'not determined';
 
-    const strategies = this.props.info.strategies
-      ? this.props.info.strategies
+    const strategies = this.props.info.data.strategies
+      ? this.props.info.data.strategies
       : {};
 
     return (
@@ -218,8 +136,7 @@ export default class OptionTable extends BaseTab {
           type="checkbox"
           id={this.tabId}
           name="activelearning"
-          value="activelearning"
-          defaultChecked
+          defaultValue="activelearning"
         />
         <label className="tab-label" htmlFor={this.tabId}>
           Active Learning
@@ -231,7 +148,7 @@ export default class OptionTable extends BaseTab {
                 <td>
                   <button
                     className="actionInput"
-                    style={{backgroundColor:'lightgray'}}
+                    style={{ backgroundColor: 'lightgray' }}
                     onClick={this.onClickNextSample}
                   >
                     Next Sample
@@ -241,23 +158,12 @@ export default class OptionTable extends BaseTab {
                 <td>
                   <button
                     className="actionInput"
-                    style={{backgroundColor:'lightgray'}}
+                    style={{ backgroundColor: 'lightgray' }}
                     onClick={this.onClickUpdateModel}
                   >
                     {this.state.training ? 'Stop Training' : 'Update Model'}
                   </button>
                 </td>
-                {/*<td>&nbsp;</td>*/}
-                {/*<td>*/}
-                {/*  <button*/}
-                {/*    className="actionInput"*/}
-                {/*    style={{backgroundColor:'lightgray'}}*/}
-                {/*    onClick={this.onClickSubmitLabel}*/}
-                {/*    disabled={!segmentId}*/}
-                {/*  >*/}
-                {/*    Submit Label*/}
-                {/*  </button>*/}
-                {/*</td>*/}
               </tr>
             </tbody>
           </table>
@@ -271,9 +177,9 @@ export default class OptionTable extends BaseTab {
                   <select
                     className="actionInput"
                     onChange={this.onChangeStrategy}
-                    value={this.state.strategy}
+                    defaultValue={this.state.strategy}
                   >
-                    {Object.keys(strategies).map(a => (
+                    {Object.keys(strategies).map((a) => (
                       <option key={a} name={a} value={a}>
                         {a}
                       </option>
@@ -290,7 +196,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-blue w3-center"
-                      style={{ backgroundColor:'white' }}
+                      style={{ backgroundColor: 'white' }}
                     >
                       {activelearning}
                     </div>
@@ -303,7 +209,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-orange w3-center"
-                      style={{ backgroundColor:'white' }}
+                      style={{ backgroundColor: 'white' }}
                     >
                       {training}
                     </div>
@@ -316,7 +222,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-green w3-center"
-                      style={{ backgroundColor:'white' }}
+                      style={{ backgroundColor: 'white' }}
                     >
                       {accuracy}
                     </div>

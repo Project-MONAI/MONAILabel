@@ -27,7 +27,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
-from monailabel.utils.others.generic import device_list, device_map, name_to_device
+from monailabel.utils.others.generic import device_list, device_map, name_to_device, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -253,7 +253,7 @@ class BasicInferTask(InferTask):
 
     def __call__(
         self, request, callbacks: Union[Dict[CallBackTypes, Any], None] = None
-    ) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    ) -> Tuple[Union[str, None], Dict]:
         """
         It provides basic implementation to run the following in order
             - Run Pre Transforms
@@ -322,8 +322,8 @@ class BasicInferTask(InferTask):
             data = callback_run_post_transforms(data)
         latency_post = time.time() - start
 
-        if self.skip_writer:
-            return dict(data)
+        if self.skip_writer or strtobool(data.get("skip_writer")):
+            return None, dict(data)
 
         start = time.time()
         result_file_name, result_json = self.writer(data)
@@ -467,11 +467,10 @@ class BasicInferTask(InferTask):
                 if path:
                     checkpoint = torch.load(path, map_location=torch.device(device))
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
-
-                    if set(self.network.state_dict().keys()) != set(checkpoint.keys()):
+                    if set(self.network.state_dict().keys()) != set(model_state_dict.keys()):
                         logger.warning(
                             f"Checkpoint keys don't match network.state_dict()! Items that exist in only one dict"
-                            f" but not in the other: {set(self.network.state_dict().keys()) ^ set(checkpoint.keys())}"
+                            f" but not in the other: {set(self.network.state_dict().keys()) ^ set(model_state_dict.keys())}"
                         )
                         logger.warning(
                             "The run will now continue unless load_strict is set to True. "

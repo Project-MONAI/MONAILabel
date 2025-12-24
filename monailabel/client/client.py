@@ -336,6 +336,7 @@ class MONAILabelClient:
         fields = {"params": json.dumps(params) if params else "{}"}
         files = {"label": label_in} if label_in else {}
         files.update({"file": file} if file and not session_id else {})
+        logger.info(f"Files: {files}")
 
         status, form, files, _ = MONAILabelUtils.http_multipart(
             "POST", self._server_url, selector, fields, files, headers=self._headers
@@ -584,6 +585,9 @@ class MONAILabelUtils:
 
     @staticmethod
     def save_result(files, tmpdir):
+        if not files:
+            return None
+
         for name in files:
             data = files[name]
             result_file = os.path.join(tmpdir, name)

@@ -32,14 +32,14 @@ class InferType(str, Enum):
         OTHERS -                  Other Model Type
     """
 
-    SEGMENTATION: str = "segmentation"
-    ANNOTATION: str = "annotation"
-    CLASSIFICATION: str = "classification"
-    DEEPGROW: str = "deepgrow"
-    DEEPEDIT: str = "deepedit"
-    SCRIBBLES: str = "scribbles"
-    DETECTION: str = "detection"
-    OTHERS: str = "others"
+    SEGMENTATION = "segmentation"
+    ANNOTATION = "annotation"
+    CLASSIFICATION = "classification"
+    DEEPGROW = "deepgrow"
+    DEEPEDIT = "deepedit"
+    SCRIBBLES = "scribbles"
+    DETECTION = "detection"
+    OTHERS = "others"
 
 
 class InferTask(metaclass=ABCMeta):
@@ -92,5 +92,5 @@ class InferTask(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def __call__(self, request) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    def __call__(self, request) -> Tuple[Union[str, None], Dict]:
         pass

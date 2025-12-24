@@ -91,10 +91,8 @@ def send_response(datastore, result, output, background_tasks):
     if output == "json":
         return res_json
 
-    m_type = get_mime_type(res_img)
-
     if output == "image":
-        return FileResponse(res_img, media_type=m_type, filename=os.path.basename(res_img))
+        return FileResponse(res_img, media_type=get_mime_type(res_img), filename=os.path.basename(res_img))
 
     if output == "dicom_seg":
         res_dicom_seg = result.get("dicom_seg")
@@ -106,7 +104,7 @@ def send_response(datastore, result, output, background_tasks):
     res_fields = dict()
     res_fields["params"] = (None, json.dumps(res_json), "application/json")
     if res_img and os.path.exists(res_img):
-        res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
+        res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), get_mime_type(res_img))
     else:
         logger.info(f"Return only Result Json as Result Image is not available: {res_img}")
         return res_json
@@ -185,7 +183,7 @@ def run_inference(
         suffixes = [".nii", ".nii.gz", ".nrrd"]
         image_path = [image_uri.replace(suffix, "") for suffix in suffixes if image_uri.endswith(suffix)][0]
         res_img = result.get("file") if result.get("file") else result.get("label")
-        dicom_seg_file = nifti_to_dicom_seg(image_path, res_img, p.get("label_info"), use_itk=True)
+        dicom_seg_file = nifti_to_dicom_seg(image_path, res_img, p.get("label_info"))
         result["dicom_seg"] = dicom_seg_file
 
     return send_response(instance.datastore(), result, output, background_tasks)

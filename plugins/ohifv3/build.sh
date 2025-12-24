@@ -27,7 +27,7 @@ cd ${my_dir}
 rm -rf Viewers
 git clone https://github.com/OHIF/Viewers.git
 cd Viewers
-git checkout 33f125940863607f8dba82c71b27a43f35431dd5
+git checkout d8ef36ed24466988586e19b855d2bbb86f8c657a
 
 #cp -r ../extensions/monai-label extensions/
 #cp -r ../modes/monai-label modes/monai-label
@@ -45,11 +45,16 @@ cp ../config/monai_label.js platform/app/public/config/monai_label.js
 
 yarn config set workspaces-experimental true
 yarn install
+yarn run cli list
+
 APP_CONFIG=config/monai_label.js PUBLIC_URL=/ohif/ QUICK_BUILD=true yarn run build
 
 rm -rf ${install_dir}
 cp -r platform/app/dist/ ${install_dir}
 echo "Copied OHIF to ${install_dir}"
-rm -rf ../Viewers
+
+cd ..
+rm -rf Viewers
+find .  -type d -name "node_modules" -exec rm -rf "{}" +
 
 cd ${curr_dir}

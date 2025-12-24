@@ -241,8 +241,8 @@ def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img
     ]
 
 
-def strtobool(str):
-    return bool(distutils.util.strtobool(str))
+def strtobool(s):
+    return False if s is None else s if isinstance(s, bool) else bool(distutils.util.strtobool(s))
 
 
 def is_openslide_supported(name):
@@ -336,7 +336,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
 
     models = conf.get(conf_key)
-    models = models.split(",")
+    models = models.split(",") if models else []
     models = [m.strip() for m in models]
 
     if zoo_source == "monaihosting":  # if in github env, access model zoo

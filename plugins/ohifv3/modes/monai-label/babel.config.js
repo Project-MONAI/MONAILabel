@@ -10,7 +10,7 @@ module.exports = {
             modules: 'commonjs',
             debug: false,
           },
-          "@babel/preset-typescript",
+          '@babel/preset-typescript',
         ],
         '@babel/preset-react',
       ],

@@ -14,6 +14,7 @@ metadata:
   namespace: cvat
   annotations:
     name: Nuclick
+    version: 2
     type: interactor
     framework: pytorch
     spec:
@@ -25,7 +26,7 @@ metadata:
 spec:
   description: A pre-trained NuClick model for interactive cell segmentation for Pathology
   runtime: 'python:3.8'
-  handler: main:handler
+  handler: interactor:handler
   eventTimeout: 30s
 
   build:
@@ -35,15 +36,9 @@ spec:
     directives:
       preCopy:
         - kind: ENV
-          value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/pathology
+          value: MONAI_LABEL_SERVER=http://monailabel.com
         - kind: ENV
-          value: MONAI_LABEL_MODELS=nuclick
-        - kind: ENV
-          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/pathology
-        - kind: ENV
-          value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
-        - kind: ENV
-          value: INTERACTOR_MODEL=true
+          value: MONAI_LABEL_MODEL=nuclick
 
   triggers:
     myHttpTrigger:
@@ -52,10 +47,6 @@ spec:
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB
-
-  resources:
-    limits:
-      nvidia.com/gpu: 1
 
   platform:
     attributes:
