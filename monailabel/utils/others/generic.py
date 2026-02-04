@@ -242,7 +242,7 @@ def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img
 
 def strtobool(s):
     """Convert a string representation of truth to true or false.
-    
+
     True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
     are 'n', 'no', 'f', 'false', 'off', and '0'.  Returns the input if
     already a bool. Returns False if None.
@@ -251,7 +251,7 @@ def strtobool(s):
         return False
     if isinstance(s, bool):
         return s
-    
+
     val = str(s).lower()
     if val in ('y', 'yes', 't', 'true', 'on', '1'):
         return True
