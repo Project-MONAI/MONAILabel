@@ -1,6 +1,6 @@
 ---
 name: Human-AI Interaction Intake
-about: The Issues/Questions Related to Human-AI Interaction Working Group
+about: Issues/questions related to the Human-AI Interaction Working Group
 title: "[HAI] "
 labels: Human-AI Interaction
 assignees: ''
