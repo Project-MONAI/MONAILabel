@@ -251,8 +251,10 @@ def strtobool(s):
         return False
     if isinstance(s, bool):
         return s
+    if not isinstance(s, str):
+        raise TypeError(f"strtobool expects a string or bool, got {type(s).__name__}: {s!r}")
 
-    val = str(s).lower()
+    val = s.lower()
     if val in ('y', 'yes', 't', 'true', 'on', '1'):
         return True
     elif val in ('n', 'no', 'f', 'false', 'off', '0'):
