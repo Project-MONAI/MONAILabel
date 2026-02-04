@@ -30,6 +30,7 @@ from monai.bundle.scripts import get_all_bundles_list
 
 from monailabel.config import settings
 from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
+from monailabel.utils.others.strtobool import strtobool  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -238,29 +239,6 @@ def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img
     return [
         {"image": i, "label": l} for i, l in zip(images, labels) if get_basename_no_ext(i) == get_basename_no_ext(l)
     ]
-
-
-def strtobool(s):
-    """Convert a string representation of truth to true or false.
-
-    True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
-    are 'n', 'no', 'f', 'false', 'off', and '0'.  Returns the input if
-    already a bool. Returns False if None.
-    """
-    if s is None:
-        return False
-    if isinstance(s, bool):
-        return s
-    if not isinstance(s, str):
-        raise TypeError(f"strtobool expects a string or bool, got {type(s).__name__}: {s!r}")
-
-    val = s.lower()
-    if val in ('y', 'yes', 't', 'true', 'on', '1'):
-        return True
-    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
-        return False
-    else:
-        raise ValueError(f"invalid truth value {s!r}")
 
 
 def is_openslide_supported(name):

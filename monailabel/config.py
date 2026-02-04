@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from monailabel.utils.others.generic import strtobool
+from monailabel.utils.others.strtobool import strtobool
 
 
 def is_package_installed(name):

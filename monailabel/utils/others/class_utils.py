@@ -18,7 +18,7 @@ import sys
 from typing import List
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.utils.others.generic import strtobool
+from monailabel.utils.others.strtobool import strtobool
 
 logger = logging.getLogger(__name__)
 
