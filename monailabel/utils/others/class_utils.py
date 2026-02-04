@@ -15,10 +15,10 @@ import inspect
 import logging
 import os
 import sys
-from distutils.util import strtobool
 from typing import List
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
+from monailabel.utils.others.generic import strtobool
 
 logger = logging.getLogger(__name__)
 

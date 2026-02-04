@@ -9,12 +9,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from distutils.util import strtobool
 from importlib.metadata import distributions
 from typing import Any, Dict, List, Optional
 
 from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from monailabel.utils.others.generic import strtobool
 
 
 def is_package_installed(name):
