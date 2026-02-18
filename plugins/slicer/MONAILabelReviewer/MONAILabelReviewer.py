@@ -577,6 +577,13 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.setCheckBoxesClient()
             self.setProgressBarOfClient(self.selectedClientId)
 
+        # Ensure listImageData is valid
+        if self.listImageData is None:
+            self.listImageData = []
+            logging.warning(
+                f"{self.getCurrentTime()}: Invalid filter combination or no data returned. Setting empty list."
+            )
+
         logging.info(
             "{}: Successfully loaded Image data [total = {}, category = '{}']".format(
                 self.getCurrentTime(), len(self.listImageData), self.selectedClientId
@@ -586,6 +593,9 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         if len(self.listImageData) > 0:
             self.currentImageData = self.listImageData[self.imageCounter]
             self.loadNextImage(self.currentImageData)
+        else:
+            self.currentImageData = None
+            logging.info(f"{self.getCurrentTime()}: No image data to display after filtering")
 
         self.ui.collapsibleButton_dicom_evaluation.enabled = True
         self.ui.collapsibleButton_dicom_evaluation.collapsed = False
@@ -603,9 +613,17 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
                 self.getCurrentTime(), segmented, isNotSegmented, isApproved, isFlagged
             )
         )
+        result = None
         if selectedClientId == "":
-            return self.logic.getAllImageData(segmented, isNotSegmented, isApproved, isFlagged)
-        return self.logic.getImageDataByClientId(selectedClientId, isApproved, isFlagged)
+            result = self.logic.getAllImageData(segmented, isNotSegmented, isApproved, isFlagged)
+        else:
+            result = self.logic.getImageDataByClientId(selectedClientId, isApproved, isFlagged)
+
+        # Return empty list if result is None (invalid filter combination)
+        if result is None:
+            logging.warning(f"{self.getCurrentTime()}: Filter combination returned no data, returning empty list")
+            return []
+        return result
 
     def setProgressBarOfAll(self):
         statistics: ImageDataStatistics = self.logic.getStatistics()
@@ -1062,6 +1080,14 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         # Request Next Image
         self.imageCounter += 1
 
+        # Check if listImageData is valid and not empty
+        if self.listImageData is None or len(self.listImageData) == 0:
+            message = f"{self.getCurrentTime()}: No image data loaded. Please load data first."
+            slicer.util.warningDisplay(message)
+            self.imageCounter = 0
+            self.currentImageData = None
+            return
+
         if self.imageCounter >= len(self.listImageData):
             message = f"{self.getCurrentTime()}: End of list has been reached."
             slicer.util.warningDisplay(message)
@@ -1081,6 +1107,10 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         Sends the updated meta data of dicom and segmentation to monai-server
         Monai-server incorporates that information into datastore.json file
         """
+        if self.currentImageData is None:
+            logging.warning(f"{self.getCurrentTime()}: No image data loaded to persist meta information")
+            return
+
         self.logic.updateLabelInfo(
             imageData=self.currentImageData,
             versionTag=self.getCurrentLabelVersion(),
@@ -1097,6 +1127,15 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         after useres tiggers Previous-Button
         """
         self.imageCounter -= 1
+
+        # Check if listImageData is valid and not empty
+        if self.listImageData is None or len(self.listImageData) == 0:
+            message = f"{self.getCurrentTime()}: No image data loaded. Please load data first."
+            slicer.util.warningDisplay(message)
+            self.imageCounter = 0
+            self.currentImageData = None
+            return
+
         if self.imageCounter < 0:
             message = f"{self.getCurrentTime()}: Lower limit of data set has been reached."
             slicer.util.warningDisplay(message)
@@ -1640,6 +1679,10 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
     def updateLabelInfo(
         self, imageData: ImageData, versionTag: str, status: str, level: str, approvedBy: str, comment: str
     ):
+        if imageData is None:
+            logging.warning(f"{self.getCurrentTime()}: Cannot update label info - imageData is None")
+            return
+
         imageId = imageData.getName()
         updatedMetaJson = self.updateImageData(imageData, versionTag, status, level, approvedBy, comment)
         if updatedMetaJson == "":
