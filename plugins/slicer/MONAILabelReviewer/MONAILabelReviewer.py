@@ -618,7 +618,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             result = self.logic.getAllImageData(segmented, isNotSegmented, isApproved, isFlagged)
         else:
             result = self.logic.getImageDataByClientId(selectedClientId, isApproved, isFlagged)
-        
+
         # Return empty list if result is None (invalid filter combination)
         if result is None:
             logging.warning(f"{self.getCurrentTime()}: Filter combination returned no data, returning empty list")
@@ -1110,7 +1110,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         if self.currentImageData is None:
             logging.warning(f"{self.getCurrentTime()}: No image data loaded to persist meta information")
             return
-        
+
         self.logic.updateLabelInfo(
             imageData=self.currentImageData,
             versionTag=self.getCurrentLabelVersion(),
@@ -1127,7 +1127,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         after useres tiggers Previous-Button
         """
         self.imageCounter -= 1
-        
+
         # Check if listImageData is valid and not empty
         if self.listImageData is None or len(self.listImageData) == 0:
             message = f"{self.getCurrentTime()}: No image data loaded. Please load data first."
@@ -1135,7 +1135,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.imageCounter = 0
             self.currentImageData = None
             return
-        
+
         if self.imageCounter < 0:
             message = f"{self.getCurrentTime()}: Lower limit of data set has been reached."
             slicer.util.warningDisplay(message)
@@ -1682,7 +1682,7 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         if imageData is None:
             logging.warning(f"{self.getCurrentTime()}: Cannot update label info - imageData is None")
             return
-        
+
         imageId = imageData.getName()
         updatedMetaJson = self.updateImageData(imageData, versionTag, status, level, approvedBy, comment)
         if updatedMetaJson == "":
