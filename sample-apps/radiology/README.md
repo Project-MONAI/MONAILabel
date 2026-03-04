@@ -215,6 +215,34 @@ the model to learn on new organ.
 - Output: N channels representing the segmented organs/tumors/tissues
 </details>
 
+<details id="segmentation-brats">
+  <summary>
+    <strong>Segmentation BraTS</strong> is a model based on UNet for automated multilabel brain tumor segmentation. This model is designed for local multi-label segmentation tasks using pre-aligned, multi-modal MRI volumes.
+  </summary>
+
+> monailabel start_server --app workspace/radiology --studies workspace/images --conf models segmentation_brats --conf input_channels 4 --conf multi_file true
+
+- Additional Configs *(pass them as **--conf name value** while starting MONAILabel Server)*
+
+| Name                 | Values           | Description                                                              |
+|----------------------|------------------|--------------------------------------------------------------------------|
+| use_pretrained_model | **true**, false  | Set to `false` to skip loading pretrained weights                        |
+| preload              | true, **false**  | Preload model into GPU at startup                                        |
+| scribbles            | **true**, false  | Set to `false` to disable scribble-based interactive segmentation models |
+
+- Network: This model uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network. Researchers can define their own network or use one of the listed [MONAI network architectures](https://docs.monai.io/en/latest/networks.html)
+- Labels
+  ```json
+  {
+    "tumor core": 1,
+    "whole tumor": 2,
+    "enhancing tumor": 3
+  }
+  ```
+- Dataset: The model is trained over the dataset: https://www.med.upenn.edu/cbica/brats2020/
+- Inputs: 4 channels for the 4 BRATS image modalities
+- Output: N channels representing the segmented tumors/tissues
+</details>
 
 <details id="segmentation-spleen">
   <summary>
