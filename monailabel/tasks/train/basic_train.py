@@ -83,6 +83,8 @@ class Context:
         self.multi_gpu = False  # multi gpu enabled
         self.local_rank = 0  # local rank in case of multi gpu
         self.world_size = 0  # world size in case of multi gpu
+        self.input_channels = 1
+        self.multi_file = False
 
         self.request = None
         self.trainer = None
@@ -490,6 +492,9 @@ class BasicTrainTask(TrainTask):
 
         context.run_id = request["run_id"]
         context.multi_gpu = request["multi_gpu"]
+        context.multi_file = request.get("multi_file", False)
+        context.input_channels = request.get("input_channels", 1)
+
         if context.multi_gpu:
             os.environ["LOCAL_RANK"] = str(context.local_rank)
 

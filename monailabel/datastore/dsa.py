@@ -270,6 +270,32 @@ class DSADatastore(Datastore):
     def json(self):
         return self.datalist()
 
+    def add_directory(self, directory_id: str, filename: str, info: Dict[str, Any]) -> str:
+        """
+        Not implemented for this datastore
+
+        Abstract method for adding a directory to dsa
+        """
+        raise NotImplementedError("This datastore does not support adding directories")
+
+    def get_is_multichannel(self) -> bool:
+        """
+        Not implemented for this datastore
+
+        Returns whether the application's studies is directed at multichannel (4D) data
+        """
+        logger.info("The function get_is_multichannel is not implemented for this datastore")
+        return False
+
+    def get_is_multi_file(self) -> bool:
+        """
+        Not implemented for this datastore
+
+        Returns whether the application's studies is directed at directories containing multiple images per sample
+        """
+        logger.info("The function get_is_multi_file is not implemented for this datastore")
+        return False
+
 
 """
 def main():
