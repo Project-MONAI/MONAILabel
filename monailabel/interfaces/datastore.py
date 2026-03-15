@@ -201,6 +201,20 @@ class Datastore(metaclass=ABCMeta):
         """
         pass
 
+    def add_directory(self, directory_id: str, filename: str, info: Dict[str, Any]) -> str:
+        """
+        Save a directory for the given directory id and return the newly saved directory's id.
+
+        Default implementation raises NotImplementedError; override in datastores
+        that support multi-file samples.
+
+        :param directory_id: the directory id for the image;  If None then base filename will be used
+        :param filename: the path to the directory
+        :param info: additional info for the directory
+        :return: the directory id for the saved image filename
+        """
+        raise NotImplementedError("This datastore does not support adding directories")
+
     @abstractmethod
     def add_image(self, image_id: str, image_filename: str, image_info: Dict[str, Any]) -> str:
         """
@@ -279,3 +293,19 @@ class Datastore(metaclass=ABCMeta):
         Return json representation of datastore
         """
         pass
+
+    def get_is_multichannel(self) -> bool:
+        """
+        Returns whether the application's studies is directed at multichannel (4D) data.
+
+        Default returns False; override in datastores that support multichannel volumes.
+        """
+        return False
+
+    def get_is_multi_file(self) -> bool:
+        """
+        Returns whether the application's studies is directed at directories containing multiple images per sample.
+
+        Default returns False; override in datastores that support multi-file samples.
+        """
+        return False

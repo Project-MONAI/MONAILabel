@@ -307,12 +307,18 @@ def main():
     parser.add_argument("-s", "--studies", default=studies)
     parser.add_argument("-m", "--model", default="segmentation")
     parser.add_argument("-t", "--test", default="batch_infer", choices=("train", "infer", "batch_infer"))
+    parser.add_argument("-multi", "--multichannel", action="store_true", help="Enable multichannel (4D) data loading")
+    parser.add_argument("-c", "--input_channels", type=int, default=1, help="Number of input channels")
+    parser.add_argument("-multif", "--multi_file", action="store_true", help="Enable multi-file data loading")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
     conf = {
         "models": args.model,
+        "multichannel": args.multichannel,
+        "input_channels": args.input_channels,
+        "multi_file": args.multi_file,
         "preload": "false",
     }
 
@@ -326,7 +332,16 @@ def main():
 
         # Run on all devices
         for device in device_list():
-            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            res = app.infer(
+                request={
+                    "model": args.model,
+                    "image": image_id,
+                    "device": device,
+                    "multichannel": conf["multichannel"],
+                    "input_channels": conf["input_channels"],
+                    "multi_file": conf["multi_file"],
+                }
+            )
             # res = app.infer(
             #     request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
             # )
@@ -354,6 +369,9 @@ def main():
                 "label_tag": "original",
                 "max_workers": 1,
                 "max_batch_size": 0,
+                "multichannel": conf["multichannel"],
+                "input_channels": conf["input_channels"],
+                "multi_file": conf["multi_file"],
             }
         )
 
@@ -380,6 +398,9 @@ def main():
             "val_batch_size": 1,
             "multi_gpu": False,
             "val_split": 0.1,
+            "multichannel": conf["multichannel"],
+            "input_channels": conf["input_channels"],
+            "multi_file": conf["multi_file"],
         },
     )
 
