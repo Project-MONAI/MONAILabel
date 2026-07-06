@@ -43,17 +43,13 @@ class MONAILabel(ScriptedLoadableModule):
         self.parent.categories = [translate("qSlicerAbstractCoreModule", "Active Learning")]
         self.parent.dependencies = []
         self.parent.contributors = ["NVIDIA, KCL"]
-        self.parent.helpText = _(
-            """
+        self.parent.helpText = _("""
 Active Learning solution.
 See more information in <a href="https://github.com/Project-MONAI/MONAILabel">module documentation</a>.
-"""
-        )
-        self.parent.acknowledgementText = _(
-            """
+""")
+        self.parent.acknowledgementText = _("""
 Developed by NVIDIA, KCL
-"""
-        )
+""")
 
         # Additional initialization step after application startup is complete
         slicer.app.connect("startupCompleted()", self.initializeAfterStartup)

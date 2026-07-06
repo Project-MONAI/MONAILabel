@@ -33,27 +33,27 @@ repos:
   - id: mixed-line-ending
 
 - repo: https://github.com/pycqa/isort
-  rev: 6.1.0
+  rev: 9.0.0a3
   hooks:
   - id: isort
     name: isort (python)
     args: ["--line-length=120", "--profile=black"]
 
 - repo: https://github.com/pycqa/isort
-  rev: 6.1.0
+  rev: 9.0.0a3
   hooks:
   - id: isort
     name: isort (python) (check)
     args: ["--line-length=120", "--profile=black", "--check"]
 
 - repo: https://github.com/psf/black-pre-commit-mirror
-  rev: 25.9.0
+  rev: 26.5.1
   hooks:
   - id: black
     args: ["--line-length=120"]
 
 - repo: https://github.com/psf/black-pre-commit-mirror
-  rev: 25.9.0
+  rev: 26.5.1
   hooks:
   - id: black
     name: black (check)
@@ -66,14 +66,14 @@ repos:
     args: ["--count", "--statistics", "--config=setup.cfg"]
 
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.18.2
+  rev: v2.1.0
   hooks:
   - id: mypy
     exclude: (^tests/|^plugins/)
     additional_dependencies: [types-PyYAML,types-filelock,types-requests,types-docutils,types-cachetools]
 
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.20.0
+  rev: v3.21.2
   hooks:
   -   id: pyupgrade
       args: [--py37-plus]
