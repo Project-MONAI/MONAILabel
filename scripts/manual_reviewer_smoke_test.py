@@ -4,14 +4,14 @@ comprehensive test script for the lightweight reviewer server.
 
 Tests the new review-specific endpoints against the test data.
 """
-import subprocess
-import time
-import requests
 import json
 import os
+import subprocess
 import sys
+import time
 from pathlib import Path
 
+import requests
 
 TEST_DATA_DIR = os.environ.get("MONAI_LABEL_REVIEW_TEST_DATA", "/path/to/review-dataset")
 PORT = 8079  # Different port from main monailabel server
@@ -25,25 +25,26 @@ def start_server():
     print("=" * 70)
 
     cmd = [
-        sys.executable, "-m", "monailabel.main",
+        sys.executable,
+        "-m",
+        "monailabel.main",
         "start_server",
-        f"--app", "sample-apps/reviewer",
-        f"--studies", f"{TEST_DATA_DIR}/images",
-        f"--port", str(PORT),
-        f"--conf", "mode", "review"
+        f"--app",
+        "sample-apps/reviewer",
+        f"--studies",
+        f"{TEST_DATA_DIR}/images",
+        f"--port",
+        str(PORT),
+        f"--conf",
+        "mode",
+        "review",
     ]
 
     print(f"Command: {' '.join(cmd)}")
     print()
 
     # Start server in background
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        cwd=str(repo_root)
-    )
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=str(repo_root))
 
     # Wait for server to start
     print("Waiting for server to start...")
@@ -94,11 +95,7 @@ def test_list_images():
     print("=" * 70)
 
     try:
-        response = requests.get(
-            f"http://localhost:{PORT}/review/cases",
-            params={"limit": 10},
-            timeout=10
-        )
+        response = requests.get(f"http://localhost:{PORT}/review/cases", params={"limit": 10}, timeout=10)
 
         if response.status_code == 200:
             data = response.json()
@@ -115,7 +112,7 @@ def test_list_images():
                 print(f"      - {img.get('name', 'N/A')} (status: {img.get('status', 'N/A')})")
 
             # Check for review metadata
-            if results and 'reviewer' in results[0]:
+            if results and "reviewer" in results[0]:
                 print("   ✅ Review metadata present")
             else:
                 print("   ⚠️  No review metadata in sample images")
@@ -139,11 +136,7 @@ def test_download_image():
 
     try:
         # Get a list of images first
-        list_response = requests.get(
-            f"http://localhost:{PORT}/review/cases",
-            params={"limit": 1},
-            timeout=10
-        )
+        list_response = requests.get(f"http://localhost:{PORT}/review/cases", params={"limit": 1}, timeout=10)
 
         if list_response.status_code != 200:
             print("⚠️  Skipped - cannot list images")
@@ -158,9 +151,7 @@ def test_download_image():
 
         # Download the image
         download_response = requests.get(
-            f"http://localhost:{PORT}/datastore/image",
-            params={"image": image_id},
-            timeout=30
+            f"http://localhost:{PORT}/datastore/image", params={"image": image_id}, timeout=30
         )
 
         if download_response.status_code == 200:
@@ -186,11 +177,7 @@ def test_download_label():
 
     try:
         # Get a list of images first
-        list_response = requests.get(
-            f"http://localhost:{PORT}/review/cases",
-            params={"limit": 1},
-            timeout=10
-        )
+        list_response = requests.get(f"http://localhost:{PORT}/review/cases", params={"limit": 1}, timeout=10)
 
         if list_response.status_code != 200:
             print("⚠️  Skipped - cannot list images")
@@ -205,9 +192,7 @@ def test_download_label():
 
         # Download the label with final tag
         download_response = requests.get(
-            f"http://localhost:{PORT}/datastore/label",
-            params={"label": image_id, "tag": "final"},
-            timeout=10
+            f"http://localhost:{PORT}/datastore/label", params={"label": image_id, "tag": "final"}, timeout=10
         )
 
         if download_response.status_code == 200:
@@ -219,9 +204,7 @@ def test_download_label():
         else:
             # Try without tag
             download_response = requests.get(
-                f"http://localhost:{PORT}/datastore/label",
-                params={"label": image_id},
-                timeout=10
+                f"http://localhost:{PORT}/datastore/label", params={"label": image_id}, timeout=10
             )
             if download_response.status_code == 200:
                 print(f"✅ Successfully downloaded label (default tag): {image_id}")
@@ -244,11 +227,7 @@ def test_update_labelinfo():
     print("=" * 70)
 
     try:
-        list_response = requests.get(
-            f"http://localhost:{PORT}/review/cases",
-            params={"limit": 1},
-            timeout=10
-        )
+        list_response = requests.get(f"http://localhost:{PORT}/review/cases", params={"limit": 1}, timeout=10)
 
         if list_response.status_code != 200:
             print("⚠️  Skipped - cannot list images")
