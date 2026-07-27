@@ -15,7 +15,6 @@ import pathlib
 import unittest
 from unittest.mock import patch
 
-
 APP_PATH = pathlib.Path(__file__).resolve().parents[3] / "sample-apps" / "reviewer" / "app.py"
 SPEC = importlib.util.spec_from_file_location("reviewer_app", APP_PATH)
 reviewer_app = importlib.util.module_from_spec(SPEC)

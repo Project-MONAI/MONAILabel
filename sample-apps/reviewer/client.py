@@ -147,11 +147,7 @@ class LightweightReviewClient:
             logger.error(f"Error downloading image {image_id}: {e}")
             return None
 
-    def download_label(
-        self,
-        label_id: str,
-        tag: str = "final"
-    ) -> Optional[bytes]:
+    def download_label(self, label_id: str, tag: str = "final") -> Optional[bytes]:
         """
         Download segmentation label or mask.
 

@@ -10,7 +10,6 @@
 # limitations under the License.
 
 import copy
-from datetime import datetime
 import fnmatch
 import io
 import json
@@ -21,6 +20,7 @@ import shutil
 import tempfile
 import time
 import zipfile
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from filelock import FileLock

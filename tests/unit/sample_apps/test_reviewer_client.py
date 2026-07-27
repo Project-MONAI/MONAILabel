@@ -15,7 +15,6 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-
 CLIENT_PATH = pathlib.Path(__file__).resolve().parents[3] / "sample-apps" / "reviewer" / "client.py"
 SPEC = importlib.util.spec_from_file_location("reviewer_client", CLIENT_PATH)
 reviewer_client = importlib.util.module_from_spec(SPEC)

@@ -48,7 +48,9 @@ class TestLocalDatastore(unittest.TestCase):
             datastore.save_label("case-001", source_label_file, DefaultLabelTag.FINAL, {"status": "approved"})
 
             self.assertTrue(datastore.get_label_uri("case-001", DefaultLabelTag.FINAL).endswith("case-001.seg.nrrd"))
-            self.assertEqual(datastore.get_label_info("case-001", DefaultLabelTag.FINAL).get("name"), "case-001.seg.nrrd")
+            self.assertEqual(
+                datastore.get_label_info("case-001", DefaultLabelTag.FINAL).get("name"), "case-001.seg.nrrd"
+            )
 
     def test_non_seg_nrrd_label_is_not_rewritten(self):
         with tempfile.TemporaryDirectory() as studies:
