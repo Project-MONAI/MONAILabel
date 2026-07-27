@@ -225,6 +225,11 @@ class LocalDatastore(Datastore):
         id = file.replace(ext, "")
         return id, ext
 
+    def _to_label_id(self, file: str) -> Tuple[str, str]:
+        if file.lower().endswith(".seg.nrrd"):
+            return file[: -len(".seg.nrrd")], ".seg.nrrd"
+        return self._to_id(file)
+
     def _filename(self, id: str, ext: str) -> str:
         return id + ext
 
@@ -613,7 +618,7 @@ class LocalDatastore(Datastore):
 
         image_ids = list(self._datastore.objects.keys())
         for label_file in local_labels:
-            label_id, label_ext = self._to_id(label_file)
+            label_id, label_ext = self._to_label_id(label_file)
 
             obj = self._datastore.objects.get(label_id)
             if not obj or label_id not in image_ids:

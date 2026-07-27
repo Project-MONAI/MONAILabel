@@ -430,7 +430,16 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         serverUrlHistory = settings.value("MONAILabel/serverUrlHistory")
 
         self.ui.comboBox_server_url.clear()
-        self.ui.comboBox_server_url.addItems(serverUrlHistory.split(";"))
+        if not serverUrlHistory:
+            return
+
+        server_urls = [self.normalizeServerUrl(url) for url in serverUrlHistory.split(";") if url]
+        self.ui.comboBox_server_url.addItems(server_urls)
+
+    def normalizeServerUrl(self, serverUrl: str) -> str:
+        if not serverUrl:
+            return ""
+        return serverUrl.strip().rstrip("/")
 
     def init_dicom_stream(self):
         """
@@ -439,7 +448,8 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         """
         # Check Connection
         self.cleanCache()
-        serverUrl: str = self.ui.comboBox_server_url.currentText
+        serverUrl: str = self.normalizeServerUrl(self.ui.comboBox_server_url.currentText)
+        self.ui.comboBox_server_url.setCurrentText(serverUrl)
         isConnected: bool = self.logic.connectToMonaiServer(serverUrl)
         if not isConnected:
             warningMessage = f"Connection to server failed \ndue to invalid ip '{serverUrl}'"
@@ -1494,7 +1504,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.fillComboBoxLabelVersions(self.currentImageData)
 
     def processDataStoreRecords(self):
-        serverUrl: str = self.ui.comboBox_server_url.currentText
+        serverUrl: str = self.normalizeServerUrl(self.ui.comboBox_server_url.currentText)
         result: bool = self.logic.initMetaDataProcessing()
         if result is False:
             warningMessage = (
@@ -1674,8 +1684,8 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
             )
         )
 
-        self.requestDicomImage(image_id, image_name, node_name)
         self.setTempFolderDir()
+        self.requestDicomImage(image_id, image_name, node_name)
 
         # Request segmentation
         if imageData.isSegemented():
@@ -1712,8 +1722,16 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         segmentation = slicer.util.loadSegmentation(destination)
 
     def requestDicomImage(self, image_id: str, image_name: str, node_name: str):
-        download_uri = self.imageDataController.getDicomDownloadUri(image_id)
-        SampleData.SampleDataLogic().downloadFromURL(nodeNames=node_name, fileNames=image_name, uris=download_uri)
+        response = self.imageDataController.requestImage(image_id)
+        if response is None:
+            raise RuntimeError(f"Failed to download image '{image_id}' from MONAI Label server")
+
+        destination = self.getPathToStore(image_name, self.temp_dir.name)
+        with open(destination, "wb") as img_file:
+            img_file.write(response.content)
+
+        logging.info(f"{self.getCurrentTime()}: Image stored temporarily in: {destination}")
+        slicer.util.loadVolume(destination)
 
     def setTempFolderDir(self):
         """

@@ -26,7 +26,7 @@ MonaiServerREST provides the REST endpoints to the MONAIServer
 class MonaiServerREST:
     def __init__(self, serverUrl: str):
         self.PARAMS_PREFIX_REST_REQUEST = "params"
-        self.serverUrl = serverUrl
+        self.serverUrl = serverUrl.rstrip("/") if serverUrl else serverUrl
 
     def getServerUrl(self) -> str:
         return self.serverUrl
@@ -56,6 +56,29 @@ class MonaiServerREST:
         download_uri = f"{self.serverUrl}/datastore/image?image={quote_plus(image_id)}"
         logging.info(f"{self.getCurrentTime()}: REST: request dicom image '{download_uri}'")
         return download_uri
+
+    def requestImage(self, image_id: str) -> requests.models.Response:
+        download_uri = self.getDicomDownloadUri(image_id)
+
+        try:
+            response = requests.get(download_uri, timeout=30)
+        except Exception as exception:
+            logging.warning(
+                "{}: Image request (image id: '{}') failed due to '{}'".format(
+                    self.getCurrentTime(), image_id, exception
+                )
+            )
+            return None
+
+        if response.status_code != 200:
+            logging.warning(
+                "{}: Image request (image id: '{}') failed due to response code: '{}'".format(
+                    self.getCurrentTime(), image_id, response.status_code
+                )
+            )
+            return None
+
+        return response
 
     def requestSegmentation(self, image_id: str, tag: str) -> requests.models.Response:
         if tag == "":
