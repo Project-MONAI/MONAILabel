@@ -57,7 +57,7 @@ The server starts in review mode and keeps standard datastore routes for binary 
 1. Open **3D Slicer**
 2. Go to **Edit > Application Settings > Modules**
 3. Click **Add**
-4. Navigate to `/workspace/MONAILabel/plugins/slicer/`
+4. Navigate to the repository's `plugins/slicer/` directory
 5. Select **MONAILabelReviewer** folder
 6. Click **OK**
 

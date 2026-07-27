@@ -27,14 +27,14 @@ class TestReviewerAppConfig(unittest.TestCase):
     def test_conf_mode_is_preserved_without_env_override(self):
         app = ReviewerApp.__new__(ReviewerApp)
         with patch.dict(os.environ, {}, clear=False):
-            config = app._load_review_config("/tmp/studies", {"mode": "standalone"})
+            config = app._load_review_config("/path/to/studies", {"mode": "standalone"})
 
         self.assertEqual(config["mode"], "standalone")
 
     def test_env_mode_overrides_configured_mode(self):
         app = ReviewerApp.__new__(ReviewerApp)
         with patch.dict(os.environ, {"MONAI_LABEL_REVIEW_MODE": "review"}, clear=False):
-            config = app._load_review_config("/tmp/studies", {"mode": "standalone"})
+            config = app._load_review_config("/path/to/studies", {"mode": "standalone"})
 
         self.assertEqual(config["mode"], "review")
 
