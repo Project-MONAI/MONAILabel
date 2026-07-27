@@ -154,19 +154,27 @@ def _report_stats(items: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _render_csv(items: List[Dict[str, Any]]) -> str:
+    def sanitize_csv_value(value: Any) -> str:
+        """Sanitize CSV values to prevent formula injection."""
+        text = str(value) if value else ""
+        # Prefix values that start with formula-like characters
+        if text and text[0] in ("=", "+", "-", "@"):
+            return "'" + text
+        return text
+
     handle = io.StringIO()
     writer = csv.writer(handle)
     writer.writerow(["image_id", "status", "level", "reviewer", "comment", "last_reviewed", "tag"])
     for item in items:
         writer.writerow(
             [
-                item.get("id", ""),
-                item.get("status", ""),
-                item.get("level", ""),
-                item.get("reviewer", ""),
-                item.get("comment", ""),
-                item.get("last_reviewed", ""),
-                item.get("tag", ""),
+                sanitize_csv_value(item.get("id", "")),
+                sanitize_csv_value(item.get("status", "")),
+                sanitize_csv_value(item.get("level", "")),
+                sanitize_csv_value(item.get("reviewer", "")),
+                sanitize_csv_value(item.get("comment", "")),
+                sanitize_csv_value(item.get("last_reviewed", "")),
+                sanitize_csv_value(item.get("tag", "")),
             ]
         )
     return handle.getvalue()

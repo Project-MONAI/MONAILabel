@@ -181,7 +181,7 @@ Response:
 PUT /datastore/label/info?label=CT_abdomen_001&tag=final
 Content-Type: application/x-www-form-urlencoded
 
-approvals={"status":"approved","level":"medium","comment":"Good segmentation","reviewer_name":"Dr. John Smith"}
+info={"status":"approved","level":"medium","comment":"Good segmentation","reviewer_name":"Dr. John Smith"}
 ```
 
 #### Download Label (with Version Tag)
@@ -207,7 +207,7 @@ MONAI_LABEL_REVIEWER_EMAIL=dr.smith@example.com
 MONAI_LABEL_REVIEW_MAX_HISTORY=10
 
 # Mode
-MONAI_LABEL_REVIEW_ENABLED=true
+MONAI_LABEL_REVIEW_MODE=review
 ```
 
 ### Example Config File

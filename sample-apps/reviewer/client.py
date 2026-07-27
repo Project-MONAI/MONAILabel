@@ -146,7 +146,7 @@ class LightweightReviewClient:
             logger.error(f"Error downloading image {image_id}: {e}")
             return None
 
-    def download_label(self, label_id: str, tag: str = "final") -> Dict[str, Any]:
+    def download_label(self, label_id: str, tag: str = "final") -> Optional[bytes]:
         """
         Download segmentation label or mask.
 
@@ -155,13 +155,7 @@ class LightweightReviewClient:
         - tag: Label version/tag (default: final)
 
         Returns:
-        {
-            "status": "success",
-            "label_id": "label_001",
-            "tag": "final",
-            "data": {binary representation},
-            "metadata": {...}
-        }
+        Binary content (NIfTI/NRRD data) or None if not found
         """
         try:
             response = requests.get(
@@ -169,9 +163,8 @@ class LightweightReviewClient:
             )
 
             if response.status_code == 200:
-                data = response.json()
                 logger.debug(f"Downloaded label: {label_id} (tag={tag})")
-                return data
+                return response.content
             else:
                 logger.warning(f"Label {label_id} (tag={tag}) not found: {response.status_code}")
                 return None
@@ -256,6 +249,7 @@ class LightweightReviewClient:
                 params={"label": label_id, "tag": "final"},
                 data=payload,
                 headers=self.headers,
+                timeout=self.timeout,
             )
 
             if response.status_code == 200:
@@ -311,6 +305,7 @@ class LightweightReviewClient:
                     data={"params": params_payload},
                     files=files,
                     headers={"Accept": "application/json"},
+                    timeout=self.timeout,
                 )
 
                 if response.status_code == 200:
@@ -413,4 +408,4 @@ def create_client(server_url: Optional[str] = None) -> LightweightReviewClient:
     Returns:
     LightweightReviewClient instance
     """
-    return LightweightReviewClient(server_url=server_url)
+    return LightweightReviewClient(server_url=server_url or "http://localhost:8000")

@@ -493,7 +493,7 @@ class LocalDatastore(Datastore):
         if not obj:
             raise ImageNotFoundException(f"Image {image_id} not found")
 
-        _, label_ext = self._to_id(os.path.basename(label_filename))
+        _, label_ext = self._to_label_id(os.path.basename(label_filename))
         label_id = image_id
 
         logger.info(f"Adding Label: {image_id} => {label_tag} => {label_filename}")
@@ -549,6 +549,11 @@ class LocalDatastore(Datastore):
         label = self._datastore.label(label_id, label_tag)
         if not label:
             raise LabelNotFoundException(f"Label: {label_id} Tag: {label_tag} not found")
+
+        # Populate last_reviewed timestamp if not already provided
+        if "last_reviewed" not in info:
+            # Preserve existing timestamp or use label's ts as fallback
+            info["last_reviewed"] = label.info.get("last_reviewed") or label.ts
 
         label.info.update(info)
         self._update_datastore_file()
