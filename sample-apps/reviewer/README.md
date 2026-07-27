@@ -57,7 +57,7 @@ The server starts in review mode and keeps standard datastore routes for binary 
 1. Open **3D Slicer**
 2. Go to **Edit > Application Settings > Modules**
 3. Click **Add**
-4. Navigate to `/workspace/MONAILabel/plugins/slicer/`
+4. Navigate to the repository's `plugins/slicer/` directory
 5. Select **MONAILabelReviewer** folder
 6. Click **OK**
 
@@ -181,7 +181,7 @@ Response:
 PUT /datastore/label/info?label=CT_abdomen_001&tag=final
 Content-Type: application/x-www-form-urlencoded
 
-approvals={"status":"approved","level":"medium","comment":"Good segmentation","reviewer_name":"Dr. John Smith"}
+info={"status":"approved","level":"medium","comment":"Good segmentation","reviewer_name":"Dr. John Smith"}
 ```
 
 #### Download Label (with Version Tag)
@@ -207,7 +207,7 @@ MONAI_LABEL_REVIEWER_EMAIL=dr.smith@example.com
 MONAI_LABEL_REVIEW_MAX_HISTORY=10
 
 # Mode
-MONAI_LABEL_REVIEW_ENABLED=true
+MONAI_LABEL_REVIEW_MODE=review
 ```
 
 ### Example Config File

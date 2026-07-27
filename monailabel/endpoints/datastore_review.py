@@ -246,13 +246,13 @@ def _render_csv(items: List[Dict[str, Any]]) -> str:
     for item in items:
         writer.writerow(
             [
-                item.get("id", ""),
-                item.get("status", ""),
-                item.get("level", ""),
-                item.get("reviewer", ""),
-                item.get("comment", ""),
-                item.get("last_reviewed", ""),
-                item.get("tag", ""),
+                sanitize_csv_value(item.get("id", "")),
+                sanitize_csv_value(item.get("status", "")),
+                sanitize_csv_value(item.get("level", "")),
+                sanitize_csv_value(item.get("reviewer", "")),
+                sanitize_csv_value(item.get("comment", "")),
+                sanitize_csv_value(item.get("last_reviewed", "")),
+                sanitize_csv_value(item.get("tag", "")),
             ]
         )
     return handle.getvalue()

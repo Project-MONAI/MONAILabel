@@ -91,7 +91,7 @@ class ReviewerApp(MONAILabelApp):
         config["studies"] = config["studies"] or os.environ.get("MONAI_LABEL_STUDIES", "")
         config["reviewer_name"] = config["reviewer_name"] or os.environ.get("MONAI_LABEL_REVIEWER_NAME", "Reviewer")
         config["reviewer_email"] = config["reviewer_email"] or os.environ.get("MONAI_LABEL_REVIEWER_EMAIL", "")
-        config["mode"] = os.environ.get("MONAI_LABEL_REVIEW_MODE", "review")
+        config["mode"] = os.environ.get("MONAI_LABEL_REVIEW_MODE", config["mode"])
 
         return config
 

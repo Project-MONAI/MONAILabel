@@ -20,6 +20,7 @@ import shutil
 import tempfile
 import time
 import zipfile
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from filelock import FileLock
@@ -519,7 +520,7 @@ class LocalDatastore(Datastore):
         if not obj:
             raise ImageNotFoundException(f"Image {image_id} not found")
 
-        _, label_ext = self._to_id(os.path.basename(label_filename))
+        _, label_ext = self._to_label_id(os.path.basename(label_filename))
         label_id = image_id
 
         logger.info(f"Adding Label: {image_id} => {label_tag} => {label_filename}")
@@ -571,10 +572,31 @@ class LocalDatastore(Datastore):
         :param label_id: the id of the label we want to add/update info
         :param label_tag: the matching label tag
         :param info: a dictionary of custom label information Dict[str, Any]
+
+        The `last_reviewed` field is preserved if the caller already provides one,
+        otherwise we keep the existing value when present. For older reviewer
+        metadata that predates `last_reviewed`, we fall back to the label's
+        existing `ts` only when the label already carries review metadata;
+        otherwise we stamp the current server-side update time.
         """
         label = self._datastore.label(label_id, label_tag)
         if not label:
             raise LabelNotFoundException(f"Label: {label_id} Tag: {label_tag} not found")
+
+        info = dict(info) if info else {}
+        if not info.get("last_reviewed"):
+            existing_last_reviewed = label.info.get("last_reviewed")
+            if existing_last_reviewed:
+                info["last_reviewed"] = existing_last_reviewed
+            else:
+                has_existing_review_metadata = any(
+                    label.info.get(field) for field in ("status", "level", "comment", "reviewer", "reviewer_name")
+                )
+                existing_ts = label.info.get("ts")
+                if has_existing_review_metadata and isinstance(existing_ts, (int, float)):
+                    info["last_reviewed"] = datetime.fromtimestamp(existing_ts).isoformat()
+                else:
+                    info["last_reviewed"] = datetime.now().isoformat()
 
         label.info.update(info)
         self._update_datastore_file()
