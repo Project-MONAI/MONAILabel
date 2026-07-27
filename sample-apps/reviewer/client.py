@@ -46,7 +46,7 @@ class LightweightReviewClient:
     - Segmentation tasks
     """
 
-    def __init__(self, server_url: str = "http://localhost:8000", timeout: int = 30):
+    def __init__(self, server_url: Optional[str] = None, timeout: int = 30):
         """
         Initialize lightweight review client.
 
@@ -54,7 +54,8 @@ class LightweightReviewClient:
         - server_url: MONAI Label server URL
         - timeout: Request timeout in seconds
         """
-        self.server_url = server_url.rstrip("/")
+        resolved_server_url = server_url or "http://localhost:8000"
+        self.server_url = resolved_server_url.rstrip("/")
         self.timeout = timeout
         self.headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
 
@@ -146,7 +147,11 @@ class LightweightReviewClient:
             logger.error(f"Error downloading image {image_id}: {e}")
             return None
 
-    def download_label(self, label_id: str, tag: str = "final") -> Optional[bytes]:
+    def download_label(
+        self,
+        label_id: str,
+        tag: str = "final"
+    ) -> Optional[bytes]:
         """
         Download segmentation label or mask.
 
@@ -155,7 +160,7 @@ class LightweightReviewClient:
         - tag: Label version/tag (default: final)
 
         Returns:
-        Binary content (NIfTI/NRRD data) or None if not found
+        Binary label file bytes in original format
         """
         try:
             response = requests.get(

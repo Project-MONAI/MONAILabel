@@ -1713,19 +1713,16 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         return destination
 
     def getPathToStore(self, segmentationFileName: str, tempDirectory: str) -> str:
-        """
-        Construct a safe path within tempDirectory, rejecting path traversal attempts.
-        """
-        import os.path
-        # Normalize and get basename to remove any path components
-        safe_name = os.path.basename(os.path.normpath(segmentationFileName))
-        # Reject empty names or names that are still suspicious
-        if not safe_name or safe_name in (".", "..") or os.path.isabs(safe_name):
-            raise ValueError(f"Invalid filename: {segmentationFileName}")
-        destination = os.path.join(tempDirectory, safe_name)
-        # Verify the resolved path is within tempDirectory
-        if not os.path.abspath(destination).startswith(os.path.abspath(tempDirectory) + os.sep):
-            raise ValueError(f"Path traversal attempt detected: {segmentationFileName}")
+        temp_root = os.path.realpath(tempDirectory)
+        normalized_name = os.path.normpath(segmentationFileName.replace("\\", "/"))
+        safe_name = os.path.basename(normalized_name)
+
+        if safe_name in ("", ".", ".."):
+            raise ValueError(f"Invalid temporary file name: {segmentationFileName}")
+
+        destination = os.path.realpath(os.path.join(temp_root, safe_name))
+        if os.path.commonpath([temp_root, destination]) != temp_root:
+            raise ValueError(f"Resolved path escapes temporary directory: {segmentationFileName}")
         return destination
 
     def displaySegmention(self, destination: str):
