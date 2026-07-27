@@ -176,10 +176,7 @@ def _render_html(stats: Dict[str, Any]) -> str:
     total = stats["total"] or 1
 
     def row(name: str, value: int) -> str:
-        return (
-            f"<tr><td>{escape(name)}</td><td>{value}</td>"
-            f"<td>{(100.0 * value / total):.1f}%</td></tr>"
-        )
+        return f"<tr><td>{escape(name)}</td><td>{value}</td>" f"<td>{(100.0 * value / total):.1f}%</td></tr>"
 
     return (
         "<html><head><title>MONAILabel Review Report</title></head><body>"

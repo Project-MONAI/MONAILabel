@@ -56,10 +56,7 @@ class LightweightReviewClient:
         """
         self.server_url = server_url.rstrip("/")
         self.timeout = timeout
-        self.headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json"
-        }
+        self.headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
 
         # Verify server connectivity
         self.ping()
@@ -69,10 +66,7 @@ class LightweightReviewClient:
     def ping(self) -> bool:
         """Check if server is reachable."""
         try:
-            response = requests.get(
-                f"{self.server_url}",
-                timeout=5
-            )
+            response = requests.get(f"{self.server_url}", timeout=5)
             status = response.status_code == 200
             if status:
                 logger.info(f"✓ Connected to server: {self.server_url}")
@@ -83,12 +77,7 @@ class LightweightReviewClient:
             logger.warning(f"✗ Cannot connect to server: {e}")
             return False
 
-    def list_images(
-        self,
-        offset: int = 0,
-        limit: int = 100,
-        status_filter: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def list_images(self, offset: int = 0, limit: int = 100, status_filter: Optional[str] = None) -> Dict[str, Any]:
         """
         List all images available for review.
 
@@ -110,18 +99,12 @@ class LightweightReviewClient:
         }
         """
         try:
-            params = {
-                "limit": str(limit),
-                "offset": str(offset)
-            }
+            params = {"limit": str(limit), "offset": str(offset)}
             if status_filter:
                 params["status_filter"] = status_filter
 
             response = requests.get(
-                f"{self.server_url}/review/cases",
-                params=params,
-                timeout=self.timeout,
-                headers=self.headers
+                f"{self.server_url}/review/cases", params=params, timeout=self.timeout, headers=self.headers
             )
 
             if response.status_code == 200:
@@ -148,9 +131,7 @@ class LightweightReviewClient:
         """
         try:
             response = requests.get(
-                f"{self.server_url}/datastore/image",
-                params={"image": image_id},
-                timeout=self.timeout
+                f"{self.server_url}/datastore/image", params={"image": image_id}, timeout=self.timeout
             )
 
             if response.status_code == 200:
@@ -165,11 +146,7 @@ class LightweightReviewClient:
             logger.error(f"Error downloading image {image_id}: {e}")
             return None
 
-    def download_label(
-        self,
-        label_id: str,
-        tag: str = "final"
-    ) -> Dict[str, Any]:
+    def download_label(self, label_id: str, tag: str = "final") -> Dict[str, Any]:
         """
         Download segmentation label or mask.
 
@@ -188,9 +165,7 @@ class LightweightReviewClient:
         """
         try:
             response = requests.get(
-                f"{self.server_url}/datastore/label",
-                params={"label": label_id, "tag": tag},
-                timeout=self.timeout
+                f"{self.server_url}/datastore/label", params={"label": label_id, "tag": tag}, timeout=self.timeout
             )
 
             if response.status_code == 200:
@@ -223,7 +198,7 @@ class LightweightReviewClient:
             response = requests.get(
                 f"{self.server_url}/datastore/label/info",
                 params={"label": label_id, "tag": "final"},
-                timeout=self.timeout
+                timeout=self.timeout,
             )
 
             if response.status_code == 200:
@@ -245,7 +220,7 @@ class LightweightReviewClient:
         comment: Optional[str] = None,
         reviewer_name: Optional[str] = None,
         reviewer_email: Optional[str] = None,
-        workflow_id: Optional[str] = None
+        workflow_id: Optional[str] = None,
     ) -> bool:
         """
         Update label metadata for review.
@@ -263,11 +238,7 @@ class LightweightReviewClient:
         True on success, False on failure
         """
         try:
-            review_info = {
-                "status": status,
-                "reviewer_name": reviewer_name,
-                "workflow_id": workflow_id
-            }
+            review_info = {"status": status, "reviewer_name": reviewer_name, "workflow_id": workflow_id}
 
             if level:
                 review_info["level"] = level
@@ -284,7 +255,7 @@ class LightweightReviewClient:
                 f"{self.server_url}/datastore/label/info",
                 params={"label": label_id, "tag": "final"},
                 data=payload,
-                headers=self.headers
+                headers=self.headers,
             )
 
             if response.status_code == 200:
@@ -305,7 +276,7 @@ class LightweightReviewClient:
         tag: str = "final",
         reviewer_name: str = "Reviewer",
         comment: Optional[str] = None,
-        version_note: Optional[str] = None
+        version_note: Optional[str] = None,
     ) -> bool:
         """
         Save a new or updated segmentation label.
@@ -323,9 +294,7 @@ class LightweightReviewClient:
         """
         try:
             # Prepare approvals data
-            approvals = {
-                "reviewer_name": reviewer_name
-            }
+            approvals = {"reviewer_name": reviewer_name}
             if comment:
                 approvals["comment"] = comment
             if version_note:
@@ -338,13 +307,10 @@ class LightweightReviewClient:
 
                 response = requests.put(
                     f"{self.server_url}/datastore/label",
-                    params={
-                        "image": image_id,
-                        "tag": tag
-                    },
+                    params={"image": image_id, "tag": tag},
                     data={"params": params_payload},
                     files=files,
-                    headers={"Accept": "application/json"}
+                    headers={"Accept": "application/json"},
                 )
 
                 if response.status_code == 200:
@@ -377,7 +343,7 @@ class LightweightReviewClient:
                 f"{self.server_url}/review/versions",
                 params={"image": image_id},
                 timeout=self.timeout,
-                headers=self.headers
+                headers=self.headers,
             )
 
             if response.status_code == 200:
@@ -405,7 +371,7 @@ class LightweightReviewClient:
                 f"{self.server_url}/review/report",
                 params={"fmt": fmt, "reviewer": reviewer},
                 timeout=self.timeout,
-                headers=self.headers
+                headers=self.headers,
             )
 
             if response.status_code == 200:
@@ -425,11 +391,7 @@ class LightweightReviewClient:
         Server info including configuration
         """
         try:
-            response = requests.get(
-                f"{self.server_url}",
-                timeout=5,
-                headers=self.headers
-            )
+            response = requests.get(f"{self.server_url}", timeout=5, headers=self.headers)
 
             if response.status_code == 200:
                 return response.json()

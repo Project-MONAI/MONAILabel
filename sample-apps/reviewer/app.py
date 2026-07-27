@@ -73,26 +73,14 @@ class ReviewerApp(MONAILabelApp):
             "studies": studies or conf_dict.get("studies") or conf_dict.get("datastore"),
             "reviewer_name": conf_dict.get("reviewer_name"),
             "reviewer_email": conf_dict.get("reviewer_email"),
-            "mode": conf_dict.get("mode", "review")
+            "mode": conf_dict.get("mode", "review"),
         }
 
         # Override with environment variables
-        config["server_url"] = (
-            config["server_url"] or
-            os.environ.get("MONAI_LABEL_SERVER", "http://localhost:8000")
-        )
-        config["studies"] = (
-            config["studies"] or
-            os.environ.get("MONAI_LABEL_STUDIES", "")
-        )
-        config["reviewer_name"] = (
-            config["reviewer_name"] or
-            os.environ.get("MONAI_LABEL_REVIEWER_NAME", "Reviewer")
-        )
-        config["reviewer_email"] = (
-            config["reviewer_email"] or
-            os.environ.get("MONAI_LABEL_REVIEWER_EMAIL", "")
-        )
+        config["server_url"] = config["server_url"] or os.environ.get("MONAI_LABEL_SERVER", "http://localhost:8000")
+        config["studies"] = config["studies"] or os.environ.get("MONAI_LABEL_STUDIES", "")
+        config["reviewer_name"] = config["reviewer_name"] or os.environ.get("MONAI_LABEL_REVIEWER_NAME", "Reviewer")
+        config["reviewer_email"] = config["reviewer_email"] or os.environ.get("MONAI_LABEL_REVIEWER_EMAIL", "")
         config["mode"] = os.environ.get("MONAI_LABEL_REVIEW_MODE", "review")
 
         return config
@@ -142,10 +130,4 @@ class ReviewerApp(MONAILabelApp):
 
     def allowed_keys(self) -> list:
         """Get allowed configuration keys."""
-        return [
-            "server_url",
-            "studies",
-            "reviewer_name",
-            "reviewer_email",
-            "mode"
-        ]
+        return ["server_url", "studies", "reviewer_name", "reviewer_email", "mode"]

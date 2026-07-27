@@ -30,7 +30,7 @@ class ReviewConfig:
         cache_dir: Optional[str] = None,
         reviewer_name: Optional[str] = None,
         reviewer_email: Optional[str] = None,
-        mode: str = "review"
+        mode: str = "review",
     ):
         """
         Initialize reviewer configuration.
@@ -111,7 +111,7 @@ class ReviewConfig:
             "max_history": self.max_history,
             "cache_timeout": self.cache_timeout,
             "server_mode": self.server_mode,
-            "auto_sync": self.auto_sync
+            "auto_sync": self.auto_sync,
         }
 
 
