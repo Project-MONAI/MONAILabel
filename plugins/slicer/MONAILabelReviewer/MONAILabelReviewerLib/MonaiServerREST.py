@@ -27,7 +27,7 @@ class MonaiServerREST:
     def __init__(self, serverUrl: str):
         """
         Initialize the REST client with a normalized server URL.
-        
+
         Parameters:
             serverUrl (str): Base URL of the MONAI server. Trailing slashes are removed when provided.
         """
@@ -36,9 +36,9 @@ class MonaiServerREST:
 
     def getServerUrl(self) -> str:
         """Return the configured MONAI server URL.
-        
+
         Returns:
-        	str: The server URL.
+                str: The server URL.
         """
         return self.serverUrl
 
@@ -65,10 +65,10 @@ class MonaiServerREST:
 
     def getDicomDownloadUri(self, image_id: str) -> str:
         """Build the download URI for a DICOM image.
-        
+
         Parameters:
             image_id (str): Identifier of the image to retrieve.
-        
+
         Returns:
             str: The encoded DICOM image download URI.
         """
@@ -79,10 +79,10 @@ class MonaiServerREST:
     def requestImage(self, image_id: str) -> requests.models.Response:
         """
         Request an image from the MONAI server.
-        
+
         Parameters:
             image_id (str): Identifier of the image to request.
-        
+
         Returns:
             requests.models.Response: The successful image response, or None if the request fails or returns a non-200 status.
         """
@@ -111,11 +111,11 @@ class MonaiServerREST:
     def requestSegmentation(self, image_id: str, tag: str) -> requests.models.Response:
         """
         Request a segmentation for an image using the specified version tag.
-        
+
         Parameters:
             image_id (str): Identifier of the image whose segmentation is requested.
             tag (str): Segmentation version tag; an empty string uses the ``final`` tag.
-        
+
         Returns:
             requests.models.Response: The successful HTTP response, or ``None`` if the request fails or returns a non-200 status code.
         """

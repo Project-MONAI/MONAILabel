@@ -49,10 +49,10 @@ class LightweightReviewClient:
     def __init__(self, server_url: str = "http://localhost:8000", timeout: int = 30):
         """
         Initialize a review client for the specified MONAI Label server.
-        
+
         Parameters:
-        	server_url (str): MONAI Label server URL.
-        	timeout (int): Request timeout in seconds.
+                server_url (str): MONAI Label server URL.
+                timeout (int): Request timeout in seconds.
         """
         self.server_url = server_url.rstrip("/")
         self.timeout = timeout
@@ -66,7 +66,7 @@ class LightweightReviewClient:
     def ping(self) -> bool:
         """
         Check whether the server responds successfully.
-        
+
         Returns:
             bool: `True` if the server responds with HTTP status 200, `False` otherwise.
         """
@@ -85,12 +85,12 @@ class LightweightReviewClient:
     def list_images(self, offset: int = 0, limit: int = 100, status_filter: Optional[str] = None) -> Dict[str, Any]:
         """
         List reviewable images with optional pagination and status filtering.
-        
+
         Parameters:
             offset (int): Number of images to skip.
             limit (int): Maximum number of images to return.
             status_filter (Optional[str]): Status by which to filter images.
-        
+
         Returns:
             Dict[str, Any]: Review case data on success, or an error dictionary if the request fails.
         """
@@ -118,10 +118,10 @@ class LightweightReviewClient:
     def download_image(self, image_id: str) -> bytes:
         """
         Download the image data identified by `image_id`.
-        
+
         Parameters:
             image_id (str): Unique identifier of the image.
-        
+
         Returns:
             bytes: Image data in its original format, or `None` if the download fails.
         """
@@ -145,11 +145,11 @@ class LightweightReviewClient:
     def download_label(self, label_id: str, tag: str = "final") -> Dict[str, Any]:
         """
         Download a segmentation label for the specified version.
-        
+
         Parameters:
             label_id (str): Identifier of the label to download.
             tag (str): Version or tag of the label.
-        
+
         Returns:
             Dict[str, Any] or None: The decoded label data, or None if the request fails.
         """
@@ -173,10 +173,10 @@ class LightweightReviewClient:
     def download_labelinfo(self, label_id: str) -> Dict[str, Any]:
         """
         Download metadata for a label using its final version.
-        
+
         Parameters:
             label_id (str): Identifier of the label whose metadata to retrieve.
-        
+
         Returns:
             Dict[str, Any] | None: The label metadata, or None if the request fails.
         """
@@ -210,7 +210,7 @@ class LightweightReviewClient:
     ) -> bool:
         """
         Update review metadata for a label.
-        
+
         Parameters:
             label_id (str): Label or segmentation identifier.
             status (str): Review status to assign.
@@ -219,7 +219,7 @@ class LightweightReviewClient:
             reviewer_name (Optional[str]): Name of the reviewer.
             reviewer_email (Optional[str]): Email address of the reviewer.
             workflow_id (Optional[str]): Workflow identifier.
-        
+
         Returns:
             bool: True if the metadata update succeeds; False otherwise.
         """
@@ -266,7 +266,7 @@ class LightweightReviewClient:
     ) -> bool:
         """
         Upload a segmentation label for an image.
-        
+
         Parameters:
             image_id (str): Identifier of the image associated with the label.
             label_file (Path): Path to the label file to upload.
@@ -274,7 +274,7 @@ class LightweightReviewClient:
             reviewer_name (str): Name of the reviewer submitting the label.
             comment (Optional[str]): Comment associated with the label.
             version_note (Optional[str]): Note describing the label version.
-        
+
         Returns:
             bool: True if the label is saved successfully, False otherwise.
         """
@@ -313,10 +313,10 @@ class LightweightReviewClient:
     def get_versions(self, image_id: str) -> Dict[str, Any]:
         """
         List the available label versions for an image.
-        
+
         Parameters:
             image_id (str): Identifier of the image whose label versions to retrieve.
-        
+
         Returns:
             Dict[str, Any]: Version information on success, or an error dictionary if the request fails.
         """
@@ -340,11 +340,11 @@ class LightweightReviewClient:
     def generate_report(self, fmt: str = "json", reviewer: str = None) -> Dict[str, Any]:
         """
         Generate a review summary report, optionally filtered by reviewer.
-        
+
         Parameters:
             fmt (str): Requested report format, such as "json", "csv", or "html".
             reviewer (str): Optional reviewer name used to filter the report.
-        
+
         Returns:
             Dict[str, Any]: Report data on success, or an error dictionary when the request fails.
         """

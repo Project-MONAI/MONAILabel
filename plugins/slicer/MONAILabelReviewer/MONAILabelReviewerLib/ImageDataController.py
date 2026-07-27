@@ -236,10 +236,10 @@ class ImageDataController:
 
     def getDicomDownloadUri(self, image_id: str) -> str:
         """Return the download URI for an image's DICOM data.
-        
+
         Parameters:
             image_id (str): Identifier of the image.
-        
+
         Returns:
             str: DICOM download URI.
         """
@@ -248,10 +248,10 @@ class ImageDataController:
     def requestImage(self, image_id: str) -> requests.models.Response:
         """
         Request an image from the MONAI server.
-        
+
         Parameters:
             image_id (str): Identifier of the image to request.
-        
+
         Returns:
             requests.models.Response: The image response, or `None` if the request did not return data.
         """
@@ -267,7 +267,7 @@ class ImageDataController:
     def saveLabelInMonaiServer(self, image_in: str, label_in: str, tag: str, params: Dict):
         """
         Save a label and its metadata to the MONAI server.
-        
+
         Parameters:
             image_in (str): Identifier or path of the source image.
             label_in (str): Identifier or path of the label.

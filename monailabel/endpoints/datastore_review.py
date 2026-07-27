@@ -40,11 +40,11 @@ router = APIRouter(
 def _safe_label_info(datastore, image_id: str, tag: str) -> Dict[str, Any]:
     """
     Retrieve label metadata for an image and tag.
-    
+
     Parameters:
         image_id (str): Identifier of the image.
         tag (str): Label tag used to locate the metadata.
-    
+
     Returns:
         Dict[str, Any]: The label metadata when it is a dictionary; otherwise, an empty dictionary.
     """
@@ -61,15 +61,15 @@ def _safe_label_info(datastore, image_id: str, tag: str) -> Dict[str, Any]:
 def _parse_date_range(date_range: Optional[str]) -> Optional[Tuple[datetime, datetime]]:
     """
     Parse an optional comma-separated ISO timestamp range.
-    
+
     Parameters:
-    	date_range (Optional[str]): Range in the form ``start,end``.
-    
+        date_range (Optional[str]): Range in the form ``start,end``.
+
     Returns:
-    	Optional[Tuple[datetime, datetime]]: The parsed start and end timestamps, or ``None`` when no range is provided.
-    
+        Optional[Tuple[datetime, datetime]]: The parsed start and end timestamps, or ``None`` when no range is provided.
+
     Raises:
-    	HTTPException: If the range is incomplete or contains invalid ISO timestamps.
+        HTTPException: If the range is incomplete or contains invalid ISO timestamps.
     """
     if not date_range:
         return None
@@ -87,13 +87,13 @@ def _parse_date_range(date_range: Optional[str]) -> Optional[Tuple[datetime, dat
 def _matches_date_range(value: Optional[str], parsed: Optional[Tuple[datetime, datetime]]) -> bool:
     """
     Determine whether a timestamp falls within an optional inclusive date range.
-    
+
     Parameters:
-    	value (Optional[str]): ISO-formatted timestamp to evaluate.
-    	parsed (Optional[Tuple[datetime, datetime]]): Inclusive start and end timestamps, or `None` to disable filtering.
-    
+        value (Optional[str]): ISO-formatted timestamp to evaluate.
+        parsed (Optional[Tuple[datetime, datetime]]): Inclusive start and end timestamps, or `None` to disable filtering.
+
     Returns:
-    	bool: `true` if filtering is disabled or the timestamp falls within the range, `false` otherwise.
+        bool: `true` if filtering is disabled or the timestamp falls within the range, `false` otherwise.
     """
     if not parsed:
         return True
@@ -112,12 +112,12 @@ def _matches_date_range(value: Optional[str], parsed: Optional[Tuple[datetime, d
 def _review_case(datastore, image_id: str, tag: str) -> Dict[str, Any]:
     """
     Build a review record containing image metadata, review details, and label status.
-    
+
     Parameters:
         datastore: Datastore used to retrieve image, label, and review information.
         image_id (str): Identifier of the image.
         tag (str): Label tag associated with the review.
-    
+
     Returns:
         Dict[str, Any]: Review record with derived status, reviewer information, and label presence.
     """
@@ -153,19 +153,19 @@ def _list_review_cases(
 ) -> List[Dict[str, Any]]:
     """
     Collect review cases that match the specified status, image, reviewer, date, and label tag filters.
-    
+
     Parameters:
-    	status_filter (Optional[str]): Review status to match.
-    	search (Optional[str]): Comma-separated image IDs to include.
-    	reviewer (Optional[str]): Reviewer name to match.
-    	date_range (Optional[str]): ISO timestamp range in the format ``start,end``.
-    	tag (str): Label tag used to build each review case.
-    
+        status_filter (Optional[str]): Review status to match.
+        search (Optional[str]): Comma-separated image IDs to include.
+        reviewer (Optional[str]): Reviewer name to match.
+        date_range (Optional[str]): ISO timestamp range in the format ``start,end``.
+        tag (str): Label tag used to build each review case.
+
     Returns:
-    	List[Dict[str, Any]]: Review cases that satisfy all provided filters.
-    
+        List[Dict[str, Any]]: Review cases that satisfy all provided filters.
+
     Raises:
-    	HTTPException: If ``date_range`` is not a valid ISO timestamp range.
+        HTTPException: If ``date_range`` is not a valid ISO timestamp range.
     """
     datastore = app_instance().datastore()
     image_ids = datastore.list_images()
@@ -195,12 +195,12 @@ def _list_review_cases(
 def _summary(items: List[Dict[str, Any]]) -> Dict[str, int]:
     """
     Count review cases by overall total and status.
-    
+
     Parameters:
-    	items (List[Dict[str, Any]]): Review case records containing a status field.
-    
+        items (List[Dict[str, Any]]): Review case records containing a status field.
+
     Returns:
-    	Dict[str, int]: Counts for total, approved, flagged, pending, and unlabeled cases.
+        Dict[str, int]: Counts for total, approved, flagged, pending, and unlabeled cases.
     """
     return {
         "total": len(items),
@@ -214,10 +214,10 @@ def _summary(items: List[Dict[str, Any]]) -> Dict[str, int]:
 def _report_stats(items: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Summarize review cases by status and difficulty level.
-    
+
     Parameters:
         items (List[Dict[str, Any]]): Review case records to summarize.
-    
+
     Returns:
         Dict[str, Any]: Status and difficulty counts with the current recording timestamp.
     """
@@ -233,12 +233,12 @@ def _report_stats(items: List[Dict[str, Any]]) -> Dict[str, Any]:
 def _render_csv(items: List[Dict[str, Any]]) -> str:
     """
     Render review case records as CSV text.
-    
+
     Parameters:
-    	items (List[Dict[str, Any]]): Review case records to include in the CSV output.
-    
+        items (List[Dict[str, Any]]): Review case records to include in the CSV output.
+
     Returns:
-    	str: CSV text containing a header row and one row for each review case.
+        str: CSV text containing a header row and one row for each review case.
     """
     handle = io.StringIO()
     writer = csv.writer(handle)
@@ -261,10 +261,10 @@ def _render_csv(items: List[Dict[str, Any]]) -> str:
 def _render_html(stats: Dict[str, Any]) -> str:
     """
     Render review statistics as an HTML report.
-    
+
     Parameters:
         stats (Dict[str, Any]): Statistics and generation timestamp to include in the report.
-    
+
     Returns:
         str: An HTML document containing review status and difficulty counts with percentages.
     """
@@ -272,13 +272,13 @@ def _render_html(stats: Dict[str, Any]) -> str:
 
     def row(name: str, value: int) -> str:
         """Render an HTML table row containing a label, count, and percentage of the total.
-        
+
         Parameters:
-        	name (str): The label displayed in the row.
-        	value (int): The count used to calculate the percentage.
-        
+                name (str): The label displayed in the row.
+                value (int): The count used to calculate the percentage.
+
         Returns:
-        	str: An escaped HTML table row with the label, count, and percentage.
+                str: An escaped HTML table row with the label, count, and percentage.
         """
         return f"<tr><td>{escape(name)}</td><td>{value}</td>" f"<td>{(100.0 * value / total):.1f}%</td></tr>"
 
@@ -313,7 +313,7 @@ async def api_review_cases(
 ):
     """
     List filtered review cases with pagination and aggregate status counts.
-    
+
     Parameters:
         offset (int): Number of matching cases to skip.
         limit (int): Maximum number of cases to include in the results.
@@ -322,7 +322,7 @@ async def api_review_cases(
         reviewer (Optional[str]): Reviewer name used to filter cases.
         date_range (Optional[str]): ISO timestamp range in the format ``start,end``.
         tag (str): Label tag used to build the review cases.
-    
+
     Returns:
         Dict[str, Any]: A response containing summary counts, paginated results, and filter metadata.
     """
@@ -349,13 +349,13 @@ async def api_review_versions(
 ):
     """
     Retrieve the available label versions for an image.
-    
+
     Parameters:
         image (str): Identifier of the image whose label versions are requested.
-    
+
     Returns:
         dict: A success response containing the image identifier and version metadata.
-    
+
     Raises:
         HTTPException: If no labels are found for the image.
     """
@@ -391,17 +391,17 @@ async def api_review_report(
 ):
     """
     Generate a review report in JSON, CSV, or HTML format.
-    
+
     Parameters:
         fmt (str): Output format: `"json"`, `"csv"`, or `"html"`.
         reviewer (Optional[str]): Limits results to a specific reviewer.
         date_range (Optional[str]): ISO timestamp range in `start,end` format.
         tag (str): Label tag used to select review cases.
-    
+
     Returns:
         dict: A formatted report containing review statistics and, for JSON output,
             the applied filters and matching review cases.
-    
+
     Raises:
         HTTPException: If `fmt` is not `"json"`, `"csv"`, or `"html"`.
     """

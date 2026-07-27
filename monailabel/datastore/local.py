@@ -219,10 +219,10 @@ class LocalDatastore(Datastore):
     def _to_id(self, file: str) -> Tuple[str, str]:
         """
         Derive an identifier and extension from a filename using the configured file extensions.
-        
+
         Parameters:
             file (str): Filename to parse.
-        
+
         Returns:
             Tuple[str, str]: The identifier and matched extension.
         """
@@ -236,10 +236,10 @@ class LocalDatastore(Datastore):
 
     def _to_label_id(self, file: str) -> Tuple[str, str]:
         """Convert a label filename to its identifier and extension.
-        
+
         Parameters:
             file (str): Label filename to parse.
-        
+
         Returns:
             Tuple[str, str]: The label identifier and file extension.
         """
@@ -249,11 +249,11 @@ class LocalDatastore(Datastore):
 
     def _filename(self, id: str, ext: str) -> str:
         """Construct a filename by concatenating an identifier with its extension.
-        
+
         Parameters:
             id (str): The file identifier.
             ext (str): The file extension.
-        
+
         Returns:
             str: The resulting filename.
         """
@@ -639,10 +639,10 @@ class LocalDatastore(Datastore):
     def _add_non_existing_labels(self, tag) -> int:
         """
         Add label metadata for label files that exist on disk but are missing from the datastore.
-        
+
         Parameters:
             tag (str): Label tag identifying the directory containing the label files.
-        
+
         Returns:
             int: Number of labels added to the datastore.
         """

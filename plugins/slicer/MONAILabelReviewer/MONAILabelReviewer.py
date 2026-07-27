@@ -442,12 +442,12 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     def normalizeServerUrl(self, serverUrl: str) -> str:
         """
         Normalize a server URL for consistent use by removing surrounding whitespace and trailing slashes.
-        
+
         Parameters:
-        	serverUrl (str): The server URL to normalize.
-        
+                serverUrl (str): The server URL to normalize.
+
         Returns:
-        	str: The normalized server URL, or an empty string when no URL is provided.
+                str: The normalized server URL, or an empty string when no URL is provided.
         """
         if not serverUrl:
             return ""
@@ -456,7 +456,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     def init_dicom_stream(self):
         """
         Connect to the configured MONAI Label server and initialize the reviewer interface.
-        
+
         The selected server URL is normalized before connection. Displays a warning and leaves
         the interface uninitialized when the connection fails.
         """
@@ -1513,7 +1513,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     def reloadImageAfterEditingLabel(self):
         """
         Reload the current image using its latest label version after an edit.
-        
+
         The image display and label version selector are refreshed to reflect the updated segmentation.
         """
         imageId = self.currentImageData.getFileName()
@@ -1525,8 +1525,8 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     def processDataStoreRecords(self):
         """
         Process datastore records and display a warning when processing fails.
-        
-        The selected server address is normalized for inclusion in failure messages. 
+
+        The selected server address is normalized for inclusion in failure messages.
         """
         serverUrl: str = self.normalizeServerUrl(self.ui.comboBox_server_url.currentText)
         result: bool = self.logic.initMetaDataProcessing()
@@ -1693,7 +1693,7 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
     def loadDicomAndSegmentation(self, imageData: ImageData, tag: str):
         """
         Load an image and, when available, its segmentation into the Slicer scene.
-        
+
         Parameters:
             imageData (ImageData): Image metadata used to retrieve the DICOM image and segmentation.
             tag (str): Version tag identifying the segmentation to load.
@@ -1742,23 +1742,23 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
     def displaySegmention(self, destination: str):
         """
         Display a segmentation file in the Slicer window.
-        
+
         Parameters:
-        	destination (str): Path to the segmentation file.
+                destination (str): Path to the segmentation file.
         """
         segmentation = slicer.util.loadSegmentation(destination)
 
     def requestDicomImage(self, image_id: str, image_name: str, node_name: str):
         """
         Download an image from the MONAI Label server and load it into Slicer.
-        
+
         Parameters:
-        	image_id (str): Identifier of the image to download.
-        	image_name (str): File name used for temporary storage.
-        	node_name (str): Name associated with the image node.
-        
+                image_id (str): Identifier of the image to download.
+                image_name (str): File name used for temporary storage.
+                node_name (str): Name associated with the image node.
+
         Raises:
-        	RuntimeError: If the server does not return the image.
+                RuntimeError: If the server does not return the image.
         """
         response = self.imageDataController.requestImage(image_id)
         if response is None:
@@ -1774,7 +1774,7 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
     def setTempFolderDir(self):
         """
         Create the temporary directory used to store downloaded segmentation files.
-        
+
         The directory is created only once and its path is logged.
         """
         if self.temp_dir is None:

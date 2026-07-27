@@ -34,7 +34,7 @@ class ReviewConfig:
     ):
         """
         Initialize reviewer configuration from arguments and environment variables.
-        
+
         Parameters:
             server_url (Optional[str]): URL of the MONAI Label server.
             cache_dir (Optional[str]): Directory used for review data caching.
@@ -92,7 +92,7 @@ class ReviewConfig:
     @property
     def server_mode(self) -> str:
         """Describe whether the reviewer operates in standalone or server-synchronized mode.
-        
+
         Returns:
             str: The current review mode description.
         """
@@ -104,7 +104,7 @@ class ReviewConfig:
     def dict(self) -> dict:
         """
         Export the review configuration and its derived operating settings.
-        
+
         Returns:
             dict: Configuration values including server details, reviewer identity,
             review mode, workspace settings, history and cache limits, server mode,
