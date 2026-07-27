@@ -48,11 +48,11 @@ class LightweightReviewClient:
 
     def __init__(self, server_url: str = "http://localhost:8000", timeout: int = 30):
         """
-        Initialize lightweight review client.
-
+        Initialize a review client for the specified MONAI Label server.
+        
         Parameters:
-        - server_url: MONAI Label server URL
-        - timeout: Request timeout in seconds
+        	server_url (str): MONAI Label server URL.
+        	timeout (int): Request timeout in seconds.
         """
         self.server_url = server_url.rstrip("/")
         self.timeout = timeout
@@ -64,7 +64,12 @@ class LightweightReviewClient:
         logger.info(f"ReviewClient initialized: {self.server_url}")
 
     def ping(self) -> bool:
-        """Check if server is reachable."""
+        """
+        Check whether the server responds successfully.
+        
+        Returns:
+            bool: `True` if the server responds with HTTP status 200, `False` otherwise.
+        """
         try:
             response = requests.get(f"{self.server_url}", timeout=5)
             status = response.status_code == 200
@@ -79,24 +84,15 @@ class LightweightReviewClient:
 
     def list_images(self, offset: int = 0, limit: int = 100, status_filter: Optional[str] = None) -> Dict[str, Any]:
         """
-        List all images available for review.
-
-        Query Parameters:
-        - offset: Pagination offset (default: 0)
-        - limit: Pagination limit (default: 100)
-        - status_filter: Filter by status (approved/flagged/unapproved)
-
+        List reviewable images with optional pagination and status filtering.
+        
+        Parameters:
+            offset (int): Number of images to skip.
+            limit (int): Maximum number of images to return.
+            status_filter (Optional[str]): Status by which to filter images.
+        
         Returns:
-        {
-            "summary": {
-                "total": 100,
-                "approved": 45,
-                "flagged": 5,
-                "pending": 50
-            },
-            "results": [...list of image metadata...],
-            "metadata": {...}
-        }
+            Dict[str, Any]: Review case data on success, or an error dictionary if the request fails.
         """
         try:
             params = {"limit": str(limit), "offset": str(offset)}
@@ -121,13 +117,13 @@ class LightweightReviewClient:
 
     def download_image(self, image_id: str) -> bytes:
         """
-        Download DICOM image data.
-
+        Download the image data identified by `image_id`.
+        
         Parameters:
-        - image_id: Unique identifier for the image
-
+            image_id (str): Unique identifier of the image.
+        
         Returns:
-        Image file bytes in original format
+            bytes: Image data in its original format, or `None` if the download fails.
         """
         try:
             response = requests.get(
@@ -148,20 +144,14 @@ class LightweightReviewClient:
 
     def download_label(self, label_id: str, tag: str = "final") -> Dict[str, Any]:
         """
-        Download segmentation label or mask.
-
+        Download a segmentation label for the specified version.
+        
         Parameters:
-        - label_id: Label/segmentation ID
-        - tag: Label version/tag (default: final)
-
+            label_id (str): Identifier of the label to download.
+            tag (str): Version or tag of the label.
+        
         Returns:
-        {
-            "status": "success",
-            "label_id": "label_001",
-            "tag": "final",
-            "data": {binary representation},
-            "metadata": {...}
-        }
+            Dict[str, Any] or None: The decoded label data, or None if the request fails.
         """
         try:
             response = requests.get(
@@ -182,17 +172,13 @@ class LightweightReviewClient:
 
     def download_labelinfo(self, label_id: str) -> Dict[str, Any]:
         """
-        Download label metadata.
-
+        Download metadata for a label using its final version.
+        
         Parameters:
-        - label_id: Label/segmentation ID
-
+            label_id (str): Identifier of the label whose metadata to retrieve.
+        
         Returns:
-        {
-            "status": "success",
-            "label_id": "label_001",
-            "info": {...metadata...}
-        }
+            Dict[str, Any] | None: The label metadata, or None if the request fails.
         """
         try:
             response = requests.get(
@@ -223,19 +209,19 @@ class LightweightReviewClient:
         workflow_id: Optional[str] = None,
     ) -> bool:
         """
-        Update label metadata for review.
-
+        Update review metadata for a label.
+        
         Parameters:
-        - label_id: Label/segmentation ID
-        - status: "approved" | "flagged" | "unapproved"
-        - level: "easy" | "medium" | "hard"
-        - comment: Review comment text
-        - reviewer_name: Name of reviewer
-        - reviewer_email: Email of reviewer
-        - workflow_id: Optional workflow identifier
-
+            label_id (str): Label or segmentation identifier.
+            status (str): Review status to assign.
+            level (Optional[str]): Review difficulty level.
+            comment (Optional[str]): Review comment.
+            reviewer_name (Optional[str]): Name of the reviewer.
+            reviewer_email (Optional[str]): Email address of the reviewer.
+            workflow_id (Optional[str]): Workflow identifier.
+        
         Returns:
-        True on success, False on failure
+            bool: True if the metadata update succeeds; False otherwise.
         """
         try:
             review_info = {"status": status, "reviewer_name": reviewer_name, "workflow_id": workflow_id}
@@ -279,18 +265,18 @@ class LightweightReviewClient:
         version_note: Optional[str] = None,
     ) -> bool:
         """
-        Save a new or updated segmentation label.
-
+        Upload a segmentation label for an image.
+        
         Parameters:
-        - image_id: Image ID
-        - label_file: Path to segmentation file
-        - tag: Label version/tag
-        - reviewer_name: Name of reviewer/saver
-        - comment: Optional comment about this version
-        - version_note: Reason for this version
-
+            image_id (str): Identifier of the image associated with the label.
+            label_file (Path): Path to the label file to upload.
+            tag (str): Version tag for the label.
+            reviewer_name (str): Name of the reviewer submitting the label.
+            comment (Optional[str]): Comment associated with the label.
+            version_note (Optional[str]): Note describing the label version.
+        
         Returns:
-        True on success, False on failure
+            bool: True if the label is saved successfully, False otherwise.
         """
         try:
             # Prepare approvals data
@@ -326,17 +312,13 @@ class LightweightReviewClient:
 
     def get_versions(self, image_id: str) -> Dict[str, Any]:
         """
-        List all available versions for an image.
-
+        List the available label versions for an image.
+        
         Parameters:
-        - image_id: Image ID
-
+            image_id (str): Identifier of the image whose label versions to retrieve.
+        
         Returns:
-        {
-            "status": "success",
-            "image_id": "CT_abdomen_001",
-            "versions": [...]
-        }
+            Dict[str, Any]: Version information on success, or an error dictionary if the request fails.
         """
         try:
             response = requests.get(
@@ -357,14 +339,14 @@ class LightweightReviewClient:
 
     def generate_report(self, fmt: str = "json", reviewer: str = None) -> Dict[str, Any]:
         """
-        Generate a review summary report.
-
+        Generate a review summary report, optionally filtered by reviewer.
+        
         Parameters:
-        - fmt: Report format ("json", "csv", "html")
-        - reviewer: Optional reviewer filter
-
+            fmt (str): Requested report format, such as "json", "csv", or "html".
+            reviewer (str): Optional reviewer name used to filter the report.
+        
         Returns:
-        Report data
+            Dict[str, Any]: Report data on success, or an error dictionary when the request fails.
         """
         try:
             response = requests.get(

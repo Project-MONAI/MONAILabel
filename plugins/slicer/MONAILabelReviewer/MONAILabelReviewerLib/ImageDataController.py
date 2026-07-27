@@ -235,9 +235,26 @@ class ImageDataController:
         return img_blob
 
     def getDicomDownloadUri(self, image_id: str) -> str:
+        """Return the download URI for an image's DICOM data.
+        
+        Parameters:
+            image_id (str): Identifier of the image.
+        
+        Returns:
+            str: DICOM download URI.
+        """
         return self.monaiServerREST.getDicomDownloadUri(image_id)
 
     def requestImage(self, image_id: str) -> requests.models.Response:
+        """
+        Request an image from the MONAI server.
+        
+        Parameters:
+            image_id (str): Identifier of the image to request.
+        
+        Returns:
+            requests.models.Response: The image response, or `None` if the request did not return data.
+        """
         img_blob = self.monaiServerREST.requestImage(image_id)
         if img_blob is not None:
             logging.info(
@@ -248,6 +265,15 @@ class ImageDataController:
         return img_blob
 
     def saveLabelInMonaiServer(self, image_in: str, label_in: str, tag: str, params: Dict):
+        """
+        Save a label and its metadata to the MONAI server.
+        
+        Parameters:
+            image_in (str): Identifier or path of the source image.
+            label_in (str): Identifier or path of the label.
+            tag (str): Version tag for the label.
+            params (Dict): Label metadata and update parameters.
+        """
         self.monaiServerREST.saveLabel(image_in, label_in, tag, params)
 
     def deleteLabelByVersionTag(self, imageId: str, versionTag: str) -> bool:

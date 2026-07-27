@@ -65,7 +65,17 @@ class ReviewerApp(MONAILabelApp):
         logger.info(f"Studies: {self.review_config['studies']}")
 
     def _load_review_config(self, studies: str, conf: Dict) -> Dict[str, Any]:
-        """Load review-specific configuration."""
+        """
+        Load review configuration from supplied values and environment variables.
+        
+        Parameters:
+            studies (str): Path or identifier for the studies datastore.
+            conf (Dict): Optional configuration values.
+        
+        Returns:
+            Dict[str, Any]: Resolved review configuration, including server, datastore,
+            reviewer, and mode settings.
+        """
         conf_dict = conf or {}
 
         config = {
@@ -86,29 +96,46 @@ class ReviewerApp(MONAILabelApp):
         return config
 
     def init_infers(self) -> Dict[str, Any]:
+        """Indicate that this application provides no inference components.
+        
+        Returns:
+            Dict[str, Any]: An empty dictionary.
+        """
         return {}
 
     def init_trainers(self) -> Dict[str, Any]:
+        """
+        Indicate that the application has no training components.
+        
+        Returns:
+            Dict[str, Any]: An empty dictionary.
+        """
         return {}
 
     def init_strategies(self) -> Dict[str, Any]:
+        """
+        Indicate that the application provides no strategy components.
+        
+        Returns:
+            Dict[str, Any]: An empty dictionary.
+        """
         return {}
 
     def init_scoring_methods(self) -> Dict[str, Any]:
+        """Indicate that no scoring methods are configured.
+        
+        Returns:
+            Dict[str, Any]: An empty dictionary.
+        """
         return {}
 
     def info(self) -> Dict[str, Any]:
         """
-        Get application information.
-
+        Provide application metadata and review workflow capabilities.
+        
         Returns:
-        {
-            "name": "MONAILabel Reviewer",
-            "description": "Lightweight review app",
-            "version": "1.0.0",
-            "studies": "/path/to/images",
-            "config": {...}
-        }
+            Dict[str, Any]: Application metadata including the resolved studies path,
+            review configuration, supported features, and review-only mode.
         """
         meta = super().info()
         meta.update(

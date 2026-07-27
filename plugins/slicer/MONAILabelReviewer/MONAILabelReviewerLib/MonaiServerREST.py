@@ -25,10 +25,21 @@ MonaiServerREST provides the REST endpoints to the MONAIServer
 
 class MonaiServerREST:
     def __init__(self, serverUrl: str):
+        """
+        Initialize the REST client with a normalized server URL.
+        
+        Parameters:
+            serverUrl (str): Base URL of the MONAI server. Trailing slashes are removed when provided.
+        """
         self.PARAMS_PREFIX_REST_REQUEST = "params"
         self.serverUrl = serverUrl.rstrip("/") if serverUrl else serverUrl
 
     def getServerUrl(self) -> str:
+        """Return the configured MONAI server URL.
+        
+        Returns:
+        	str: The server URL.
+        """
         return self.serverUrl
 
     def getCurrentTime(self) -> datetime:
@@ -53,11 +64,28 @@ class MonaiServerREST:
         return response.json()
 
     def getDicomDownloadUri(self, image_id: str) -> str:
+        """Build the download URI for a DICOM image.
+        
+        Parameters:
+            image_id (str): Identifier of the image to retrieve.
+        
+        Returns:
+            str: The encoded DICOM image download URI.
+        """
         download_uri = f"{self.serverUrl}/datastore/image?image={quote_plus(image_id)}"
         logging.info(f"{self.getCurrentTime()}: REST: request dicom image '{download_uri}'")
         return download_uri
 
     def requestImage(self, image_id: str) -> requests.models.Response:
+        """
+        Request an image from the MONAI server.
+        
+        Parameters:
+            image_id (str): Identifier of the image to request.
+        
+        Returns:
+            requests.models.Response: The successful image response, or None if the request fails or returns a non-200 status.
+        """
         download_uri = self.getDicomDownloadUri(image_id)
 
         try:
@@ -81,6 +109,16 @@ class MonaiServerREST:
         return response
 
     def requestSegmentation(self, image_id: str, tag: str) -> requests.models.Response:
+        """
+        Request a segmentation for an image using the specified version tag.
+        
+        Parameters:
+            image_id (str): Identifier of the image whose segmentation is requested.
+            tag (str): Segmentation version tag; an empty string uses the ``final`` tag.
+        
+        Returns:
+            requests.models.Response: The successful HTTP response, or ``None`` if the request fails or returns a non-200 status code.
+        """
         if tag == "":
             tag = "final"
         download_uri = f"{self.serverUrl}/datastore/label?label={quote_plus(image_id)}&tag={quote_plus(tag)}"

@@ -426,6 +426,9 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     # Section: Server
     def loadServerSelection(self):
+        """
+        Populate the server URL selector with normalized addresses stored in application settings.
+        """
         settings = qt.QSettings()
         serverUrlHistory = settings.value("MONAILabel/serverUrlHistory")
 
@@ -437,14 +440,25 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.ui.comboBox_server_url.addItems(server_urls)
 
     def normalizeServerUrl(self, serverUrl: str) -> str:
+        """
+        Normalize a server URL for consistent use by removing surrounding whitespace and trailing slashes.
+        
+        Parameters:
+        	serverUrl (str): The server URL to normalize.
+        
+        Returns:
+        	str: The normalized server URL, or an empty string when no URL is provided.
+        """
         if not serverUrl:
             return ""
         return serverUrl.strip().rstrip("/")
 
     def init_dicom_stream(self):
         """
-        initiates connection to monai server
-        Default: client listens on "http://127.0.0.1:8000"
+        Connect to the configured MONAI Label server and initialize the reviewer interface.
+        
+        The selected server URL is normalized before connection. Displays a warning and leaves
+        the interface uninitialized when the connection fails.
         """
         # Check Connection
         self.cleanCache()
@@ -1497,6 +1511,11 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.setVersionTagInComboBox(versionTag=newLabelNameCreated)
 
     def reloadImageAfterEditingLabel(self):
+        """
+        Reload the current image using its latest label version after an edit.
+        
+        The image display and label version selector are refreshed to reflect the updated segmentation.
+        """
         imageId = self.currentImageData.getFileName()
         latestVersion = self.currentImageData.getLatestVersionTag()
         logging.info(f"{self.getCurrentTime()}: Loading image (id='{imageId}') with version tag = '{latestVersion}'")
@@ -1504,6 +1523,11 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.fillComboBoxLabelVersions(self.currentImageData)
 
     def processDataStoreRecords(self):
+        """
+        Process datastore records and display a warning when processing fails.
+        
+        The selected server address is normalized for inclusion in failure messages. 
+        """
         serverUrl: str = self.normalizeServerUrl(self.ui.comboBox_server_url.currentText)
         result: bool = self.logic.initMetaDataProcessing()
         if result is False:
@@ -1668,11 +1692,11 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
 
     def loadDicomAndSegmentation(self, imageData: ImageData, tag: str):
         """
-        Loads original Dicom image and Segmentation into slicer window
+        Load an image and, when available, its segmentation into the Slicer scene.
+        
         Parameters:
-          imageData (ImageData): Contains meta data (of dicom and segmenation)
-                                 which is required for rest request to monai server
-                                 in order to get dicom and segmenation (.nrrd).
+            imageData (ImageData): Image metadata used to retrieve the DICOM image and segmentation.
+            tag (str): Version tag identifying the segmentation to load.
         """
         # Request dicom
         image_name = imageData.getFileName()
@@ -1717,11 +1741,25 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
 
     def displaySegmention(self, destination: str):
         """
-        Displays the segmentation in slicer window
+        Display a segmentation file in the Slicer window.
+        
+        Parameters:
+        	destination (str): Path to the segmentation file.
         """
         segmentation = slicer.util.loadSegmentation(destination)
 
     def requestDicomImage(self, image_id: str, image_name: str, node_name: str):
+        """
+        Download an image from the MONAI Label server and load it into Slicer.
+        
+        Parameters:
+        	image_id (str): Identifier of the image to download.
+        	image_name (str): File name used for temporary storage.
+        	node_name (str): Name associated with the image node.
+        
+        Raises:
+        	RuntimeError: If the server does not return the image.
+        """
         response = self.imageDataController.requestImage(image_id)
         if response is None:
             raise RuntimeError(f"Failed to download image '{image_id}' from MONAI Label server")
@@ -1735,7 +1773,9 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
 
     def setTempFolderDir(self):
         """
-        Create temporary dirctory to store the downloaded segmentation (.nrrd)
+        Create the temporary directory used to store downloaded segmentation files.
+        
+        The directory is created only once and its path is logged.
         """
         if self.temp_dir is None:
             self.temp_dir = tempfile.TemporaryDirectory()

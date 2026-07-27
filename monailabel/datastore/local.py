@@ -217,6 +217,15 @@ class LocalDatastore(Datastore):
         self._update_datastore_file()
 
     def _to_id(self, file: str) -> Tuple[str, str]:
+        """
+        Derive an identifier and extension from a filename using the configured file extensions.
+        
+        Parameters:
+            file (str): Filename to parse.
+        
+        Returns:
+            Tuple[str, str]: The identifier and matched extension.
+        """
         ext = file_ext(file)
         extensions = [e.replace("*", "") for e in self._extensions]
         for e in extensions:
@@ -226,11 +235,28 @@ class LocalDatastore(Datastore):
         return id, ext
 
     def _to_label_id(self, file: str) -> Tuple[str, str]:
+        """Convert a label filename to its identifier and extension.
+        
+        Parameters:
+            file (str): Label filename to parse.
+        
+        Returns:
+            Tuple[str, str]: The label identifier and file extension.
+        """
         if file.lower().endswith(".seg.nrrd"):
             return file[: -len(".seg.nrrd")], ".seg.nrrd"
         return self._to_id(file)
 
     def _filename(self, id: str, ext: str) -> str:
+        """Construct a filename by concatenating an identifier with its extension.
+        
+        Parameters:
+            id (str): The file identifier.
+            ext (str): The file extension.
+        
+        Returns:
+            str: The resulting filename.
+        """
         return id + ext
 
     def _to_bytes(self, file):
@@ -611,6 +637,15 @@ class LocalDatastore(Datastore):
         return invalidate
 
     def _add_non_existing_labels(self, tag) -> int:
+        """
+        Add label metadata for label files that exist on disk but are missing from the datastore.
+        
+        Parameters:
+            tag (str): Label tag identifying the directory containing the label files.
+        
+        Returns:
+            int: Number of labels added to the datastore.
+        """
         invalidate = 0
         self._init_from_datastore_file()
 
