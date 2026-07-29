@@ -25,7 +25,8 @@ expiring_dict==1.1.0
 cachetools==5.3.3
 watchdog==4.0.0
 pydicom==3.0.1
-highdicom==0.26.1
+highdicom==0.26.1 ; python_version >= '3.10'
+highdicom==0.22.0 ; python_version < '3.10'
 pynetdicom==2.0.2
 pynrrd==1.1.3
 numpymaxflow==0.0.7

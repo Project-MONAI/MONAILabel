@@ -226,7 +226,7 @@ class TestConvert(unittest.TestCase):
 
         try:
             result = binary_to_image(reference_image, label_bin)
-            self.addCleanup(os.unlink, result)
+            self.addCleanup(lambda p=result: os.unlink(p) if os.path.exists(p) else None)
         finally:
             os.unlink(label_bin)
 

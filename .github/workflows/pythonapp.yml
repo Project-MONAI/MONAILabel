@@ -24,7 +24,7 @@ on:
 concurrency:
   # automatically cancel the previously triggered workflows when there's a newer version
   group: build-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deps_check:
@@ -136,7 +136,12 @@ jobs:
           python -m pip install pytest
 
           # start the monailabel server in the background and run the integration tests
-          ./runtests.sh --net
+          # Note: --net tests require GPU. Skip on non-GPU runners.
+          if nvidia-smi &>/dev/null; then
+            ./runtests.sh --net
+          else
+            echo "Skipping integration tests -- GPU not available (requires self-hosted GPU runner)"
+          fi
 
           # cleanup
           python -m pip uninstall -y monailabel
