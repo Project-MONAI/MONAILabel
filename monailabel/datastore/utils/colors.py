@@ -321,3 +321,43 @@ GENERIC_ANATOMY_COLORS = {
     "unknown": (100, 100, 130),
     "cyst": (205, 205, 100),
 }
+
+# Key of the black background entry, excluded from the fallback palette so that a
+# segment never resolves to an invisible (0, 0, 0) color.
+_BACKGROUND_KEY = "background"
+
+# Number of channels in an RGB color triple.
+_RGB_CHANNELS = 3
+
+# Distinct, non-background colors used to give segments without a known anatomy
+# name (and without an explicit color) different colors instead of all defaulting
+# to red. See issue #1751.
+_FALLBACK_COLORS = [color for name, color in GENERIC_ANATOMY_COLORS.items() if name != _BACKGROUND_KEY]
+
+
+def get_segment_color(name, info=None, index=0):
+    """Return an ``[r, g, b]`` display color for a DICOM SEG segment.
+
+    Resolution order:
+
+    1. an explicit ``color`` provided in ``info`` (from the label metadata);
+    2. the palette entry whose key matches ``name`` in ``GENERIC_ANATOMY_COLORS``;
+    3. a palette color chosen by ``index`` so that consecutive segments without a
+       known anatomy name receive *distinct* colors instead of all defaulting to
+       red (see issue #1751).
+
+    Args:
+        name: Segment label used to look up a known anatomy color.
+        info: Optional segment metadata; an explicit ``color`` takes precedence.
+        index: Position of the segment, used to pick a distinct fallback color.
+
+    Returns:
+        A list of three ``int`` RGB channel values.
+    """
+    info = info or {}
+    color = info.get("color")
+    if color:
+        return [int(c) for c in list(color)[:_RGB_CHANNELS]]
+    if name in GENERIC_ANATOMY_COLORS:
+        return [int(c) for c in GENERIC_ANATOMY_COLORS[name][:_RGB_CHANNELS]]
+    return [int(c) for c in _FALLBACK_COLORS[index % len(_FALLBACK_COLORS)][:_RGB_CHANNELS]]
