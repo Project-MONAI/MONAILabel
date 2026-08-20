@@ -13,8 +13,9 @@ import unittest
 
 from monailabel.datastore.utils.colors import GENERIC_ANATOMY_COLORS, get_segment_color
 
-# Number of unnamed segments used to check that fallback colors are distinct.
-_UNNAMED_SEGMENTS = 5
+# Number of unnamed segments needed to cover the fallback palette's first
+# duplicate RGB value, which previously appeared at indices 4 and 16.
+_UNNAMED_SEGMENTS = 17
 # The color every unnamed segment used to collapse to before the fix (issue #1751).
 _LEGACY_RED = [255, 0, 0]
 # Black background color that must never be assigned to a segment.

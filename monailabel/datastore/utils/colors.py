@@ -332,7 +332,9 @@ _RGB_CHANNELS = 3
 # Distinct, non-background colors used to give segments without a known anatomy
 # name (and without an explicit color) different colors instead of all defaulting
 # to red. See issue #1751.
-_FALLBACK_COLORS = [color for name, color in GENERIC_ANATOMY_COLORS.items() if name != _BACKGROUND_KEY]
+_FALLBACK_COLORS = list(
+    dict.fromkeys(color for name, color in GENERIC_ANATOMY_COLORS.items() if name != _BACKGROUND_KEY)
+)
 
 
 def get_segment_color(name, info=None, index=0):
