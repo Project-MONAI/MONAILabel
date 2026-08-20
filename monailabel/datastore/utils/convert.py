@@ -35,7 +35,7 @@ except ImportError:
 
 from monailabel import __version__
 from monailabel.config import settings
-from monailabel.datastore.utils.colors import GENERIC_ANATOMY_COLORS
+from monailabel.datastore.utils.colors import get_segment_color
 from monailabel.transform.writer import write_itk
 
 logger = logging.getLogger(__name__)
@@ -434,9 +434,10 @@ def _itk_nifti_to_dicom_seg(series_dir, label, label_info) -> str:
             # Use custom attribute as-is
             segment_descriptions.append(segment_attr)
         else:
-            # Build default template for ITK method
-            rgb = list(info.get("color", GENERIC_ANATOMY_COLORS.get(name, (255, 0, 0))))[0:3]
-            rgb = [int(x) for x in rgb]
+            # Build default template for ITK method. Segments without an explicit
+            # color or a known anatomy name get a distinct fallback color (keyed on
+            # their index) instead of all defaulting to red (see issue #1751).
+            rgb = get_segment_color(name, info, i)
 
             segment_attr = {
                 "labelID": int(label_id),
