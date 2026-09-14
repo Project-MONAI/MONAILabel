@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import logging
+import sys
 
 import numpy as np
 import torch
@@ -20,6 +21,10 @@ from monai.utils import OptionalImportError, optional_import
 # MONAI Label usable where numpymaxflow cannot be installed, for example on Python 3.13 and newer.
 numpymaxflow, has_numpymaxflow = optional_import("numpymaxflow")
 
+# numpymaxflow does not currently install on these Python versions; keep in sync with the marker on the
+# `scribbles` extra in setup.cfg.
+NUMPYMAXFLOW_UNSUPPORTED_PYTHON = (3, 13)
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,14 +32,35 @@ def get_eps(data):
     return np.finfo(data.dtype).eps
 
 
-def maxflow(image, prob, lamda=5, sigma=0.1):
-    # lamda: weight of smoothing term
-    # sigma: std of intensity values
-    if not has_numpymaxflow:
-        raise OptionalImportError(
-            "GraphCut optimisation for scribbles requires numpymaxflow, which is not installed. "
-            "Install it with `pip install monailabel[scribbles]` or `pip install numpymaxflow`."
+def missing_numpymaxflow_message(python_version=None):
+    """Explain why GraphCut optimisation is unavailable and, where possible, how to enable it."""
+    version = tuple(python_version or sys.version_info[:2])
+    if version >= NUMPYMAXFLOW_UNSUPPORTED_PYTHON:
+        return (
+            "GraphCut optimisation for scribbles requires numpymaxflow, which does not support Python "
+            f"{version[0]}.{version[1]}. GraphCut is unavailable on Python 3.13 and newer; use Python 3.12 or "
+            "older to enable it."
         )
+    return (
+        "GraphCut optimisation for scribbles requires numpymaxflow, which is not installed. "
+        "Install it with `pip install monailabel[scribbles]` or `pip install numpymaxflow`."
+    )
+
+
+def maxflow(image, prob, lamda=5, sigma=0.1):
+    """Run numpymaxflow GraphCut on ``image`` with unary probabilities ``prob``.
+
+    Args:
+        image: input image used for the pairwise term.
+        prob: per class probabilities used for the unary term.
+        lamda: weight of the smoothing term.
+        sigma: standard deviation of intensity values.
+
+    Raises:
+        OptionalImportError: when numpymaxflow is not available.
+    """
+    if not has_numpymaxflow:
+        raise OptionalImportError(missing_numpymaxflow_message())
     return numpymaxflow.maxflow(image, prob, lamda, sigma)
 
 

@@ -53,13 +53,24 @@ class TestOptionalNumpymaxflow(unittest.TestCase):
         importlib.import_module("monailabel.scribbles.transforms")
         importlib.import_module("monailabel.scribbles.infer")
 
-    def test_maxflow_raises_with_install_hint(self):
+    def test_maxflow_raises_when_numpymaxflow_missing(self):
         utils = importlib.import_module("monailabel.scribbles.utils")
         image = np.zeros((1, 4, 4), dtype=np.float32)
         prob = np.full((2, 4, 4), 0.5, dtype=np.float32)
         with self.assertRaises(OptionalImportError) as ctx:
             utils.maxflow(image, prob)
-        self.assertIn("monailabel[scribbles]", str(ctx.exception))
+        self.assertEqual(str(ctx.exception), utils.missing_numpymaxflow_message())
+
+    def test_message_on_supported_python_recommends_the_extra(self):
+        utils = importlib.import_module("monailabel.scribbles.utils")
+        message = utils.missing_numpymaxflow_message((3, 12))
+        self.assertIn("monailabel[scribbles]", message)
+
+    def test_message_on_unsupported_python_says_graphcut_is_unavailable(self):
+        utils = importlib.import_module("monailabel.scribbles.utils")
+        message = utils.missing_numpymaxflow_message((3, 13))
+        self.assertIn("unavailable on Python 3.13", message)
+        self.assertNotIn("pip install", message)
 
     def test_non_graphcut_helpers_still_work(self):
         utils = importlib.import_module("monailabel.scribbles.utils")
