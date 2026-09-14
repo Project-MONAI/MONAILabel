@@ -25,6 +25,7 @@ from monailabel.scribbles.transforms import (
     MakeLikelihoodFromScribblesHistogramd,
     SoftenProbSoftmax,
 )
+from monailabel.scribbles.utils import has_numpymaxflow
 from monailabel.transform.writer import Writer
 
 set_determinism(seed=123)
@@ -305,6 +306,7 @@ class TestScribblesTransforms(unittest.TestCase):
         self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
 
     @parameterized.expand(TEST_CASE_OPTIM_TX)
+    @unittest.skipUnless(has_numpymaxflow, "numpymaxflow is not installed")
     def test_optimisation_transforms(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
         for current_tx in [ApplyGraphCutOptimisationd]:
@@ -386,6 +388,7 @@ class TestScribblesTransforms(unittest.TestCase):
 
 class TestScribblesInferers(unittest.TestCase):
     @parameterized.expand(TEST_CASE_HISTOGRAM_GRAPHCUT)
+    @unittest.skipUnless(has_numpymaxflow, "numpymaxflow is not installed")
     def test_histogram_graphcut_inferer(self, test_input, expected_shape):
         test_input.update({"image_path": "fakepath.nii"})
 

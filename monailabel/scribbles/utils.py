@@ -12,9 +12,13 @@
 import logging
 
 import numpy as np
-import numpymaxflow
 import torch
 from monai.networks.layers import GaussianMixtureModel
+from monai.utils import OptionalImportError, optional_import
+
+# numpymaxflow is only needed for GraphCut optimisation of scribbles. Importing it lazily keeps the rest of
+# MONAI Label usable where numpymaxflow cannot be installed, for example on Python 3.13 and newer.
+numpymaxflow, has_numpymaxflow = optional_import("numpymaxflow")
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +30,11 @@ def get_eps(data):
 def maxflow(image, prob, lamda=5, sigma=0.1):
     # lamda: weight of smoothing term
     # sigma: std of intensity values
+    if not has_numpymaxflow:
+        raise OptionalImportError(
+            "GraphCut optimisation for scribbles requires numpymaxflow, which is not installed. "
+            "Install it with `pip install monailabel[scribbles]` or `pip install numpymaxflow`."
+        )
     return numpymaxflow.maxflow(image, prob, lamda, sigma)
 
 
