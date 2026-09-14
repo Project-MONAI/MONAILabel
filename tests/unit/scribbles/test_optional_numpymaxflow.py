@@ -72,6 +72,16 @@ class TestOptionalNumpymaxflow(unittest.TestCase):
         self.assertIn("unavailable on Python 3.13", message)
         self.assertNotIn("pip install", message)
 
+    def test_maxflow_on_unsupported_python_says_graphcut_is_unavailable(self):
+        utils = importlib.import_module("monailabel.scribbles.utils")
+        image = np.zeros((1, 4, 4), dtype=np.float32)
+        prob = np.full((2, 4, 4), 0.5, dtype=np.float32)
+        with mock.patch.object(utils.sys, "version_info", (3, 13, 0, "final", 0)):
+            with self.assertRaises(OptionalImportError) as ctx:
+                utils.maxflow(image, prob)
+        self.assertIn("unavailable on Python 3.13", str(ctx.exception))
+        self.assertNotIn("pip install", str(ctx.exception))
+
     def test_non_graphcut_helpers_still_work(self):
         utils = importlib.import_module("monailabel.scribbles.utils")
         self.assertGreater(utils.get_eps(np.zeros(1, dtype=np.float32)), 0)
