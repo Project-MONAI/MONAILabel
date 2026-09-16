@@ -24,7 +24,7 @@ metadata:
 
 spec:
   description: A pre-trained SAM2 model for interactive model
-  runtime: 'python:3.8'
+  runtime: 'python:3.10'
   handler: interactor:handler
   eventTimeout: 30s
 
