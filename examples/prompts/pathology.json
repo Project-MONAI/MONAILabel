@@ -1,0 +1,247 @@
+{
+  "version": 1,
+  "id": "pathology",
+  "title": "Pathology: nuclei annotation to 2D U-Net learning",
+  "steps": [
+    {
+      "id": "project",
+      "prompt": "Create a project called \"Pathology golden story\"",
+      "context": "workspace",
+      "tool": "create_project",
+      "arguments": {
+        "name": "Pathology golden story"
+      },
+      "action": "Create a fresh project for nuclei segmentation; cell-type classification is a separate task.",
+      "stage": "setup"
+    },
+    {
+      "id": "import",
+      "prompt": "Open the dataset import form",
+      "context": "web",
+      "tool": "open_form",
+      "arguments": {
+        "form": "dataset"
+      },
+      "action": "Import bounded RGB fields from at least two independent source slides. Assign entire slides/patients to training or validation; crops from one slide never cross splits.",
+      "stage": "import"
+    },
+    {
+      "id": "key",
+      "prompt": "Open the API credential form",
+      "context": "web",
+      "tool": "open_form",
+      "arguments": {
+        "form": "credential"
+      },
+      "action": "Configure a server environment reference or encrypted credential for the hosted annotation model.",
+      "stage": "configure"
+    },
+    {
+      "id": "models",
+      "prompt": "Show the annotation model connection form",
+      "context": "web",
+      "tool": "open_form",
+      "arguments": {
+        "form": "model"
+      },
+      "action": "Configure Sol or a nuclei segmentation endpoint. Sol is the default hosted choice; Astra requires explicit selection.",
+      "stage": "configure"
+    },
+    {
+      "id": "viewer",
+      "prompt": "View this sample in QuPath",
+      "context": "web",
+      "tool": "open_viewer",
+      "arguments": {
+        "viewer": "qupath"
+      },
+      "action": "Select a training image in Datasets first. QuPath opens with the MONAI Label tab.",
+      "stage": "open"
+    },
+    {
+      "id": "select",
+      "prompt": "Use Sol for annotation from now on",
+      "context": "qupath",
+      "tool": "select_annotation_model",
+      "arguments": {
+        "model_id": "sol"
+      },
+      "action": "In the open QuPath MONAI Label tab, select Sol for future annotation requests. The coordinator remains independent from the annotation model.",
+      "stage": "configure"
+    },
+    {
+      "id": "region",
+      "prompt": "Run nuclei segmentation on the selected region using Sol",
+      "context": "qupath",
+      "tool": "annotate",
+      "arguments": {
+        "targets": [
+          "nuclei"
+        ],
+        "scope": "selected_region",
+        "model_id": "sol"
+      },
+      "action": "Draw one area in QuPath. It is sent as one crop without tiling; outside objects are preserved.",
+      "stage": "annotate"
+    },
+    {
+      "id": "whole",
+      "prompt": "Run nuclei segmentation on the whole image using Sol with tile size 512",
+      "context": "qupath",
+      "tool": "annotate",
+      "arguments": {
+        "targets": [
+          "nuclei"
+        ],
+        "scope": "full",
+        "tile_size": 512,
+        "model_id": "sol"
+      },
+      "action": "Optional whole-image route. It overrides an active selection and processes bounded imported images in tiles; streaming gigapixel slides is not implemented.",
+      "stage": "annotate"
+    },
+    {
+      "id": "classify",
+      "prompt": "Classify the annotated nuclei into tumor, immune and stromal",
+      "context": "qupath",
+      "tool": "classify_objects",
+      "arguments": {
+        "categories": [
+          "Tumor",
+          "Immune",
+          "Stromal"
+        ],
+        "selected_only": false
+      },
+      "action": "Optional: confirm categories and inspect candidate cell types. Classification drafts are local; this story trains nuclei masks, not a cell-type classifier.",
+      "stage": "optional"
+    },
+    {
+      "id": "submit",
+      "prompt": "Submit this annotation for review",
+      "context": "qupath",
+      "tool": "viewer_edit",
+      "arguments": {
+        "operation": "submit"
+      },
+      "action": "Check the complete imported field before submitting. A small selected region alone is not a complete training label.",
+      "stage": "submit"
+    },
+    {
+      "id": "queue",
+      "prompt": "Show the pending review queue",
+      "context": "web",
+      "tool": "inspect_workspace",
+      "arguments": {
+        "collection": "review_queue"
+      },
+      "action": "Open a submitted sample in QuPath as reviewer. Pending is the default queue filter.",
+      "stage": "review"
+    },
+    {
+      "id": "accept",
+      "prompt": "Accept my corrected segmentation",
+      "context": "qupath",
+      "tool": "review_annotation",
+      "arguments": {
+        "verdict": "accepted"
+      },
+      "action": "Review/edit in QuPath, then accept the corrected mask. Repeat for training fields and independently reviewed held-out slides.",
+      "stage": "review"
+    },
+    {
+      "id": "snapshot",
+      "prompt": "Create a snapshot of the reviewed dataset",
+      "context": "web",
+      "tool": "create_snapshot",
+      "arguments": {},
+      "action": "Freeze full accepted masks and disjoint source groups.",
+      "stage": "snapshot"
+    },
+    {
+      "id": "unet_setup",
+      "prompt": "Create a U-Net segmentation model named Nuclei U-Net for nuclei from scratch; do not start training yet",
+      "context": "web",
+      "tool": "create_learner",
+      "arguments": {
+        "recipe": "monai-unet",
+        "targets": [
+          "nuclei"
+        ],
+        "name": "Nuclei U-Net",
+        "initialization": "scratch",
+        "start_now": false
+      },
+      "action": "The same recipe infers 2D RGB input from the imported pathology images. VISTA3D is a CT model and is not used for pathology.",
+      "stage": "learn"
+    },
+    {
+      "id": "train",
+      "prompt": "Train the selected project learner",
+      "context": "web",
+      "tool": "start_training",
+      "arguments": {},
+      "action": "Train version 1; keep its checkpoint for the later comparison. Small quick-start runs verify software, not clinical quality.",
+      "stage": "learn"
+    },
+    {
+      "id": "annotate_v1",
+      "prompt": "Annotate nuclei on the full image using the selected model",
+      "context": "qupath",
+      "tool": "annotate",
+      "arguments": {
+        "targets": [
+          "nuclei"
+        ],
+        "scope": "full"
+      },
+      "action": "Refresh and select the trained U-Net in QuPath. Annotate a new training field, correct it, submit and accept it; do not use validation slides for learning.",
+      "stage": "handoff"
+    },
+    {
+      "id": "continue",
+      "prompt": "Continue training the selected model on the reviewed dataset",
+      "context": "web",
+      "tool": "start_training",
+      "arguments": {
+        "mode": "continue"
+      },
+      "action": "Select version 1 and its learner. Continue on a new snapshot of the expanded reviewed dataset; version 2 preserves parent/optimizer lineage.",
+      "stage": "continue"
+    },
+    {
+      "id": "compare_versions",
+      "prompt": "Compare the selected new model against the selected previous version on the current held-out snapshot",
+      "context": "web",
+      "tool": "evaluate_candidate",
+      "arguments": {},
+      "action": "Set version 2 as candidate and version 1 as baseline. Run both on the same held-out slide groups.",
+      "stage": "evaluate"
+    },
+    {
+      "id": "scores",
+      "prompt": "Show the held-out evaluation results",
+      "context": "web",
+      "tool": "inspect_workspace",
+      "arguments": {
+        "collection": "evaluations"
+      },
+      "action": "Inspect nuclei Dice for both versions and their difference. Do not assume the new model is better.",
+      "stage": "evaluate"
+    },
+    {
+      "id": "handoff",
+      "prompt": "Annotate nuclei in the selected region using the selected model",
+      "context": "qupath",
+      "tool": "annotate",
+      "arguments": {
+        "targets": [
+          "nuclei"
+        ],
+        "scope": "selected_region"
+      },
+      "action": "Refresh and select version 2 explicitly only after reviewing the comparison. Project-wide promotion remains a separate guarded action.",
+      "stage": "handoff"
+    }
+  ]
+}

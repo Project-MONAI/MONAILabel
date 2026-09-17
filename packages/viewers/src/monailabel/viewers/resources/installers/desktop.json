@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "releases": [
+    {
+      "name": "slicer",
+      "version": "5.12.4",
+      "system": "Linux",
+      "machine": "x86_64",
+      "url": "https://download.slicer.org/bitstream/6aa1beb7ce9de556d3010204",
+      "executable": "*/Slicer",
+      "checksum": "ac76c5061a8fff20d4e59732855f74360930fd4891450085bcbc6a8eb1a1f4ade9a1ca4fc633142661b714dbe8c4604306079f9546e52053faa5e6f99410cf76",
+      "algorithm": "sha512",
+      "archive": "tar"
+    },
+    {
+      "name": "qupath",
+      "version": "0.7.0",
+      "system": "Linux",
+      "machine": "x86_64",
+      "url": "https://github.com/qupath/qupath/releases/download/v0.7.0/QuPath-v0.7.0-Linux.tar.xz",
+      "executable": "*/bin/QuPath",
+      "checksum": "6020de77077b8b8651a741ec03e37ae6bee9bfa8f67bfd38e903c8d53b4feb09bc9b484e7cc7b057977a70d7fedac85414df41703bcb8b702c32c8ba6bbb0b49",
+      "algorithm": "sha512",
+      "archive": "tar"
+    },
+    {
+      "name": "qupath",
+      "version": "0.7.0",
+      "system": "Windows",
+      "machine": "x86_64",
+      "url": "https://github.com/qupath/qupath/releases/download/v0.7.0/QuPath-v0.7.0-Windows.zip",
+      "checksum": "5839743281d11eca1ac55c87ddcf92c89a30cba7ba2060f162036b0514b1e30c",
+      "algorithm": "sha256",
+      "archive": "zip",
+      "executable": "QuPath-0.7.0.exe"
+    }
+  ],
+  "discovery": {
+    "slicer": {
+      "Linux": [
+        "/opt/Slicer*/Slicer",
+        "~/Applications/Slicer*/Slicer"
+      ],
+      "Windows": [
+        "${LOCALAPPDATA}/NA-MIC/Slicer*/Slicer.exe"
+      ],
+      "Darwin": [
+        "/Applications/Slicer.app/Contents/MacOS/Slicer"
+      ]
+    },
+    "qupath": {
+      "Linux": [
+        "/opt/QuPath*/bin/QuPath",
+        "~/Applications/QuPath*/bin/QuPath"
+      ],
+      "Windows": [
+        "${LOCALAPPDATA}/QuPath*/QuPath*.exe",
+        "${ProgramFiles}/QuPath*/QuPath*.exe"
+      ],
+      "Darwin": [
+        "/Applications/QuPath*.app/Contents/MacOS/QuPath"
+      ]
+    }
+  }
+}

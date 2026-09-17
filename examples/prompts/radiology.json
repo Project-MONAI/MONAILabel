@@ -1,0 +1,242 @@
+{
+  "version": 1,
+  "id": "radiology",
+  "title": "Radiology: CT spleen annotation to VISTA3D / U-Net learning",
+  "steps": [
+    {
+      "id": "project",
+      "prompt": "Create a project called \"Radiology golden story\"",
+      "context": "workspace",
+      "tool": "create_project",
+      "arguments": {
+        "name": "Radiology golden story"
+      },
+      "action": "Create a fresh project; targets can be added while annotating.",
+      "stage": "setup"
+    },
+    {
+      "id": "import",
+      "prompt": "Open the dataset import form",
+      "context": "web",
+      "tool": "open_form",
+      "arguments": {
+        "form": "dataset"
+      },
+      "action": "Import 12 Decathlon spleen NIfTI cases as training and 4 different patients as validation. Use one source group per case. Keep additional cases in the pool.",
+      "stage": "import"
+    },
+    {
+      "id": "key",
+      "prompt": "Open the API credential form",
+      "context": "web",
+      "tool": "open_form",
+      "arguments": {
+        "form": "credential"
+      },
+      "action": "Optional: configure the server environment reference NV_INFERENCE_API_KEY to enable Sol. Never paste a secret into chat. VISTA3D needs no hosted key.",
+      "stage": "configure"
+    },
+    {
+      "id": "models",
+      "prompt": "Show the annotation model connection form",
+      "context": "web",
+      "tool": "open_form",
+      "arguments": {
+        "form": "model"
+      },
+      "action": "Inspect the ready model presets or register a deployed model. Keep VISTA3D base read-only; use Sol as the hosted alternative.",
+      "stage": "configure"
+    },
+    {
+      "id": "list",
+      "prompt": "List the available annotation models",
+      "context": "web",
+      "tool": "inspect_workspace",
+      "arguments": {
+        "collection": "models"
+      },
+      "action": "Check that VISTA3D and any configured hosted models are listed.",
+      "stage": "configure"
+    },
+    {
+      "id": "viewer",
+      "prompt": "View this sample in 3D Slicer",
+      "context": "web",
+      "tool": "open_viewer",
+      "arguments": {
+        "viewer": "slicer"
+      },
+      "action": "Select a training sample in Datasets first. Installation is reused or prepared automatically.",
+      "stage": "open"
+    },
+    {
+      "id": "annotate",
+      "prompt": "Annotate spleen in the full volume using VISTA3D",
+      "context": "slicer",
+      "tool": "annotate",
+      "arguments": {
+        "targets": [
+          "spleen"
+        ],
+        "scope": "full",
+        "model_id": "vista"
+      },
+      "action": "Wait for the proposal; inspect every slice and correct the segmentation in Segment Editor.",
+      "stage": "annotate"
+    },
+    {
+      "id": "slice",
+      "prompt": "Annotate liver on this slice using Sol",
+      "context": "slicer",
+      "tool": "annotate",
+      "arguments": {
+        "targets": [
+          "liver"
+        ],
+        "scope": "current_slice",
+        "model_id": "sol"
+      },
+      "action": "Optional multiclass branch: configure Sol first. The new label is added without removing spleen. Liver training requires complete reviewed liver masks.",
+      "stage": "optional"
+    },
+    {
+      "id": "submit",
+      "prompt": "Submit this annotation for review",
+      "context": "slicer",
+      "tool": "viewer_edit",
+      "arguments": {
+        "operation": "submit"
+      },
+      "action": "Submit only after checking the whole volume and every project label. A single predicted slice is not complete training evidence.",
+      "stage": "submit"
+    },
+    {
+      "id": "queue",
+      "prompt": "Show the pending review queue",
+      "context": "web",
+      "tool": "inspect_workspace",
+      "arguments": {
+        "collection": "review_queue"
+      },
+      "action": "As reviewer, open the pending sample from the web queue in Slicer.",
+      "stage": "review"
+    },
+    {
+      "id": "accept",
+      "prompt": "Accept my corrected segmentation",
+      "context": "slicer",
+      "tool": "review_annotation",
+      "arguments": {
+        "verdict": "accepted"
+      },
+      "action": "Inspect or edit in Slicer, then accept. Repeat annotation/submission/review for the training cases and independently review held-out validation labels.",
+      "stage": "review"
+    },
+    {
+      "id": "snapshot",
+      "prompt": "Create a snapshot of the reviewed dataset",
+      "context": "web",
+      "tool": "create_snapshot",
+      "arguments": {},
+      "action": "Freeze accepted revisions from disjoint training and validation source groups.",
+      "stage": "snapshot"
+    },
+    {
+      "id": "vista_setup",
+      "prompt": "Create a VISTA3D model named \"Spleen VISTA tuned\" for spleen, initialized from the read-only base for fine-tuning; do not start training yet",
+      "context": "web",
+      "tool": "create_learner",
+      "arguments": {
+        "recipe": "vista3d",
+        "targets": [
+          "spleen"
+        ],
+        "name": "Spleen VISTA tuned",
+        "initialization": "fine_tune",
+        "start_now": false
+      },
+      "action": "Creates a separate project learner. The base weights remain unchanged.",
+      "stage": "learn"
+    },
+    {
+      "id": "train",
+      "prompt": "Train the selected project learner",
+      "context": "web",
+      "tool": "start_training",
+      "arguments": {},
+      "action": "Select Spleen VISTA tuned; wait for training to finish. The completed job selects its checkpoint and snapshot in web chat.",
+      "stage": "learn"
+    },
+    {
+      "id": "evaluate",
+      "prompt": "Evaluate the selected candidate against the selected baseline on the current snapshot",
+      "context": "web",
+      "tool": "evaluate_candidate",
+      "arguments": {},
+      "action": "Select the new checkpoint as candidate and VISTA3D base as evaluation baseline. Both run on the same held-out cases.",
+      "stage": "evaluate"
+    },
+    {
+      "id": "scores",
+      "prompt": "Show the held-out evaluation results",
+      "context": "web",
+      "tool": "inspect_workspace",
+      "arguments": {
+        "collection": "evaluations"
+      },
+      "action": "Inspect per-target Dice for candidate and baseline, validation cases, and promotion eligibility. An improvement is measured, never assumed.",
+      "stage": "evaluate"
+    },
+    {
+      "id": "unet_setup",
+      "prompt": "Create a U-Net segmentation model named Spleen U-Net for spleen from scratch; do not start training yet",
+      "context": "web",
+      "tool": "create_learner",
+      "arguments": {
+        "recipe": "monai-unet",
+        "targets": [
+          "spleen"
+        ],
+        "name": "Spleen U-Net",
+        "initialization": "scratch",
+        "start_now": false
+      },
+      "action": "Optional alternative learner: 3D scalar layout is inferred from the imported CT data. Repeat train/evaluate with VISTA3D as baseline.",
+      "stage": "learn"
+    },
+    {
+      "id": "continue",
+      "prompt": "Continue training the selected model on the reviewed dataset",
+      "context": "web",
+      "tool": "start_training",
+      "arguments": {
+        "mode": "continue"
+      },
+      "action": "Select a trained U-Net checkpoint and its learner. Add/correct and review training cases first; a new checkpoint keeps the old version intact.",
+      "stage": "continue"
+    },
+    {
+      "id": "compare_versions",
+      "prompt": "Compare the selected new model against the selected previous version on the current held-out snapshot",
+      "context": "web",
+      "tool": "evaluate_candidate",
+      "arguments": {},
+      "action": "Select the earlier U-Net checkpoint as baseline. Keep the same independent validation cases across versions.",
+      "stage": "evaluate"
+    },
+    {
+      "id": "handoff",
+      "prompt": "Annotate spleen in the full volume using the selected model",
+      "context": "slicer",
+      "tool": "annotate",
+      "arguments": {
+        "targets": [
+          "spleen"
+        ],
+        "scope": "full"
+      },
+      "action": "Refresh Slicer models, explicitly select the new checkpoint, and try an untouched pool case. Evaluation does not switch project defaults.",
+      "stage": "handoff"
+    }
+  ]
+}

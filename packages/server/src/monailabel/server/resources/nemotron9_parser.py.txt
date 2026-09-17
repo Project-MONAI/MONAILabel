@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+# Adapted from NVIDIA's nemotron_toolcall_parser_no_streaming.py at
+# nvidia/NVIDIA-Nemotron-Nano-9B-v2, revision 6533e8de2c68e4536bf7c411d7a3ce5734111476.
+# Updated for vLLM 0.17's public module paths; non-streaming transport only.
+import json
+import re
+from vllm.entrypoints.openai.engine.protocol import ExtractedToolCallInformation, FunctionCall, ToolCall
+from vllm.tool_parsers.abstract_tool_parser import ToolParser, ToolParserManager
+
+
+@ToolParserManager.register_module("nemotron_json")
+class NemotronJSONToolParser(ToolParser):
+    def extract_tool_calls(self, model_output, request):
+        # Nano v2 think markers span several tokens; extract only its final answer.
+        if "</think>" in model_output:
+            model_output = model_output.split("</think>", 1)[1]
+        elif str(request.messages[0].get("content", "")).rstrip().endswith("/think"):
+            raise ValueError("Incomplete Nemotron reasoning response")
+        blocks = re.findall(r"<TOOLCALL>(.*?)</TOOLCALL>", model_output, re.DOTALL)
+        if not blocks:
+            return ExtractedToolCallInformation(tools_called=False, tool_calls=[], content=model_output)
+        calls = []
+        for block in blocks:
+            values = json.loads(block)
+            if isinstance(values, dict):
+                values = [values]
+            for value in values:
+                arguments = value["arguments"]
+                calls.append(ToolCall(type="function", function=FunctionCall(
+                    name=value["name"], arguments=json.dumps(arguments) if isinstance(arguments, dict) else arguments)))
+        prefix = model_output.split("<TOOLCALL>", 1)[0]
+        return ExtractedToolCallInformation(tools_called=bool(calls), tool_calls=calls, content=prefix or None)
+
+    def extract_tool_calls_streaming(self, *args, **kwargs):
+        raise NotImplementedError("Use non-streaming Chat Completions for Nemotron Nano 9B.")

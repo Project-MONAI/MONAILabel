@@ -1,0 +1,10 @@
+{
+  "name": "@monailabel/mode",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "keywords": [
+    "ohif-mode"
+  ]
+}

@@ -1,0 +1,260 @@
+.monailabel-assistant {
+  box-sizing: border-box;
+  color: #e2e8f0;
+  background: #0c1422;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  font-size: 14px;
+}
+.monailabel-assistant > :not([role="log"]) {
+  flex-shrink: 0;
+}
+.monailabel-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.monailabel-panel-heading h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.monailabel-assistant a {
+  color: #93c5fd;
+}
+.monailabel-assistant button,
+.monailabel-tabs button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #17263d;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.monailabel-assistant button:hover:enabled {
+  background: #234065;
+}
+.monailabel-assistant button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.monailabel-assistant button:focus-visible,
+.monailabel-tabs button:focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: 2px;
+}
+.monailabel-assistant select,
+.monailabel-assistant input:not([type="checkbox"]),
+.monailabel-assistant textarea {
+  border: 1px solid #334155;
+  background: #172033;
+  border-radius: 6px;
+  padding: 10px;
+  min-height: 44px;
+  width: 100%;
+  font-size: 16px;
+}
+.monailabel-assistant [role="log"] {
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.monailabel-assistant small {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.monailabel-assistant small:empty {
+  display: none;
+}
+.monailabel-composer {
+  border: 1px solid #334155;
+  background: #172033;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.monailabel-composer:focus-within {
+  border-color: #67e8f9;
+}
+.monailabel-composer textarea {
+  display: block;
+  border: 0;
+  border-radius: 0;
+  resize: none;
+  min-height: 80px;
+  outline: none;
+  box-shadow: none;
+}
+.monailabel-composer-actions,
+.monailabel-composer-buttons,
+.monailabel-composer-actions label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.monailabel-composer-actions {
+  justify-content: space-between;
+  padding: 4px 6px 6px;
+}
+.monailabel-composer-actions label {
+  min-height: 44px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.monailabel-composer-buttons button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+.monailabel-composer .monailabel-microphone {
+  background: transparent;
+  border-color: transparent;
+}
+.monailabel-composer .monailabel-microphone[aria-pressed="true"] {
+  color: #fecaca;
+  background: #7f1d1d;
+  border-color: #b45353;
+}
+.monailabel-composer .monailabel-send {
+  background: #0e7490;
+  border-color: #0e7490;
+  color: white;
+}
+.monailabel-review {
+  border-block: 1px solid #253449;
+  padding-bottom: 4px;
+}
+.monailabel-review summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 12px;
+}
+.monailabel-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #0c1422;
+  flex-shrink: 0;
+}
+.monailabel-tabs button {
+  background: transparent;
+  border-color: transparent;
+}
+.monailabel-tabs [aria-selected="true"] {
+  background: #17263d;
+  color: #93c5fd;
+  border-color: #334155;
+}
+
+.monailabel-complete {
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 28px;
+  overflow-y: auto;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #101c2d;
+  color: #e2e8f0;
+  box-shadow: 0 24px 70px #0008;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.monailabel-complete::backdrop {
+  background: #020617b3;
+}
+.monailabel-complete-icon {
+  width: 34px;
+  height: 34px;
+  color: #5eead4;
+  margin-bottom: 14px;
+}
+.monailabel-complete h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.monailabel-complete p {
+  margin: 12px 0;
+}
+.monailabel-complete-sample {
+  color: #94a3b8;
+  overflow-wrap: anywhere;
+}
+.monailabel-complete-note {
+  color: #fde68a;
+}
+.monailabel-complete-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.monailabel-complete button {
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.monailabel-complete button:hover {
+  background: #234065;
+}
+.monailabel-complete button:focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: 3px;
+}
+.monailabel-complete button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.monailabel-complete .monailabel-complete-primary {
+  background: #0e7490;
+  border-color: #0e7490;
+  color: #fff;
+}
+
+/* OHIF's pinned header positions three groups absolutely on desktop. Keep
+   every tool reachable in one scrollable row on phones instead of overlapping. */
+@media (max-width: 700px) {
+  div:has(> div > [data-cy="return-to-work-list"]) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  div:has(> div > [data-cy="return-to-work-list"]) > div {
+    position: static;
+    transform: none;
+    flex-shrink: 0;
+  }
+  div:has(> div > [data-cy="return-to-work-list"]) > div:empty,
+  [data-cy="return-to-work-list"] > div {
+    display: none;
+  }
+  [data-cy="return-to-work-list"],
+  [data-cy="side-panel-header-right"],
+  [data-cy="side-panel-header-left"] {
+    min-height: 44px;
+  }
+}
+.monailabel-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+.monailabel-loading[role="alert"] {
+  color: #fca5a5;
+}

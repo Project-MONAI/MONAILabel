@@ -1,0 +1,1 @@
+"""Local annotation service."""

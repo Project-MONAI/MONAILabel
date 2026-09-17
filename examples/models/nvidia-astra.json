@@ -1,0 +1,13 @@
+{
+  "name": "GPT-6 Astra",
+  "provider": "openai-chat-polygons",
+  "label_ids": [0, 1],
+  "config": {
+    "url": "https://inference-api.nvidia.com/v1/chat/completions",
+    "model": "azure/openai/gpt-6-astra",
+    "token_env": "NV_INFERENCE_API_KEY",
+    "timeout": 180,
+    "max_output_tokens": 4096,
+    "reasoning_effort": "high"
+  }
+}

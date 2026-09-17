@@ -1,0 +1,90 @@
+{
+  "id": "spleen",
+  "title": "Spleen annotation, fine-tuning and independent evaluation",
+  "steps": [
+    {
+      "id": "project",
+      "prompt": "Create new project \"Radiology - Spleen Segmentation\"",
+      "tool": "create_project",
+      "arguments": {
+        "name": "Radiology - Spleen Segmentation"
+      }
+    },
+    {
+      "id": "import",
+      "prompt": "From Medical Decathlon Spleen Dataset import 80% images only for annotation and remaining 20% images+labels for evaluation.",
+      "tool": "import_dataset_split",
+      "arguments": {
+        "template_id": "Task09_Spleen",
+        "evaluation_percentage": 20,
+        "include_masks": false,
+        "limit": null
+      }
+    },
+    {
+      "id": "review_evaluation",
+      "prompt": "Mark all reviews as good for imported evaluation samples.",
+      "tool": "review_saved_annotations",
+      "arguments": {
+        "verdict": "accepted",
+        "scope": "pending",
+        "dataset_use": "evaluation"
+      }
+    },
+    {
+      "id": "annotate",
+      "prompt": "Run VISTA3D segmentation to annotate spleen for first 5 images and submit for review.",
+      "tool": "annotate_batch",
+      "arguments": {
+        "model_name": "VISTA3D",
+        "targets": [
+          "spleen"
+        ],
+        "limit": 5,
+        "submit_for_review": true
+      }
+    },
+    {
+      "id": "review_training",
+      "prompt": "Mark all pending reviews as good",
+      "tool": "review_saved_annotations",
+      "arguments": {
+        "verdict": "accepted",
+        "scope": "pending"
+      }
+    },
+    {
+      "id": "model",
+      "prompt": "Create VISTA 3D based model \"VISTA3D-Spleen\" for spleen",
+      "tool": "create_learner",
+      "arguments": {
+        "recipe": "vista3d",
+        "initialization": "fine_tune",
+        "name": "VISTA3D-Spleen",
+        "targets": [
+          "spleen"
+        ]
+      }
+    },
+    {
+      "id": "train",
+      "prompt": "Finetune VISTA3D-Spleen and use fixed Decathlon Spleen set for evaluation",
+      "tool": "start_training",
+      "arguments": {
+        "learner_name": "VISTA3D-Spleen",
+        "mode": "fine_tune",
+        "evaluation_set_id": "$evaluation_set_id"
+      }
+    },
+    {
+      "id": "compare",
+      "prompt": "Compare VISTA3D-Spleen vs VISTA3D against fixed Decathlon Spleen set",
+      "tool": "evaluate_candidate",
+      "arguments": {
+        "candidate_name": "VISTA3D-Spleen",
+        "baseline_name": "VISTA3D",
+        "evaluation_set_id": "$evaluation_set_id"
+      }
+    }
+  ]
+}

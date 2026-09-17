@@ -1,0 +1,86 @@
+{
+  "id": "spleen-paraphrases",
+  "title": "Spleen workflow with alternate wording and model names",
+  "steps": [
+    {
+      "id": "project",
+      "prompt": "Set up a project called \"Spleen pilot\".",
+      "tool": "create_project",
+      "arguments": {
+        "name": "Spleen pilot"
+      }
+    },
+    {
+      "id": "import",
+      "prompt": "Import the whole Medical Decathlon spleen training collection: 80% without masks for annotation, and 20% with masks for evaluation.",
+      "tool": "import_dataset_split",
+      "arguments": {
+        "template_id": "Task09_Spleen",
+        "evaluation_percentage": 20,
+        "include_masks": false,
+        "limit": null
+      }
+    },
+    {
+      "id": "review_evaluation",
+      "prompt": "Approve the imported evaluation references as good. Leave other reviews alone.",
+      "tool": "review_saved_annotations",
+      "arguments": {
+        "verdict": "accepted",
+        "scope": "pending",
+        "dataset_use": "evaluation"
+      }
+    },
+    {
+      "id": "annotate",
+      "prompt": "With VISTA3D, segment spleen in the first five annotation images and send the results for review.",
+      "tool": "annotate_batch",
+      "arguments": {
+        "model_name": "VISTA3D",
+        "targets": ["spleen"],
+        "limit": 5,
+        "submit_for_review": true
+      }
+    },
+    {
+      "id": "review_training",
+      "prompt": "Accept every pending review as good, across all samples.",
+      "tool": "review_saved_annotations",
+      "arguments": {
+        "verdict": "accepted",
+        "scope": "pending"
+      }
+    },
+    {
+      "id": "model",
+      "prompt": "Make a trainable spleen model from VISTA3D and call it \"Spleen pilot model\".",
+      "tool": "create_learner",
+      "arguments": {
+        "recipe": "vista3d",
+        "initialization": "fine_tune",
+        "name": "Spleen pilot model",
+        "targets": ["spleen"]
+      }
+    },
+    {
+      "id": "train",
+      "prompt": "Fine-tune \"Spleen pilot model\" with the existing fixed Medical Decathlon spleen evaluation set.",
+      "tool": "start_training",
+      "arguments": {
+        "learner_name": "Spleen pilot model",
+        "mode": "fine_tune",
+        "evaluation_set_id": "$evaluation_set_id"
+      }
+    },
+    {
+      "id": "compare",
+      "prompt": "Compare \"Spleen pilot model\" with the VISTA3D base using that same fixed evaluation set.",
+      "tool": "evaluate_candidate",
+      "arguments": {
+        "candidate_name": "Spleen pilot model",
+        "baseline_name": "VISTA3D",
+        "evaluation_set_id": "$evaluation_set_id"
+      }
+    }
+  ]
+}

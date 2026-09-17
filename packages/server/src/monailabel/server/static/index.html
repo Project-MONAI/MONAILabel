@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MONAI Label · Annotation workspace</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/app.js" type="module"></script>
+  </head>
+  <body>
+    <section id="auth" class="auth hidden">
+      <form id="login-form" class="auth-card">
+        <div class="brand"><span class="mark">M</span> MONAI Label</div>
+        <p class="eyebrow">ANNOTATION WORKSPACE</p>
+        <h1 id="auth-title">Welcome back.</h1>
+        <p id="auth-note">Sign in to your annotation workspace.</p>
+        <label
+          >Username<input
+            name="username"
+            autocomplete="username"
+            required /></label
+        ><label
+          >Password<input
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            minlength="12"
+            required /></label
+        ><button class="primary" type="submit" id="login-button">
+          Sign in
+        </button>
+        <p id="auth-error" role="alert"></p>
+      </form>
+    </section>
+    <div id="workspace" class="shell hidden">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <a class="brand" href="/"
+            ><span class="mark">M</span
+            ><span>MONAI Label<small>Annotation workspace</small></span></a
+          >
+          <button
+            id="mobile-nav"
+            aria-expanded="false"
+            aria-controls="sidebar-content"
+          >
+            Menu
+          </button>
+        </div>
+        <div id="sidebar-content">
+          <div class="project-switch">
+            <label for="project-select">PROJECT</label
+            ><select id="project-select">
+              <option value="">Select a project</option>
+            </select>
+            <div
+              class="project-actions"
+              role="group"
+              aria-label="Project actions"
+            >
+              <button id="new-project" type="button" aria-label="New project">
+                New
+              </button>
+              <button
+                id="edit-project"
+                type="button"
+                data-action="edit-project"
+                class="hidden"
+                aria-label="Edit project"
+              >
+                Edit
+              </button>
+              <button
+                id="delete-project"
+                type="button"
+                data-action="delete-project"
+                class="hidden"
+                aria-label="Delete project"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+          <nav aria-label="Workspace">
+            <button data-page="overview" class="active">
+              <svg
+                class="nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" /></svg
+              ><span>Overview</span></button
+            ><button data-page="datasets">
+              <svg
+                class="nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 7h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm0 0V5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v2"
+                /></svg
+              ><span>Datasets</span><b id="asset-count"></b></button
+            ><button data-page="models">
+              <svg
+                class="nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"
+                /></svg
+              ><span>Models</span></button
+            ><button data-page="review">
+              <svg
+                class="nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="4" y="3" width="16" height="18" rx="2" />
+                <path d="m8 12 3 3 5-6" /></svg
+              ><span>Reviews</span><b id="review-count"></b></button
+            ><button data-page="activity">
+              <svg
+                class="nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 12h4l3-8 4 16 3-8h4" /></svg
+              ><span>Activity</span></button
+            ><button data-page="team">
+              <svg
+                class="nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="9" cy="7" r="3" />
+                <path
+                  d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m2 5a5 5 0 0 1 3 4v2"
+                /></svg
+              ><span>Team & roles</span>
+            </button>
+          </nav>
+          <div class="sidebar-bottom">
+            <div class="account-details">
+              <strong id="identity"></strong>
+              <small id="account-role" class="hidden"></small>
+            </div>
+            <button id="logout" type="button">Sign out</button>
+          </div>
+        </div>
+      </aside>
+      <main>
+        <header>
+          <div>
+            <p class="eyebrow" id="breadcrumb">YOUR WORKSPACE</p>
+            <h1 id="page-title">Overview</h1>
+          </div>
+          <div class="header-actions">
+            <button
+              id="toggle-assistant"
+              class="header-tool active"
+              aria-label="Assistant"
+              title="Show or hide assistant"
+              aria-expanded="true"
+              aria-controls="assistant-panel"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"
+                />
+                <path d="M8 10h8M8 14h5" />
+              </svg>
+              <span>Assistant</span>
+            </button>
+            <button
+              id="refresh"
+              class="header-tool"
+              aria-label="Refresh"
+              title="Refresh workspace"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="M20 7v5h-5M4 17v-5h5M6.1 6.1A8 8 0 0 1 19.4 9L20 12M4 12l.6 3A8 8 0 0 0 17.9 17.9"
+                />
+              </svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </header>
+        <div id="notice" role="status" class="hidden"></div>
+        <section id="content"></section>
+      </main>
+      <aside
+        id="assistant-panel"
+        class="assistant"
+        aria-label="Workspace assistant"
+      >
+        <div class="assistant-heading">
+          <span class="assistant-symbol" aria-hidden="true">M</span>
+          <div>
+            <strong>Workspace assistant</strong
+            ><small>Help with this project</small>
+          </div>
+          <button
+            id="close-assistant"
+            class="icon-button"
+            aria-label="Hide assistant"
+          >
+            ×
+          </button>
+        </div>
+        <button id="new-conversation" class="subtle">New conversation</button>
+        <div class="context-bar" id="chat-context">No project selected</div>
+        <div id="messages" class="messages" aria-live="polite">
+          <div class="message assistant-message">
+            <span class="eyebrow">ASSISTANT</span>
+            <p>
+              Set up your workspace, connect a model, or open a sample in your
+              viewer. What would you like to do?
+            </p>
+            <div class="suggestions">
+              <button data-prompt="create a project">Create a project</button
+              ><button data-prompt="bring a dataset">Import files</button
+              ><button data-prompt="configure a model">Add a model</button>
+            </div>
+          </div>
+        </div>
+        <form id="chat-form">
+          <label class="sr-only" for="chat-input"
+            >Message the workspace assistant</label
+          ><textarea
+            id="chat-input"
+            placeholder="Ask about your next step…"
+            rows="3"
+            required
+          ></textarea>
+          <div class="composer-actions">
+            <label
+              ><input id="read-replies" type="checkbox" />Read replies</label
+            >
+            <div class="composer-buttons">
+              <button
+                id="dictate"
+                class="microphone-button"
+                type="button"
+                aria-label="Use microphone"
+                aria-pressed="false"
+                aria-describedby="voice-status"
+                title="Use microphone"
+              >
+                <svg
+                  class="microphone-icon"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="2" width="6" height="12" rx="3" />
+                  <path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8" />
+                </svg>
+                <svg
+                  class="stop-icon"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <rect x="5" y="5" width="14" height="14" rx="2" />
+                </svg>
+              </button>
+              <button
+                type="submit"
+                aria-label="Send message"
+                title="Send message"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 10 6-6 6 6M12 4v16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </form>
+        <p id="voice-status" class="voice-status" role="status"></p>
+        <p class="chat-footnote">Checking assistant status…</p>
+      </aside>
+    </div>
+    <dialog id="dialog">
+      <div class="dialog-heading">
+        <h2 id="dialog-title"></h2>
+        <button id="close-dialog" aria-label="Close dialog">×</button>
+      </div>
+      <form id="action-form"></form>
+    </dialog>
+  </body>
+</html>

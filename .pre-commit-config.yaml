@@ -1,79 +1,62 @@
-# Copyright (c) MONAI Consortium
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#     http://www.apache.org/licenses/LICENSE-2.0
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-ci:
-  autofix_prs: true
-  autoupdate_schedule: quarterly
-
+# Hook tools use the same versions as development and CI, pinned in uv.lock.
+minimum_pre_commit_version: '4.0.0'
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v6.0.0
-  hooks:
-  - id: check-merge-conflict
-  - id: trailing-whitespace
-  - id: check-yaml
-  - id: check-executables-have-shebangs
-  - id: check-toml
-  - id: check-case-conflict
-  - id: check-added-large-files
-    args: ['--maxkb=1024']
-  - id: detect-private-key
-  - id: forbid-new-submodules
-  - id: pretty-format-json
-    args: ['--autofix', '--no-sort-keys', '--indent=4']
-  - id: end-of-file-fixer
-  - id: mixed-line-ending
-
-- repo: https://github.com/pycqa/isort
-  rev: 6.1.0
-  hooks:
-  - id: isort
-    name: isort (python)
-    args: ["--line-length=120", "--profile=black"]
-
-- repo: https://github.com/pycqa/isort
-  rev: 6.1.0
-  hooks:
-  - id: isort
-    name: isort (python) (check)
-    args: ["--line-length=120", "--profile=black", "--check"]
-
-- repo: https://github.com/psf/black-pre-commit-mirror
-  rev: 25.9.0
-  hooks:
-  - id: black
-    args: ["--line-length=120"]
-
-- repo: https://github.com/psf/black-pre-commit-mirror
-  rev: 25.9.0
-  hooks:
-  - id: black
-    name: black (check)
-    args: ["--line-length=120", "--check"]
-
-- repo: https://github.com/PyCQA/flake8
-  rev: 7.3.0
-  hooks:
-  - id: flake8
-    args: ["--count", "--statistics", "--config=setup.cfg"]
-
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.18.2
-  hooks:
-  - id: mypy
-    exclude: (^tests/|^plugins/)
-    additional_dependencies: [types-PyYAML,types-filelock,types-requests,types-docutils,types-cachetools]
-
-- repo: https://github.com/asottile/pyupgrade
-  rev: v3.21.2
-  hooks:
-  -   id: pyupgrade
-      args: [--py37-plus]
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: Lint shell scripts (ShellCheck)
+        entry: uv run --locked --no-sync shellcheck
+        language: system
+        types: [shell]
+      - id: assistant-skills
+        name: Validate assistant skills
+        entry: uv run --locked --no-sync python -m monailabel.server.instructions
+        language: system
+        files: ^packages/server/src/monailabel/server/(instructions\.py|resources/assistant/)
+        pass_filenames: false
+      - id: golden-prompts
+        name: Check documented golden prompts
+        entry: uv run --locked --no-sync python examples/render_golden_prompts.py --check
+        language: system
+        files: ^(README\.md|examples/(prompts/.*\.json|render_golden_prompts\.py))$
+        pass_filenames: false
+      - id: isort
+        name: Sort Python imports (isort)
+        entry: uv run --locked --no-sync isort
+        language: system
+        types_or: [python, pyi]
+      - id: ruff
+        name: Lint Python (Ruff)
+        entry: uv run --locked --no-sync ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: Format Python (Ruff)
+        entry: uv run --locked --no-sync ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: check-merge-conflict
+        name: Check merge conflicts
+        entry: uv run --locked --no-sync check-merge-conflict
+        language: system
+        types: [text]
+      - id: check-toml
+        name: Check TOML
+        entry: uv run --locked --no-sync check-toml
+        language: system
+        types: [toml]
+      - id: check-yaml
+        name: Check YAML
+        entry: uv run --locked --no-sync check-yaml
+        language: system
+        types: [yaml]
+      - id: end-of-file-fixer
+        name: Fix end of files
+        entry: uv run --locked --no-sync end-of-file-fixer
+        language: system
+        types: [text]
+      - id: trailing-whitespace
+        name: Remove trailing whitespace
+        entry: uv run --locked --no-sync trailing-whitespace-fixer --markdown-linebreak-ext=md
+        language: system
+        types: [text]

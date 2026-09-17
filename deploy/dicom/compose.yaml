@@ -1,0 +1,21 @@
+name: monailabel-dicom
+services:
+  orthanc:
+    image: orthancteam/orthanc@sha256:1ca07ad4a70f67f815e55a558e76718d572ed9d0571268a3fbc1516a9155c5ca
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8042:8042"
+      - "127.0.0.1:4242:4242"
+    environment:
+      ORTHANC__NAME: MONAI Label local research data
+      ORTHANC__REMOTE_ACCESS_ALLOWED: "true"
+      ORTHANC__AUTHENTICATION_ENABLED: "false"
+      DICOM_WEB_PLUGIN_ENABLED: "true"
+      ORTHANC__DICOM_WEB__ENABLE: "true"
+      ORTHANC__DICOM_WEB__ROOT: /dicom-web/
+      ORTHANC__DICOM_WEB__STUDIES_METADATA: Full
+      ORTHANC__DICOM_WEB__SERIES_METADATA: Full
+    volumes:
+      - orthanc-data:/var/lib/orthanc/db
+volumes:
+  orthanc-data:

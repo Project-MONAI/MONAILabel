@@ -1,0 +1,504 @@
+[
+  {
+    "prompt": "create a project",
+    "context": "workspace",
+    "tool": "open_form",
+    "arguments": {
+      "form": "project"
+    }
+  },
+  {
+    "prompt": "Create a project called Liver follow-up",
+    "context": "workspace",
+    "tool": "create_project",
+    "arguments": {
+      "name": "Liver follow-up"
+    }
+  },
+  {
+    "prompt": "bring a dataset",
+    "context": "web",
+    "tool": "open_form",
+    "arguments": {
+      "form": "dataset"
+    }
+  },
+  {
+    "prompt": "configure a model",
+    "context": "web",
+    "tool": "open_form",
+    "arguments": {
+      "form": "model"
+    }
+  },
+  {
+    "prompt": "I need to configure its API key",
+    "context": "web",
+    "tool": "open_form",
+    "arguments": {
+      "form": "credential"
+    }
+  },
+  {
+    "prompt": "Invite a reviewer to my project",
+    "context": "web",
+    "tool": "open_form",
+    "arguments": {
+      "form": "team"
+    }
+  },
+  {
+    "prompt": "view in 3d slicer",
+    "context": "web",
+    "tool": "open_viewer",
+    "arguments": {
+      "viewer": "slicer"
+    }
+  },
+  {
+    "prompt": "view in qupath",
+    "context": "web",
+    "tool": "open_viewer",
+    "arguments": {
+      "viewer": "qupath"
+    }
+  },
+  {
+    "prompt": "view in ohif",
+    "context": "web",
+    "tool": "open_viewer",
+    "arguments": {
+      "viewer": "ohif"
+    }
+  },
+  {
+    "prompt": "annotate this volume",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "scope": "full"
+    }
+  },
+  {
+    "prompt": "annotate this slice",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "scope": "current_slice"
+    }
+  },
+  {
+    "prompt": "segment spleen in every slice",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "targets": [
+        "spleen"
+      ],
+      "scope": "full"
+    }
+  },
+  {
+    "prompt": "annotate all slices for spleen",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "targets": [
+        "spleen"
+      ],
+      "scope": "full"
+    }
+  },
+  {
+    "prompt": "Find the spleen on the slice I am looking at",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "targets": [
+        "spleen"
+      ],
+      "scope": "current_slice"
+    }
+  },
+  {
+    "prompt": "annotate liver and spleen on this slice",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "targets": [
+        "liver",
+        "spleen"
+      ],
+      "scope": "current_slice"
+    }
+  },
+  {
+    "prompt": "annotate this slice using GPT Astra model",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "model_id": "astra",
+      "scope": "current_slice"
+    }
+  },
+  {
+    "prompt": "Segment spleen on this slice with Sol",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "model_id": "sol",
+      "targets": [
+        "spleen"
+      ],
+      "scope": "current_slice"
+    }
+  },
+  {
+    "prompt": "annotate liver and spleen using vista3d",
+    "context": "slicer",
+    "tool": "annotate",
+    "arguments": {
+      "model_id": "vista",
+      "targets": [
+        "liver",
+        "spleen"
+      ]
+    }
+  },
+  {
+    "prompt": "Use Astra for annotation from now on",
+    "context": "slicer",
+    "tool": "select_annotation_model",
+    "arguments": {
+      "model_id": "astra"
+    }
+  },
+  {
+    "prompt": "create bounding box for spleen in current slice",
+    "context": "slicer",
+    "tool": "locate_region",
+    "arguments": {
+      "target": "spleen",
+      "kind": "box"
+    }
+  },
+  {
+    "prompt": "remove the bounding box for liver",
+    "context": "slicer",
+    "tool": "remove_regions",
+    "arguments": {
+      "target": "liver"
+    }
+  },
+  {
+    "prompt": "Remove all spleen boxes",
+    "context": "slicer",
+    "tool": "remove_regions",
+    "arguments": {
+      "target": "spleen",
+      "all_matches": true
+    }
+  },
+  {
+    "prompt": "add roi for spleen between slice 70 to 80",
+    "context": "slicer",
+    "tool": "locate_region",
+    "arguments": {
+      "target": "spleen",
+      "kind": "roi",
+      "first_slice": 70,
+      "last_slice": 80
+    }
+  },
+  {
+    "prompt": "List models",
+    "context": "web",
+    "tool": "inspect_workspace",
+    "arguments": {
+      "collection": "models"
+    }
+  },
+  {
+    "prompt": "Show review queue",
+    "context": "web",
+    "tool": "inspect_workspace",
+    "arguments": {
+      "collection": "review_queue"
+    }
+  },
+  {
+    "prompt": "Next case",
+    "context": "web",
+    "tool": "next_cases",
+    "arguments": {
+      "limit": 1
+    }
+  },
+  {
+    "prompt": "Find cases where models disagree",
+    "context": "web",
+    "tool": "next_cases",
+    "arguments": {
+      "strategy": "disagreement"
+    }
+  },
+  {
+    "prompt": "Create u-net based segmentation model for spleen",
+    "context": "web",
+    "tool": "create_learner",
+    "arguments": {
+      "recipe": "monai-unet",
+      "targets": [
+        "spleen"
+      ],
+      "initialization": "scratch",
+      "start_now": false
+    }
+  },
+  {
+    "prompt": "Create a new VISTA3D model for spleen and liver",
+    "context": "web",
+    "tool": "create_learner",
+    "arguments": {
+      "recipe": "vista3d",
+      "targets": [
+        "spleen",
+        "liver"
+      ],
+      "initialization": "fine_tune"
+    }
+  },
+  {
+    "prompt": "I want to finetune a new VISTA model for spleen and liver from the annotated dataset",
+    "context": "web",
+    "tool": "create_learner",
+    "arguments": {
+      "recipe": "vista3d",
+      "targets": [
+        "spleen",
+        "liver"
+      ],
+      "initialization": "fine_tune",
+      "start_now": true
+    }
+  },
+  {
+    "prompt": "Train this model",
+    "context": "web",
+    "tool": "start_training",
+    "arguments": {}
+  },
+  {
+    "prompt": "Evaluate candidate",
+    "context": "web",
+    "tool": "evaluate_candidate",
+    "arguments": {}
+  },
+  {
+    "prompt": "Promote candidate",
+    "context": "web",
+    "tool": "promote_candidate",
+    "arguments": {}
+  },
+  {
+    "prompt": "Create snapshot",
+    "context": "web",
+    "tool": "create_snapshot",
+    "arguments": {}
+  },
+  {
+    "prompt": "run nuclie segmentation on selected region",
+    "context": "qupath",
+    "tool": "annotate",
+    "arguments": {
+      "targets": [
+        "nuclei"
+      ],
+      "scope": "selected_region"
+    }
+  },
+  {
+    "prompt": "annotate the selected region or box for nuclei segmentation",
+    "context": "qupath",
+    "tool": "annotate",
+    "arguments": {
+      "targets": [
+        "nuclei"
+      ],
+      "scope": "selected_region"
+    }
+  },
+  {
+    "prompt": "run nuclei on whole image and use tile size 512",
+    "context": "qupath",
+    "tool": "annotate",
+    "arguments": {
+      "targets": [
+        "nuclei"
+      ],
+      "scope": "full",
+      "tile_size": 512
+    }
+  },
+  {
+    "prompt": "Annotate the full image for nuclei",
+    "context": "qupath",
+    "tool": "annotate",
+    "arguments": {
+      "targets": [
+        "nuclei"
+      ],
+      "scope": "full"
+    }
+  },
+  {
+    "prompt": "remove or clear segments",
+    "context": "qupath",
+    "tool": "clear_segments",
+    "arguments": {
+      "all_targets": true
+    }
+  },
+  {
+    "prompt": "clear nuclei inside the selected region",
+    "context": "qupath",
+    "tool": "clear_segments",
+    "arguments": {
+      "targets": [
+        "nuclei"
+      ],
+      "scope": "selected_region"
+    }
+  },
+  {
+    "prompt": "classify the annotated nuclei",
+    "context": "qupath",
+    "tool": "classify_objects",
+    "arguments": {
+      "selected_only": false
+    }
+  },
+  {
+    "prompt": "classify selected nuclei into tumor, immune and stromal",
+    "context": "qupath",
+    "tool": "classify_objects",
+    "arguments": {
+      "selected_only": true,
+      "categories": [
+        "Tumor",
+        "Immune",
+        "Stromal"
+      ]
+    }
+  },
+  {
+    "prompt": "undo my last change",
+    "context": "qupath",
+    "tool": "viewer_edit",
+    "arguments": {
+      "operation": "undo"
+    }
+  },
+  {
+    "prompt": "redo that",
+    "context": "qupath",
+    "tool": "viewer_edit",
+    "arguments": {
+      "operation": "redo"
+    }
+  },
+  {
+    "prompt": "save my draft",
+    "context": "qupath",
+    "tool": "viewer_edit",
+    "arguments": {
+      "operation": "save_draft"
+    }
+  },
+  {
+    "prompt": "submit this annotation for review",
+    "context": "qupath",
+    "tool": "viewer_edit",
+    "arguments": {
+      "operation": "submit"
+    }
+  },
+  {
+    "prompt": "Can you explain what a training snapshot is?",
+    "context": "web",
+    "tool": null,
+    "arguments": {}
+  },
+  {
+    "prompt": "Do not annotate anything yet; explain the available models",
+    "context": "web",
+    "tool": null,
+    "arguments": {}
+  },
+  {
+    "prompt": "Remove it",
+    "context": "qupath",
+    "tool": null,
+    "arguments": {}
+  },
+  {
+    "prompt": "Rename spleen to kidney",
+    "context": "web",
+    "tool": null,
+    "arguments": {}
+  },
+  {
+    "prompt": "Fill holes in this mask",
+    "context": "qupath",
+    "tool": null,
+    "arguments": {}
+  },
+  {
+    "prompt": "Copy this contour to the next slice",
+    "context": "slicer",
+    "tool": null,
+    "arguments": {}
+  },
+  {
+    "prompt": "Export reviewed annotations",
+    "context": "web",
+    "tool": null,
+    "arguments": {}
+  },
+  {
+    "prompt": "Roll back the annotation model",
+    "context": "web",
+    "tool": null,
+    "arguments": {}
+  },
+  {
+    "prompt": "This segmentation looks good. Accept it.",
+    "context": "slicer",
+    "tool": "review_annotation",
+    "arguments": {
+      "verdict": "accepted"
+    }
+  },
+  {
+    "prompt": "Mark this annotation bad; the spleen boundary is incomplete.",
+    "context": "qupath",
+    "tool": "review_annotation",
+    "arguments": {
+      "verdict": "changes_requested"
+    }
+  },
+  {
+    "prompt": "Accept my corrected segmentation",
+    "context": "slicer",
+    "tool": "review_annotation",
+    "arguments": {
+      "verdict": "accepted"
+    }
+  },
+  {
+    "prompt": "I will leave this case pending for another reviewer",
+    "context": "qupath",
+    "tool": null,
+    "arguments": {}
+  }
+]

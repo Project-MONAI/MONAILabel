@@ -1,0 +1,8 @@
+{
+  "version": "3.12.17",
+  "commit": "2322744c2adaa7816447d8cd7d44d587b0a6cc31",
+  "repository": "https://github.com/OHIF/Viewers.git",
+  "node_major": 22,
+  "public_url": "/ohif/",
+  "app_config": "config/monailabel.js"
+}

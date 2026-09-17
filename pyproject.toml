@@ -1,55 +1,86 @@
-# Copyright (c) MONAI Consortium
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#     http://www.apache.org/licenses/LICENSE-2.0
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+[project]
+name = "monailabel-workspace"
+version = "0.1.0"
+description = "Assistants for annotation and model learning"
+requires-python = ">=3.12"
+dependencies = ["monailabel-server", "monailabel-client"]
 
-[build-system]
-requires = [
-  "wheel",
-  "setuptools",
-  "torch>=1.7",
-  "ninja",
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+monailabel-monai = { workspace = true }
+monailabel-sam = { workspace = true }
+monailabel-dicom = { workspace = true }
+monailabel-core = { workspace = true }
+monailabel-providers = { workspace = true }
+monailabel-server = { workspace = true }
+monailabel-client = { workspace = true }
+monailabel-viewers = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.11",
+    "mypy>=1.15",
+    "httpx>=0.28",
+    "httpx2>=2.13.0",
+    "pre-commit>=4.6.2",
+    "isort>=9.0.1",
+    "pre-commit-hooks>=6.0.0",
+    "types-pyyaml>=6.0.12.20260906",
+    "shellcheck-py>=0.11.0.1",
 ]
 
-[tool.black]
-line-length = 120
-target-version = ['py36', 'py37', 'py38']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-    # exclude a few common directories in the root of the project
-      \.eggs
-    | \.git
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | \.pytype
-    | _build
-    | buck-out
-    | build
-    | dist
-    | plugins/ohif
-  )/
-  # also separately exclude a file named versioneer.py
-  | monailabel/_version.py
-  | plugins/ohif
-)
-'''
-
 [tool.pytest.ini_options]
-log_cli = true
-log_cli_level = "INFO"
-log_cli_format = "[%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) %(message)s"
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+  "error",
+  # MONAI 1.5.2 uses list indexing in its sliding-window utility; checked with Torch 2.10.
+  "ignore:Using a non-tuple sequence for multidimensional indexing is deprecated.*:UserWarning:monai.inferers.utils",
+  # Starlette 1.6 still imports this compatibility alias from AnyIO.
+  "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
 
-#log_file = "pytest.log"
-#log_file_level = "INFO"
-#log_file_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
-#log_file_date_format = "%Y-%m-%d %H:%M:%S"
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+known_third_party = ["monai"]
+known_first_party = ["monailabel.core", "monailabel.providers", "monailabel.server", "monailabel.client", "monailabel.viewers", "monailabel.monai", "monailabel.dicom", "monailabel.sam"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["monai"]
+known-first-party = ["monailabel.core", "monailabel.providers", "monailabel.server", "monailabel.client", "monailabel.viewers", "monailabel.monai", "monailabel.dicom", "monailabel.sam"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["$MYPY_CONFIG_FILE_DIR/packages/core/src", "$MYPY_CONFIG_FILE_DIR/packages/providers/src", "$MYPY_CONFIG_FILE_DIR/packages/server/src", "$MYPY_CONFIG_FILE_DIR/packages/client/src", "$MYPY_CONFIG_FILE_DIR/packages/viewers/src", "$MYPY_CONFIG_FILE_DIR/packages/monai/src", "$MYPY_CONFIG_FILE_DIR/packages/sam/src", "$MYPY_CONFIG_FILE_DIR/packages/dicom/src"]
+exclude = ["tests"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["nibabel.*", "sam2.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["monailabel.viewers.resources.slicer_bridge", "monailabel.viewers.resources.spatial_hints"]
+ignore_errors = true
+
+[tool.coverage.run]
+source = ["monailabel.core", "monailabel.providers", "monailabel.server", "monailabel.client"]

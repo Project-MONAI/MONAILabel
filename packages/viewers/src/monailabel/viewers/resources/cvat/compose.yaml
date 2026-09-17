@@ -1,0 +1,79 @@
+name: monailabel-cvat
+
+x-environment: &environment
+  CVAT_POSTGRES_HOST: database
+  CVAT_REDIS_INMEM_HOST: redis
+  CVAT_REDIS_INMEM_PORT: 6379
+  CVAT_REDIS_INMEM_PASSWORD: ''
+  CVAT_REDIS_ONDISK_HOST: cache
+  CVAT_REDIS_ONDISK_PORT: 6666
+  CVAT_ANALYTICS: 0
+  ALLOWED_HOSTS: '*'
+  SMOKESCREEN_OPTS: ''
+  NUMPROCS: 1
+
+x-volumes: &volumes
+  - data:/home/django/data
+  - keys:/home/django/keys
+  - logs:/home/django/logs
+
+x-backend: &backend
+  image: cvat/server:v2.76.0
+  restart: unless-stopped
+  environment: *environment
+  volumes: *volumes
+  depends_on: [database, redis, cache, opa]
+
+services:
+  database:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_DB: cvat
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: [database:/var/lib/postgresql/data]
+  redis:
+    image: redis:7.2.11-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [redis:/data]
+  cache:
+    image: apache/kvrocks:2.15.0
+    restart: unless-stopped
+    init: true
+    volumes: [cache:/var/lib/kvrocks]
+  opa:
+    image: openpolicyagent/opa:1.12.2
+    restart: unless-stopped
+    command:
+      - run
+      - --server
+      - --addr=:8181
+      - --log-level=error
+      - --set=services.cvat.url=http://server:8080
+      - --set=bundles.cvat.service=cvat
+      - --set=bundles.cvat.resource=/api/auth/rules
+      - --set=bundles.cvat.polling.min_delay_seconds=5
+      - --set=bundles.cvat.polling.max_delay_seconds=15
+  server:
+    <<: *backend
+    command: init run server nginx
+    ports: ['127.0.0.1:8092:8080']
+  importer:
+    <<: *backend
+    command: run worker import
+  chunks:
+    <<: *backend
+    command: run worker chunks
+  utilities:
+    <<: *backend
+    command: run worker notifications cleaning
+
+volumes:
+  database:
+  redis:
+  cache:
+  data:
+  keys:
+  logs:

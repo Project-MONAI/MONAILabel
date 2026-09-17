@@ -1,0 +1,33 @@
+[project]
+name = "monailabel-server"
+version = "0.1.0"
+description = "Annotation assistant service and local workspace"
+requires-python = ">=3.12"
+dependencies = [
+    "monailabel-core",
+    "monailabel-providers",
+    "monailabel-monai",
+    "monailabel-sam",
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+    "nibabel>=5.3,<6",
+    "cryptography>=50.0.1",
+    "filelock>=3.32.6",
+    "monailabel-viewers",
+    "monailabel-dicom",
+    "python-multipart>=0.0.20,<1",
+    "pyyaml>=6,<7",
+]
+
+[project.scripts]
+monailabel-server = "monailabel.server.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+monailabel-viewers = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/monailabel"]

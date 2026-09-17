@@ -1,0 +1,23 @@
+name: Checks
+on:
+  push:
+  pull_request:
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.8"
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run pre-commit run --all-files --show-diff-on-failure
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy packages
+      - run: uv run pytest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test tests/web/*.mjs

@@ -1,0 +1,16 @@
+[project]
+name = "monailabel-sam"
+version = "0.1.0"
+description = "Local SAM image and medical-volume annotation"
+requires-python = ">=3.12"
+dependencies = ["monailabel-core", "monailabel-providers", "MedSAM2", "torch>=2.5.1", "torchvision>=0.20.1", "httpx>=0.28,<1", "filelock>=3", "platformdirs>=4"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+MedSAM2 = { git = "https://github.com/bowang-lab/MedSAM2", rev = "332f30d420f1d1b08e2a79b3ae6a602458808383" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/monailabel"]
