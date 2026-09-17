@@ -25,6 +25,7 @@ from monailabel.endpoints import (
     activelearning,
     batch_infer,
     datastore,
+    datastore_review,
     infer,
     info,
     login,
@@ -91,6 +92,7 @@ app.include_router(train.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(activelearning.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(scoring.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(datastore.router, prefix=settings.MONAI_LABEL_API_STR)
+app.include_router(datastore_review.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(logs.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(ohif.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(proxy.router, prefix=settings.MONAI_LABEL_API_STR)

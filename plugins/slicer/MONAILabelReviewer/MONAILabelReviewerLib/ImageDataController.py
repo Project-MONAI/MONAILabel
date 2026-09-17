@@ -237,6 +237,15 @@ class ImageDataController:
     def getDicomDownloadUri(self, image_id: str) -> str:
         return self.monaiServerREST.getDicomDownloadUri(image_id)
 
+    def requestImage(self, image_id: str):
+        if img_blob is not None:
+            logging.info(
+                "{}: Image successfully requested from MONAIServer (image id: {})".format(
+                    self.getCurrentTime(), image_id
+                )
+            )
+        return img_blob
+
     def saveLabelInMonaiServer(self, image_in: str, label_in: str, tag: str, params: Dict):
         self.monaiServerREST.saveLabel(image_in, label_in, tag, params)
 

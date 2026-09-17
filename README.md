@@ -38,6 +38,7 @@ Refer to [MONAI Label Tutorial](https://github.com/Project-MONAI/tutorials/tree/
 - [Getting Started with MONAI Label](#getting-started-with-monai-label)
   - [Step 1. Installation](#step-1-installation)
   - [Step 2. MONAI Label Sample Applications](#step-2-monai-label-sample-applications)
+    - [Reviewer App](#reviewer-app)
   - [Step 3. MONAI Label Supported Viewers](#step-3-monai-label-supported-viewers)
   - [Step 4. Data Preparation](#step-4-data-preparation)
   - [Step 5. Start MONAI Label Server and Start Annotating!](#step-5-start-monai-label-server-and-start-annotating)
@@ -58,6 +59,7 @@ MONAI Label aims to fill the gap between developers creating new annotation appl
 - Customizable labeling app design for varying user expertise
 - Annotation support via [3DSlicer](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
   & [OHIF](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif) for radiology
+- Lightweight review workflow via the reviewer sample app and 3D Slicer reviewer plugin
 - Annotation support via [QuPath](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath), [Digital Slide Archive](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa), and [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for
   pathology
 - Annotation support via [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for Endoscopy
@@ -258,6 +260,41 @@ To use [SAM-2.1](https://huggingface.co/facebook/sam2.1-hiera-large) use one of 
 <p>The Bundle app enables users with customized models for inference, training or pre and post processing any target anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).</p>
 
 For a full list of supported bundles, see the <a href="https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/monaibundle">MONAI Label Bundles README</a>.
+
+### Reviewer App
+
+The reviewer sample app provides a lightweight, CPU-friendly review workflow for existing segmentations without loading AI inference or training tasks. It is intended for validation, approval, flagging, comments, and version inspection from the MONAILabel reviewer plugin in 3D Slicer.
+
+Typical startup:
+
+```bash
+monailabel start_server \
+  --app sample-apps/reviewer \
+  --studies /path/to/review-dataset \
+  --conf mode review
+```
+
+Dataset layout:
+
+```text
+/path/to/review-dataset/
+  case-001.nrrd
+  case-002.nrrd
+  labels/
+    final/
+      case-001.seg.nrrd
+      case-002.seg.nrrd
+```
+
+Reviewer-specific aggregate APIs are exposed under `/review`:
+
+- `/review/cases` for case listing and summary
+- `/review/versions` for label version metadata
+- `/review/report` for JSON, CSV, or HTML review reports
+
+Image and label binaries continue to use the standard datastore APIs such as `/datastore/image`, `/datastore/label`, and `/datastore/label/info`.
+
+See the reviewer sample app guide for usage details: <a href="https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/reviewer">sample-apps/reviewer/README.md</a>.
 
 ## Step 3 MONAI Label Supported Viewers
 
