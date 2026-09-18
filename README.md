@@ -53,9 +53,9 @@ uv run monailabel-server --assistant-variant 4b
 
 Open **http://localhost:8000**, create an administrator account, and wait for **Assistant ready**. Send prompts one at a time and wait for each job to finish. Inspect and apply proposals before submitting.
 
-Each example session below is one prompt per line, sent in order from the window named in the comment. Expand the specialty that matches your data.
+Each example session below is one prompt per line, sent in order from the window named in the comment. Choose the specialty that matches your data.
 
-<details>
+<details open>
 <summary><b>Radiology</b> — Decathlon Spleen, VISTA3D, OHIF</summary>
 
 ```text
@@ -81,7 +81,7 @@ The same sequence, kept in sync with its test definitions, is in [datasets, mode
 
 </details>
 
-<details>
+<details open>
 <summary><b>Pathology</b> — OpenSlide sample, nuclei, QuPath</summary>
 
 ```text
@@ -97,7 +97,7 @@ Submit this annotation for review.
 
 </details>
 
-<details>
+<details open>
 <summary><b>Endoscopy</b> — HyperKvasir clip, tool tracking, CVAT</summary>
 
 ```text
