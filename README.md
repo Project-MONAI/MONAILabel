@@ -1,16 +1,45 @@
 # MONAI Label
 
-Annotate medical images and videos with an assistant in **[3D Slicer](https://www.slicer.org/), [QuPath](https://qupath.github.io/), [OHIF](https://ohif.org/) or [CVAT](https://www.cvat.ai/)**. Import datasets, review annotations, fine-tune models and compare their results from one web workspace.
+MONAI Label is an open-source image labeling and learning tool for interactive AI annotation of medical images and videos. Use an assistant in **[3D Slicer](https://www.slicer.org/), [QuPath](https://qupath.github.io/), [OHIF](https://ohif.org/) or [CVAT](https://www.cvat.ai/)** for radiology, pathology and endoscopy.
 
-| Overview | Datasets |
-| --- | --- |
-| [<img src="docs/assets/overview.png" alt="Project overview with synthetic sample and review counts" height="200">](docs/assets/overview.png) | [<img src="docs/assets/datasets.png" alt="Dataset workspace with annotation and evaluation images" height="200">](docs/assets/datasets.png) |
-| **3D Slicer** | **OHIF** |
-| [<img src="docs/assets/slicer.png" alt="Liver and spleen annotations with the MONAI Label review assistant in 3D Slicer" height="200">](docs/assets/slicer.png) | [<img src="docs/assets/ohif.png" alt="CT image and MONAI Label review controls in OHIF" height="200">](docs/assets/ohif.png) |
-| **QuPath** | **CVAT** |
-| [<img src="docs/assets/qupath.png" alt="Editable nuclei annotations and the MONAI Label assistant in QuPath" height="200">](docs/assets/qupath.png) | [<img src="docs/assets/cvat.png" alt="Editable snare polygon tracks and the CVAT assistant" height="200">](docs/assets/cvat.png) |
-| **Training** | **Evaluation** |
-| [<img src="docs/assets/training.png" alt="Training settings with a fixed evaluation set" height="200">](docs/assets/training.png) | [<img src="docs/assets/comparison.png" alt="Dice comparison and evaluation logs" height="200">](docs/assets/comparison.png) |
+Import datasets, review annotations, train and fine-tune models, and compare their results from one web workspace.
+
+<table>
+<tr><td colspan="2"><b>Web workspace</b> — projects, datasets, models and reviews</td></tr>
+<tr align="center"><td><b>Overview</b></td><td><b>Datasets</b></td></tr>
+<tr align="center">
+<td><a href="docs/assets/overview.png"><img src="docs/assets/overview.png" alt="Project overview with synthetic sample and review counts" height="200"></a></td>
+<td><a href="docs/assets/datasets.png"><img src="docs/assets/datasets.png" alt="Dataset workspace with annotation and evaluation images" height="200"></a></td>
+</tr>
+<tr align="center"><td><b>Models</b></td><td><b>Reviews</b></td></tr>
+<tr align="center">
+<td><a href="docs/assets/models.png"><img src="docs/assets/models.png" alt="Project and base annotation models" height="200"></a></td>
+<td><a href="docs/assets/reviews.png"><img src="docs/assets/reviews.png" alt="Pending annotations and review decisions" height="200"></a></td>
+</tr>
+</table>
+
+<table>
+<tr><td colspan="2"><b>Viewers</b> — the same backend and assistant in each</td></tr>
+<tr align="center"><td><b>3D Slicer</b></td><td><b>OHIF</b></td></tr>
+<tr align="center">
+<td><a href="docs/assets/slicer.png"><img src="docs/assets/slicer.png" alt="Liver and spleen annotations with the MONAI Label review assistant in 3D Slicer" height="180"></a></td>
+<td><a href="docs/assets/ohif.png"><img src="docs/assets/ohif.png" alt="CT image and MONAI Label review controls in OHIF" height="180"></a></td>
+</tr>
+<tr align="center"><td><b>QuPath</b></td><td><b>CVAT</b></td></tr>
+<tr align="center">
+<td><a href="docs/assets/qupath.png"><img src="docs/assets/qupath.png" alt="Editable nuclei annotations and the MONAI Label assistant in QuPath" height="180"></a></td>
+<td><a href="docs/assets/cvat.png"><img src="docs/assets/cvat.png" alt="Editable snare polygon tracks and the CVAT assistant" height="180"></a></td>
+</tr>
+</table>
+
+<table>
+<tr><td colspan="2"><b>Learning</b> — train on reviewed labels, compare on held-out data</td></tr>
+<tr align="center"><td><b>Training</b></td><td><b>Evaluation</b></td></tr>
+<tr align="center">
+<td><a href="docs/assets/training.png"><img src="docs/assets/training.png" alt="Training settings with a fixed evaluation set" width="240"></a></td>
+<td><a href="docs/assets/comparison.png"><img src="docs/assets/comparison.png" alt="Dice comparison and evaluation logs" width="240"></a></td>
+</tr>
+</table>
 
 ## System requirements
 
@@ -26,90 +55,82 @@ Annotate medical images and videos with an assistant in **[3D Slicer](https://ww
 
 On Ubuntu/Debian, run `./setup.sh` once to install missing dependencies and prepare the viewers. It uses sudo for system packages and requires a working NVIDIA driver. Use `./setup.sh --check` to check prerequisites.
 
-From the repository root, choose a Nemotron chat variant (Lightning is the default; 9B and 4B are experimental):
+Generate an [NVIDIA Inference API key](https://inference.nvidia.com) and export it in the shell so hosted GPT annotation (Sol/Astra) is available. NVIDIA Inference is one option; you can also bring any OpenAI-compatible model (see [providers](docs/providers.md)).
+
+Start the server. Local chat uses Nemotron 3.5 Lightning by default; Nano 9B and Nano 4B are experimental options for smaller GPUs:
 
 ```bash
-uv run monailabel-server --assistant-variant lightning
+export NV_INFERENCE_API_KEY="<your-api-key>"
+uv run monailabel-server
+
+# If you have a smaller GPU, try Nemotron Nano 9B or Nano 4B:
 uv run monailabel-server --assistant-variant 9b
 uv run monailabel-server --assistant-variant 4b
 ```
 
-Or enable [NVIDIA-hosted](https://inference.nvidia.com) GPT annotation (Sol/Astra) when starting:
-
-```bash
-NV_INFERENCE_API_KEY="<your-api-key>" uv run monailabel-server
-```
-
 Open **http://localhost:8000**, create an administrator account, and wait for **Assistant ready**. Send prompts one at a time and wait for each job to finish. Inspect and apply proposals before submitting.
 
-After code updates, restart the server and reload the browser.
+Each example session below is one prompt per line, sent in order from the window named in the comment. Expand the specialty that matches your data.
 
-### Radiology
+<details>
+<summary><b>Radiology</b> — Decathlon Spleen, VISTA3D, OHIF</summary>
 
-**Main window**
+```text
+# Main window
+Create a project called "Radiology".
+Import 80% of Decathlon Spleen images for annotation and 20% with labels for evaluation.
+Annotate spleen in the first 3 images using VISTA3D and submit for review.
+Open the first image in OHIF.
 
-> Create a project called "Radiology".
+# OHIF assistant
+Segment the spleen in the whole volume using VISTA3D.
+Submit this annotation for review.
 
-> Import 80% of Medical Decathlon Spleen images for annotation
-> and the remaining 20% with labels for evaluation.
+# Main window, after inspecting the annotations and evaluation labels
+Mark all reviews as good for imported evaluation samples.
+Mark all pending reviews as good.
+Create a VISTA3D model named "VISTA3D-Spleen" for spleen.
+Fine-tune VISTA3D-Spleen using the fixed Decathlon Spleen evaluation set.
+Compare VISTA3D-Spleen with VISTA3D on that same evaluation set.
+```
 
-> Annotate spleen in the first 3 images using VISTA3D and submit for review.
+The same sequence, kept in sync with its test definitions, is in [datasets, models and learning](docs/workflows.md#try-the-spleen-learning-workflow).
 
-> Open the first image in OHIF.
+</details>
 
-**OHIF assistant**
+<details>
+<summary><b>Pathology</b> — OpenSlide sample, nuclei, QuPath</summary>
 
-> Segment the spleen in the whole volume using VISTA3D.
+```text
+# Main window
+Create a project called "Pathology".
+Import the OpenSlide pathology sample.
+Open this sample in QuPath.
 
-> Submit this annotation for review.
+# QuPath assistant, after drawing a region
+Segment nuclei in the selected region using GPT-5.6 Sol.
+Submit this annotation for review.
+```
 
-**Main window — after inspecting the annotations and evaluation labels**
+</details>
 
-> Mark all reviews as good for imported evaluation samples.
+<details>
+<summary><b>Endoscopy</b> — HyperKvasir clip, tool tracking, CVAT</summary>
 
-> Mark all pending reviews as good.
+```text
+# Main window
+Create a project called "Endoscopy".
+Import the HyperKvasir tool-tracking sample.
+Open the video in CVAT.
 
-> Create a VISTA3D model named "VISTA3D-Spleen" for spleen.
+# CVAT assistant
+Use GPT-5.6 Sol to locate the snare on this frame.
+Use GPT-5.6 Sol to segment the snare on this frame.
+Use GPT-5.6 Sol to segment the snare and track it for 16 frames.
+Use GPT-5.6 Sol to segment the snare and track the whole video.
+```
 
-> Fine-tune VISTA3D-Spleen using the fixed Decathlon Spleen evaluation set.
-
-> Compare VISTA3D-Spleen with VISTA3D on that same evaluation set.
-
-### Pathology
-
-**Main window**
-
-> Create a project called "Pathology".
-
-> Import the OpenSlide pathology sample.
-
-> Open this sample in QuPath.
-
-**QuPath assistant — draw a region first**
-
-> Segment nuclei in the selected region using GPT-5.6 Sol.
-
-> Submit this annotation for review.
-
-### Endoscopy
-
-**Main window**
-
-> Create a project called "Endoscopy".
-
-> Import the HyperKvasir tool-tracking sample.
-
-> Open the video in CVAT.
-
-**CVAT assistant**
-
-> Use GPT-5.6 Sol to locate the snare on this frame.
-
-> Use GPT-5.6 Sol to segment the snare on this frame.
-
-> Use GPT-5.6 Sol to segment the snare and track it for 16 frames.
-
-> Use GPT-5.6 Sol to segment the snare and track the whole video.
+</details>
 
 ## Workspace
 
