@@ -4,42 +4,25 @@ MONAI Label is an open-source image labeling and learning tool for interactive A
 
 Import datasets, review annotations, train and fine-tune models, and compare their results from one web workspace.
 
-<table>
-<tr><td colspan="2"><b>Web workspace</b> — projects, datasets, models and reviews</td></tr>
-<tr align="center"><td><b>Overview</b></td><td><b>Datasets</b></td></tr>
-<tr align="center">
-<td><a href="docs/assets/overview.png"><img src="docs/assets/overview.png" alt="Project overview with synthetic sample and review counts" height="200"></a></td>
-<td><a href="docs/assets/datasets.png"><img src="docs/assets/datasets.png" alt="Dataset workspace with annotation and evaluation images" height="200"></a></td>
-</tr>
-<tr align="center"><td><b>Models</b></td><td><b>Reviews</b></td></tr>
-<tr align="center">
-<td><a href="docs/assets/models.png"><img src="docs/assets/models.png" alt="Project and base annotation models" height="200"></a></td>
-<td><a href="docs/assets/reviews.png"><img src="docs/assets/reviews.png" alt="Pending annotations and review decisions" height="200"></a></td>
-</tr>
-</table>
+<p align="center">
+<picture>
+<source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/overview.png">
+<img src="docs/assets/gallery.gif" alt="MONAI Label workspace and viewers" width="100%">
+</picture>
+</p>
 
-<table>
-<tr><td colspan="2"><b>Viewers</b> — the same backend and assistant in each</td></tr>
-<tr align="center"><td><b>3D Slicer</b></td><td><b>OHIF</b></td></tr>
-<tr align="center">
-<td><a href="docs/assets/slicer.png"><img src="docs/assets/slicer.png" alt="Liver and spleen annotations with the MONAI Label review assistant in 3D Slicer" height="180"></a></td>
-<td><a href="docs/assets/ohif.png"><img src="docs/assets/ohif.png" alt="CT image and MONAI Label review controls in OHIF" height="180"></a></td>
-</tr>
-<tr align="center"><td><b>QuPath</b></td><td><b>CVAT</b></td></tr>
-<tr align="center">
-<td><a href="docs/assets/qupath.png"><img src="docs/assets/qupath.png" alt="Editable nuclei annotations and the MONAI Label assistant in QuPath" height="180"></a></td>
-<td><a href="docs/assets/cvat.png"><img src="docs/assets/cvat.png" alt="Editable snare polygon tracks and the CVAT assistant" height="180"></a></td>
-</tr>
-</table>
-
-<table>
-<tr><td colspan="2"><b>Learning</b> — train on reviewed labels, compare on held-out data</td></tr>
-<tr align="center"><td><b>Training</b></td><td><b>Evaluation</b></td></tr>
-<tr align="center">
-<td><a href="docs/assets/training.png"><img src="docs/assets/training.png" alt="Training settings with a fixed evaluation set" width="240"></a></td>
-<td><a href="docs/assets/comparison.png"><img src="docs/assets/comparison.png" alt="Dice comparison and evaluation logs" width="240"></a></td>
-</tr>
-</table>
+<p align="center">
+<a href="docs/assets/overview.png"><img src="docs/assets/overview.png" alt="Overview" title="Overview" width="7%"></a>&nbsp;
+<a href="docs/assets/datasets.png"><img src="docs/assets/datasets.png" alt="Datasets" title="Datasets" width="7%"></a>&nbsp;
+<a href="docs/assets/models.png"><img src="docs/assets/models.png" alt="Models" title="Models" width="7%"></a>&nbsp;
+<a href="docs/assets/reviews.png"><img src="docs/assets/reviews.png" alt="Reviews" title="Reviews" width="7%"></a>&nbsp;
+<a href="docs/assets/slicer.png"><img src="docs/assets/slicer.png" alt="3D Slicer" title="3D Slicer" width="7%"></a>&nbsp;
+<a href="docs/assets/ohif.png"><img src="docs/assets/ohif.png" alt="OHIF" title="OHIF" width="7%"></a>&nbsp;
+<a href="docs/assets/qupath.png"><img src="docs/assets/qupath.png" alt="QuPath" title="QuPath" width="7%"></a>&nbsp;
+<a href="docs/assets/cvat.png"><img src="docs/assets/cvat.png" alt="CVAT" title="CVAT" width="7%"></a>&nbsp;
+<a href="docs/assets/training.png"><img src="docs/assets/training.png" alt="Training" title="Training" width="7%"></a>&nbsp;
+<a href="docs/assets/comparison.png"><img src="docs/assets/comparison.png" alt="Evaluation" title="Evaluation" width="7%"></a>
+</p>
 
 ## System requirements
 
