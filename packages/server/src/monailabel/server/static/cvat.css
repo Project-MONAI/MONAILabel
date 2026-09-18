@@ -142,11 +142,14 @@ input:focus-visible {
   min-height: 100px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 #messages p {
   margin: 0 0 14px;
+}
+#messages p.user,
+#messages p.assistant {
+  white-space: pre-wrap;
 }
 #messages p.user {
   padding: 10px 12px;
