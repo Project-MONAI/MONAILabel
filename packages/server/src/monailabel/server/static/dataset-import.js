@@ -32,7 +32,7 @@ export function pairReferenceFiles(images, labels) {
   return pairs;
 }
 
-function upload(path, form, progress) {
+export function upload(path, form, progress) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("POST", `/api${path}`);

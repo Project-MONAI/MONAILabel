@@ -27,6 +27,7 @@ from monailabel.core.models import (
     Split,
 )
 from monailabel.core.ports import Image, Mask
+from monailabel.core.video import VideoAsset
 from monailabel.server.evaluation_sets import EvaluationSets, reserved
 from monailabel.server.model_splits import assign as assign_model_split
 from monailabel.server.storage import Artifacts, Store
@@ -188,6 +189,9 @@ class Datasets:
                     and old.split == asset.split
                 ):
                     return old
+            for video in session.list(VideoAsset, project_id):
+                if video.group_id == asset.group_id and video.split != asset.split:
+                    raise Conflict("All clips and images from a procedure must share one split.")
             session.insert(asset)
             asset = EvaluationSets.on_import(
                 session, asset, is_new=True, apply_policies=not request.shared
@@ -213,6 +217,9 @@ class Datasets:
                             "A source group cannot cross training and validation splits."
                         )
                     session.update(item.model_copy(update={"split": split}))
+            for video in session.list(VideoAsset, asset.project_id):
+                if video.group_id == asset.group_id:
+                    session.update(video.model_copy(update={"split": split}))
             return asset.model_copy(update={"split": split})
 
     def snapshot(

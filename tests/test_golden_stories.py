@@ -10,7 +10,7 @@ ROOT = Path(__file__).parents[1]
 
 def test_guide_uses_exact_golden_prompt_definitions():
     module = runpy.run_path(str(ROOT / "examples/render_golden_prompts.py"))
-    assert module["render"]() in (ROOT / "README.md").read_text()
+    assert module["render"]() in module["TARGET"].read_text()
 
 
 @pytest.mark.parametrize("story", ["radiology", "pathology"])

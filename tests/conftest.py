@@ -6,6 +6,20 @@ from monailabel.client.client import Client
 from monailabel.server.app import create_app
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--video-e2e", action="store_true", help="Run disposable CVAT browser integration tests."
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--video-e2e"):
+        skip = pytest.mark.skip(reason="Use --video-e2e with the e2e dependency group.")
+        for item in items:
+            if "video_e2e" in item.keywords:
+                item.add_marker(skip)
+
+
 @pytest.fixture(autouse=True)
 def isolated_presets(monkeypatch, tmp_path):
     monkeypatch.setenv("MONAILABEL_PRELOAD_MODELS", "0")

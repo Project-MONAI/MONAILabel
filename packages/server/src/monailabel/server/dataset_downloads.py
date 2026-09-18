@@ -16,6 +16,7 @@ from pydantic import TypeAdapter
 
 from monailabel.core.dataset_templates import DatasetTemplate
 from monailabel.core.errors import DomainError
+from monailabel.core.video import VideoImport
 from monailabel.server.data import MAX_FILE_BYTES
 from monailabel.server.jobs import JobContext
 from monailabel.server.workspace import workspace_dir
@@ -24,7 +25,8 @@ from monailabel.server.workspace import workspace_dir
 class Source(DatasetTemplate):
     url: str
     checksum: str
-    format: Literal["msd", "totalsegmentator", "image", "external"]
+    format: Literal["msd", "totalsegmentator", "image", "video", "external"]
+    video: VideoImport | None = None
 
 
 def sources() -> list[Source]:

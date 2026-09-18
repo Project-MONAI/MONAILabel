@@ -1,3 +1,4 @@
+import { videoButtons } from "./videos.js";
 import { paginationButton } from "./icons.js";
 import { reviewDecisionControl } from "./review-controls.js";
 // Compact project lists. Page/search/filter state stays with the application controller.
@@ -34,18 +35,37 @@ const table = (headings, rows) =>
   `<div class="table-wrap"><table class="compact-table"><thead><tr>${headings.map((h) => `<th scope="col">${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 const empty = (text, reset = false) =>
   `<div class="empty"><p>${text}</p>${reset ? button("Reset filters", "reset-filters") : ""}</div>`;
+export const samples = (state) =>
+  [...state.assets, ...(state.videos || [])].sort((a, b) =>
+    (a.created_at || "").localeCompare(b.created_at || ""),
+  );
+export const sampleType = (a) =>
+  ({ image2d: "Image", volume3d: "Volume", video: "Video" })[a.kind] || "Image";
+export const sampleDimensions = (a) =>
+  a.kind === "video"
+    ? `${a.width} × ${a.height} · ${a.frames} frames · ${a.duration.toFixed(2)} s`
+    : a.spatial_shape.join(" × ");
+export const sampleUse = (a) =>
+  a.split === "validation"
+    ? "Evaluation only"
+    : a.kind === "video"
+      ? "Annotation"
+      : "Annotation & training";
 const viewerButtons = (state, a) =>
-  `<div class="row-actions">${button(a.kind === "volume3d" ? "Slicer" : "QuPath", "viewer", a.id)}${a.kind === "volume3d" ? button("OHIF", "ohif", a.id) : ""}</div>`;
+  a.kind === "video"
+    ? videoButtons(state, a)
+    : `<div class="row-actions">${button(a.kind === "volume3d" ? "Slicer" : "QuPath", "viewer", a.id)}${a.kind === "volume3d" ? button("OHIF", "ohif", a.id) : ""}</div>`;
 const sampleActions = (asset) =>
   `<button class="sample-actions" data-action="sample-details" data-id="${esc(asset.id)}" type="button" title="Sample actions" aria-haspopup="dialog" aria-label="Actions for ${esc(asset.name)}"><span aria-hidden="true">⋯</span></button>`;
 export function visibleAssets(state, statusOf) {
-  return state.assets.filter(
+  return samples(state).filter(
     (a) =>
       matches(`${a.name} ${a.group_id}`, state.searches.datasets) &&
       (state.datasetFilter === "all" ||
         a.split === state.datasetFilter ||
         (state.datasetFilter === "shared" && a.split !== "validation") ||
         statusOf(a) === state.datasetFilter ||
+        state.datasetFilter === `kind:${a.kind}` ||
         (state.datasetFilter.startsWith("set:") &&
           state.evaluationSets
             .find((s) => s.id === state.datasetFilter.slice(4))
@@ -53,16 +73,20 @@ export function visibleAssets(state, statusOf) {
   );
 }
 export function datasets(state, manage, statusOf) {
+  const all = samples(state);
   const items = visibleAssets(state, statusOf);
   const rows = pageSlice(items, state, "datasets");
   const options = [
     ["all", "All samples"],
-    ["shared", "Annotation & training"],
+    ["shared", "Annotation"],
     ["validation", "Evaluation only"],
     ["unannotated", "Not submitted"],
     ["pending", "Pending review"],
     ["accepted", "Accepted"],
     ["changes_requested", "Needs changes"],
+    ["kind:image2d", "Images"],
+    ["kind:volume3d", "Volumes"],
+    ["kind:video", "Videos"],
   ];
   options.push(
     ...state.evaluationSets
@@ -71,15 +95,15 @@ export function datasets(state, manage, statusOf) {
   );
   const selected = state.selectedFiles.size;
   return (
-    `<div class="section-heading"><p class="muted">Annotate images, then use reviewed labels to train or fine-tune models. Each model manages its own validation split; evaluation-only data stays separate.</p><div class="toolbar">${manage ? button("Sample datasets", "dataset-template") + button("Import from DICOM server", "dicom") + button("Import files", "dataset", "", "primary") : ""}</div></div>` +
+    `<div class="section-heading"><p class="muted">Import samples, annotate them in a viewer, and review the results. Evaluation-only data stays separate from training.</p><div class="toolbar">${manage ? button("Sample datasets", "dataset-template") + button("Import from DICOM server", "dicom") + button("Import video", "video-import") + button("Import files", "dataset", "", "primary") : ""}</div></div>` +
     filters(
       state,
       "datasets",
       options,
       state.datasetFilter,
-      "Search samples, patients or slides",
+      "Search samples, patients, slides or procedures",
     ) +
-    (manage && state.assets.length
+    (manage && all.length
       ? `<div class="selection-bar"><span>${selected ? `${selected} selected` : `${items.length} ${items.length === 1 ? "sample" : "samples"}`}</span>${selected ? button("Clear selection", "clear-selection") : ""}${items.length > PAGE_SIZES.datasets ? button(`Select all ${items.length} matching`, "select-filtered") : ""}${selected ? button("Delete selected files", "delete-files", "", "danger") : ""}</div>`
       : "") +
     (rows.length
@@ -91,19 +115,20 @@ export function datasets(state, manage, statusOf) {
                 ]
               : []),
             "Sample",
+            "Type",
             "Status",
             "Actions",
           ],
           rows.map(
             (a) =>
-              `<tr class="${a.id === state.context.asset_id ? "row-selected" : ""}">${manage ? `<td class="check-cell"><input type="checkbox" data-file-selection="${a.id}" aria-label="Select ${esc(a.name)}" ${state.selectedFiles.has(a.id) ? "checked" : ""}></td>` : ""}<td class="sample-cell">${button(esc(a.name), "select", a.id, "link-button")}<small>${esc(a.spatial_shape.join(" × "))} · Revision ${a.revision}</small></td><td>${badge(a.split === "validation" ? "Evaluation only" : "Annotation & training")} ${badge(statusOf(a))}</td><td><div class="row-actions">${viewerButtons(state, a)}${sampleActions(a)}</div></td></tr>`,
+              `<tr class="${a.id === state.context.asset_id ? "row-selected" : ""}">${manage ? `<td class="check-cell"><input type="checkbox" data-file-selection="${a.id}" aria-label="Select ${esc(a.name)}" ${state.selectedFiles.has(a.id) ? "checked" : ""}></td>` : ""}<td class="sample-cell">${button(esc(a.name), a.kind === "video" ? "sample-details" : "select", a.id, "link-button")}<small>${esc(sampleDimensions(a))} · Revision ${a.revision}</small></td><td>${esc(sampleType(a))}</td><td>${badge(sampleUse(a))} ${badge(statusOf(a))}</td><td><div class="row-actions">${viewerButtons(state, a)}${sampleActions(a)}</div></td></tr>`,
           ),
         )
       : empty(
-          state.assets.length
+          all.length
             ? "No samples match these filters."
             : "Import files to add your first sample.",
-          !!state.assets.length,
+          !!all.length,
         )) +
     pagination(items, state, "datasets")
   );
@@ -122,7 +147,11 @@ export function reviewQueue(state, statusOf, latestDecision) {
   const pending = state.assets.filter(
     (a) => a.annotation_id && statusOf(a) === "pending",
   );
-  const submitted = state.assets.filter((a) => a.annotation_id);
+  const submittedImages = state.assets.filter((a) => a.annotation_id);
+  const submitted = [
+    ...submittedImages,
+    ...(state.videos || []).filter((v) => v.annotation_id),
+  ];
   const items = visibleReviews(state, statusOf);
   const rows = pageSlice(items, state, "review");
   const options = [
@@ -163,13 +192,17 @@ export function reviewQueue(state, statusOf, latestDecision) {
               `<tr>${canReview ? `<td class="check-cell">${`<input type="checkbox" data-review-selection="${a.annotation_id}" aria-label="Select ${esc(a.name)}" ${selected.has(a.annotation_id) ? "checked" : ""}>`}</td>` : ""}<td class="sample-cell">${esc(a.name)}<small>Revision ${a.revision}</small></td><td>${badge(statusOf(a))}${latestDecision(a)?.comment ? `<p class="cell-note" title="${esc(latestDecision(a).comment)}">${esc(latestDecision(a).comment)}</p>` : ""}</td><td><div class="row-actions">${viewerButtons(state, a)}</div></td></tr>`,
           ),
         )
-      : empty(
-          submitted.length
-            ? "No annotations match this review filter."
-            : "Submitted annotations will appear here for review.",
-          !!submitted.length,
-        )) +
-    pagination(items, state, "review")
+      : !submittedImages.length && submitted.length
+        ? ""
+        : empty(
+            submitted.length
+              ? "No annotations match this review filter."
+              : "Submitted annotations will appear here for review.",
+            !!submitted.length,
+          )) +
+    (!submittedImages.length && submitted.length
+      ? ""
+      : pagination(items, state, "review"))
   );
 }
 export function activity(state, canCancel) {

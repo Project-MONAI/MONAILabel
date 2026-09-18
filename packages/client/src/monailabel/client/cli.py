@@ -80,6 +80,14 @@ def main() -> None:
                     from monailabel.viewers.ohif import OhifManager
 
                     result = {"viewer": "ohif", "dist": str(OhifManager().ensure())}
+                elif args.name.casefold() == "cvat":
+                    from monailabel.viewers.cvat_runtime import CvatManager
+
+                    result = {
+                        "viewer": "cvat",
+                        "images": CvatManager.prepare_images(not args.no_download),
+                        "next": "Open a video in the workspace to start CVAT.",
+                    }
                 else:
                     result = asdict(
                         ViewerManager().ensure(args.name, download=not args.no_download)

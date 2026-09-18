@@ -26,6 +26,7 @@ from monailabel.core.models import (
     Snapshot,
     Split,
 )
+from monailabel.core.video import VideoAsset
 from monailabel.server.storage import Session, Store
 
 
@@ -52,7 +53,11 @@ def components(assets: list[Asset]) -> dict[str, list[Asset]]:
 
 def reserved(session: Session, project_id: str) -> tuple[set[str], set[str]]:
     records = session.list(EvaluationReservation, project_id)
-    return {r.group_id for r in records}, {key for r in records for key in r.image_keys}
+    groups = {r.group_id for r in records}
+    groups.update(
+        v.group_id for v in session.list(VideoAsset, project_id) if v.split == Split.VALIDATION
+    )
+    return groups, {key for r in records for key in r.image_keys}
 
 
 def check_training(
@@ -179,6 +184,7 @@ class EvaluationSets:
             r.group_id: r for r in session.list(EvaluationReservation, record.project_id)
         }
         reserved_groups, reserved_images = reserved(session, record.project_id)
+        videos = session.list(VideoAsset, record.project_id)
         for key, values in eligible_groups.items():
             for asset in values:
                 cohort.add(asset.group_id)
@@ -209,6 +215,9 @@ class EvaluationSets:
                     )
                 if split != asset.split:
                     session.update(asset.model_copy(update={"split": split}))
+                for video in videos:
+                    if video.group_id == asset.group_id and video.split != split:
+                        session.update(video.model_copy(update={"split": split}))
         updates = {"cohort_groups": sorted(cohort), "member_groups": sorted(members)}
         if updates != {key: getattr(record, key) for key in updates}:
             record = record.model_copy(update=updates | {"version": record.version + 1})

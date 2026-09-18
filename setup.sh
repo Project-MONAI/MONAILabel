@@ -14,7 +14,7 @@ Usage: ./setup.sh [--check] [--cpu]
 
 Prepare MONAI Label on Ubuntu 22.04+ or Debian 12+ (x86_64).
 Installs missing system libraries, uv/Python, Node/Corepack, Docker and
-NVIDIA Container Toolkit, then prepares Slicer, QuPath and OHIF.
+NVIDIA Container Toolkit, then prepares Slicer, QuPath, OHIF and CVAT images.
 Existing installations and cached downloads are reused.
 
   --check   Check prerequisites without installing or downloading anything.
@@ -68,7 +68,7 @@ platform_setup() {
         debian) (( ${VERSION_ID%%.*} >= 12 )) || die "Debian 12+ is required." ;;
         *) die "Automatic setup supports Ubuntu and Debian. See README.md for manual prerequisites." ;;
     esac
-    SETUP_PACKAGES=(ca-certificates curl git gnupg xz-utils libglu1-mesa
+    SETUP_PACKAGES=(ca-certificates curl git gnupg xz-utils ffmpeg libglu1-mesa
         libopengl0 libpulse-mainloop-glib0 libnss3 libsm6 libxcb-cursor0
         libxkbcommon-x11-0 libxi6 libxrender1 libxtst6 qt5dxcb-plugin)
     if { [[ "$ID" == ubuntu ]] && (( ${VERSION_ID%%.*} >= 24 )); } ||
@@ -275,6 +275,10 @@ main() {
             say "Preparing $viewer"
             env -u VIRTUAL_ENV uv run --locked --no-sync monailabel viewer "$viewer"
         done
+        if docker info >/dev/null 2>&1; then
+            say "Preparing CVAT images"
+            env -u VIRTUAL_ENV uv run --locked --no-sync monailabel viewer cvat
+        fi
         if ! PATH="$original_path" command -v uv >/dev/null 2>&1; then
             pending "Open a new terminal or run: source \"$HOME/.local/bin/env\""
         fi

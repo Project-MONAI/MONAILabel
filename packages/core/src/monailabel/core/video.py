@@ -4,7 +4,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from monailabel.core.models import Contract, Record, Split, new_id
+from monailabel.core.models import Contract, DecisionRequest, Record, Split, new_id
 
 Coordinate = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
@@ -17,6 +17,8 @@ class VideoMetadata(Contract):
         min_length=1, max_length=200_000
     )
     duration: float = Field(gt=0, allow_inf_nan=False)
+    # Original presentation timestamp of the first frame, before zero normalization.
+    start_time: float = Field(default=0, allow_inf_nan=False)
     codec: str
     rotation: Literal[0] = 0
 
@@ -61,10 +63,42 @@ class TrackKeyframe(Contract):
         return self
 
 
+class PolygonKeyframe(Contract):
+    frame: int = Field(ge=0)
+    points: list[Coordinate] = Field(min_length=6, max_length=4096)
+    outside: bool = False
+    occluded: bool = False
+
+    @property
+    def box(self) -> list[float]:
+        return [
+            min(self.points[::2]),
+            min(self.points[1::2]),
+            max(self.points[::2]),
+            max(self.points[1::2]),
+        ]
+
+    @model_validator(mode="after")
+    def polygon(self) -> Self:
+        if len(self.points) % 2:
+            raise ValueError("Polygon coordinates must be x/y pairs.")
+        vertices = list(zip(self.points[::2], self.points[1::2], strict=True))
+        area = sum(
+            a[0] * b[1] - b[0] * a[1]
+            for a, b in zip(vertices, vertices[1:] + vertices[:1], strict=True)
+        )
+        if abs(area) < 1e-6:
+            raise ValueError("Polygon must enclose a nonzero area.")
+        return self
+
+
+VideoKeyframe = TrackKeyframe | PolygonKeyframe
+
+
 class ObjectTrack(Contract):
     id: str = Field(default_factory=new_id, pattern=r"^[a-zA-Z0-9_-]{1,80}$")
     label_id: int = Field(gt=0, le=255)
-    keyframes: list[TrackKeyframe] = Field(min_length=1, max_length=200_000)
+    keyframes: list[VideoKeyframe] = Field(min_length=1, max_length=200_000)
 
     @model_validator(mode="after")
     def ordered_frames(self) -> Self:
@@ -73,6 +107,8 @@ class ObjectTrack(Contract):
             raise ValueError("A track requires unique keyframes in presentation order.")
         if all(key.outside for key in self.keyframes):
             raise ValueError("A track must have at least one visible keyframe.")
+        if len({type(key) for key in self.keyframes}) != 1:
+            raise ValueError("A track cannot mix rectangle and polygon keyframes.")
         return self
 
 
@@ -105,3 +141,74 @@ class VideoImport(Contract):
     name: str = Field(min_length=1, max_length=200)
     group_id: str = Field(min_length=1, max_length=200)
     split: Split = Split.POOL
+    labels: list[Annotated[str, Field(min_length=1, max_length=80)]] = Field(
+        default_factory=list, max_length=31
+    )
+
+
+class VideoRevision(Contract):
+    base_revision: int = Field(ge=0)
+
+
+class VideoDecision(VideoRevision, DecisionRequest):
+    pass
+
+
+class VideoEditorRequest(VideoRevision):
+    mode: Literal["annotation", "review"] = "annotation"
+
+
+class VideoTrackingRequest(VideoRevision):
+    editor_id: str
+    client_id: int | None = Field(ge=0)
+    label_id: int = Field(gt=0, le=255)
+    seed: VideoKeyframe
+    output: Literal["box", "polygon"] = "box"
+    frame_count: int = Field(default=16, ge=1, le=200_000)
+    draft_signature: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class VideoFindTrackingRequest(VideoRevision):
+    editor_id: str
+    model_id: str
+    label_id: int = Field(gt=0, le=255)
+    prompt: str = Field(default="", max_length=2000)
+    output: Literal["box", "polygon"] = "box"
+    frame: int = Field(ge=0)
+    frame_count: int = Field(default=16, ge=1, le=200_000)
+    draft_signature: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class ToolDetection(Contract):
+    status: Literal["found", "not_found", "ambiguous"]
+    box: list[Coordinate] | None = Field(min_length=4, max_length=4)
+
+    @model_validator(mode="after")
+    def located(self) -> Self:
+        if (self.status == "found") != (self.box is not None):
+            raise ValueError("Only a found tool has a box.")
+        if self.box is not None:
+            TrackKeyframe(frame=0, box=self.box)
+        return self
+
+
+class VideoDetectionProvenance(Contract):
+    model_id: str
+    model_name: str
+    model_version: int
+    provider: str
+    remote_model: str
+    prompt: str
+
+
+class VideoTrackingProposal(Record):
+    project_id: str
+    asset_id: str
+    request: VideoTrackingRequest
+    keyframes: list[VideoKeyframe]
+    provider: str = "sam2"
+    model_revision: str | None = None
+    model_checksum: str | None = None
+    detection: VideoDetectionProvenance | None = None
+    masks_key: str | None = None
+    warnings: list[str] = Field(default_factory=list)

@@ -1,24 +1,36 @@
-"""Keep README prompts synchronized with the executable Spleen workflow."""
+"""Keep the extended workflow guide synchronized with executable Spleen prompts."""
 
 import argparse
 import json
+import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+TARGET = ROOT / "docs/workflows.md"
 START = "<!-- spleen-prompts:start -->"
 END = "<!-- spleen-prompts:end -->"
 
 
 def render():
     story = json.loads((ROOT / "examples/prompts/spleen.json").read_text())
-    return "```text\n" + "\n\n".join(step["prompt"] for step in story["steps"]) + "\n```"
+    return "\n\n".join(
+        textwrap.fill(
+            step["prompt"],
+            width=76,
+            initial_indent="> ",
+            subsequent_indent="> ",
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        for step in story["steps"]
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    path = ROOT / "README.md"
+    path = TARGET
     current = path.read_text()
     before, rest = current.split(START, 1)
     _, after = rest.split(END, 1)

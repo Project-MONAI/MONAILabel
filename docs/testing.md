@@ -4,7 +4,7 @@ Use disposable workspaces for mutation and viewer tests. Never run a second serv
 
 ## Golden prompts
 
-The eight [Quickstart prompts](../README.md#try-the-full-workflow) come from [spleen.json](../examples/prompts/spleen.json). The runner verifies imports, scoped reviews, batch annotation, named model creation, training and comparison against independent fixed references.
+The eight [Spleen learning workflow prompts](workflows.md#try-the-spleen-learning-workflow) come from [spleen.json](../examples/prompts/spleen.json). The runner verifies imports, scoped reviews, batch annotation, named model creation, training and comparison against independent fixed references. The README keeps shorter first-use prompts for each modality.
 
 ```bash
 uv run python examples/render_golden_prompts.py --check
@@ -40,3 +40,31 @@ node --test tests/web/*.mjs
 Check Slicer, QuPath and OHIF on disposable images with asymmetric geometry. Verify source orientation, selected-slice scope, class colors, editable hints, stale-revision rejection, submission and corrected review. Preserve user drafts. Headless browser checks do not establish native desktop or physical mobile-device compatibility.
 
 Use `uv run python examples/vista3d_smoke.py --help` for the VISTA3D GPU smoke check. SAM contracts and viewer transfers are exercised in `tests/test_sam.py` and the spatial-hint tests. These exercise runtime and transfer behavior; they are not clinical benchmarks. Remaining capabilities and platform gaps are listed in the [roadmap](roadmap.md).
+
+## Video and CVAT browser tests
+
+The opt-in [video E2E suite](../tests/e2e/test_video_cvat.py) starts the bundled CVAT services and a disposable MONAI Label server, then drives both web applications with Chromium. Install Docker with Compose, FFmpeg (including `ffprobe`), and the browser from the repository root:
+
+```bash
+uv sync --locked --group e2e
+uv run --locked --group e2e playwright install chromium
+uv run --locked --group e2e pytest tests/e2e --video-e2e -v -s --junitxml=test-results/video-e2e.xml
+```
+
+On Linux, use `playwright install --with-deps chromium` if browser system libraries are missing. The Docker daemon must be running; the first run downloads CVAT images. The managed tracking cases also download local model weights. No GPU, chat endpoint or paid model is needed. Ordinary `uv run pytest` skips these browser tests.
+
+Each run creates a random Compose project, separate ports, generated credentials and a temporary workspace. Teardown removes that run's containers, volumes and workspace after success or failure. Existing workspaces and CVAT deployments are not used. Screenshots, passed checkpoints, browser errors and redacted service logs remain under the printed `test-results/video-*` directory; the command also writes a JUnit report. The [Video and CVAT E2E workflow](../.github/workflows/video-e2e.yml) runs on relevant pull requests or manual dispatch and uploads these artifacts.
+
+The suite imports a synthetic variable-rate clip through the workspace UI, draws two instrument tracks with the native CVAT mouse controls, and saves occluded/outside keyframes. It checks source timing and geometry, draft resume, immutable submission, separate review tasks, requested changes, stale submission rejection, corrected acceptance, track identity and revision lineage, persistence after server restart, and clip deletion that retains external drafts. A delayed refresh verifies that a submitted correction cannot immediately be reviewed using the previous revision. Additional cases draw an unsupported standalone shape and verify rejection without draft loss, reserve a video procedure from related image training, and exercise annotator access through browser controls and authenticated requests. Annotation writes use CVAT's UI; API reads verify persisted results. These synthetic checks verify software behavior, not annotation quality.
+
+To include the real local coordinator in the 16-frame snare polygon case, set `MONAILABEL_E2E_COORDINATOR_URL` to its OpenAI-compatible API base URL and `MONAILABEL_E2E_COORDINATOR_MODEL` to its served model name. The annotation endpoint remains a deterministic fixture; no hosted annotation calls are made. Without those variables, routing is scripted for reproducibility.
+
+The managed-viewer cases start without CVAT credentials or services, install through the **CVAT** action, and annotate through the embedded native editor using only the workspace sign-in. They run the real local SAM 2.1 tracker, check automatic draft application, reject application after an intervening manual edit, preserve unrelated tracks, exercise embedded chat with scripted coordinator routing, submit and accept revisions, and reopen saved tracks after a server restart. A real HyperKvasir snare sample exercises catalog import, opening CVAT from a workspace tracking request, guidance before a tool box is drawn, and a segmentation request outlining the tool from an empty draft and tracking 16 frames after choosing a vision model and label. A deterministic local HTTP endpoint supplies the vision response; CVAT, source-frame extraction and SAM run normally. Provider contract tests cover Responses and Chat Completions payloads, credentials, abstentions and invalid geometry. An additional case checks vision abstention, an explicitly named model overriding the panel selection, new-track undo/redo and preservation of unrelated manual tracks. These tests download the public clip and pinned model weights; they verify execution and data handling, not clinical tracking accuracy.
+
+A synthetic moving polygon verifies single-frame boxes and segmentation through the configured vision HTTP boundary without a temporal tracker, tracking a selected polygon for N frames, and whole-video tracking from frame 0 while another frame is displayed. A 70-frame clip crosses SAM's chunk boundary. The test inspects automatically added native polygons and downloaded source-size masks, verifies Undo and leaving without submission, saves and reloads mixed box/polygon drafts, and round-trips exact keyframes and identities through a separate review task. It also checks that chat and its composer remain visible at two viewport sizes with no manual settings panel and review controls collapsed until needed. Geometry tests cover border pixels, thin objects, disconnected masks and holes, including warnings and lossless original-mask retention.
+
+A mixed image/video project verifies the shared Datasets table, search, type filters, pagination, selection across pages and refreshes, sample details, and bulk deletion of both media types. All mutation checks run in the disposable workspace.
+
+Viewer launch checks verify that CVAT buttons navigate a loading tab automatically and that chat requests navigate directly to the prepared editor. They also verify cleanup after launch failure, a manual link after closing a loading tab, and automatic navigation when browser popups are blocked.
+
+The smaller video tests in `tests/test_videos.py` cover conversion, revision contracts, authorization and grouping. FFmpeg-dependent tests skip if it is unavailable. `tests/web/videos.mjs` checks capability controls and review filtering without starting services.

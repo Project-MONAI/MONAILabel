@@ -9,7 +9,7 @@ from .base import ToolContext, ToolRegistry
 
 
 class TemplateImportArgs(DatasetTemplateImport):
-    limit: int = Field(default=5, ge=1, le=2000, description="Number of images; default 5.")
+    limit: int = Field(default=5, ge=1, le=2000, description="Maximum samples; default 5.")
     all_samples: bool = Field(
         default=False, description="True only when all images were requested; ignores limit."
     )
@@ -33,6 +33,8 @@ def register(registry: ToolRegistry) -> None:
         "Download/reuse and import a sample/public dataset into the current project. "
         "Use an exact importable template_id from inspect_workspace(dataset_templates). "
         "A named template supplies its source URL; no upload/path is needed. "
+        "Video templates import one clip for CVAT annotation: split=pool, no masks or "
+        "evaluation split. They do not enter image training. "
         "Honor the requested image count (limit); all_samples=true means all, "
         "omitted count means 5. "
         "For a percentage split between annotation and independent evaluation, "
@@ -82,7 +84,14 @@ def start_import(ctx: ToolContext, request: DatasetTemplateImport) -> AssistantR
     )
     count = "all" if request.limit is None else f"up to {request.limit}"
     content = "images with reference masks" if request.include_masks else "images only"
-    if request.evaluation_percentage is not None:
+    if template.kind == "video":
+        message = (
+            f"Started importing one video from {template.name} into {project.name}. "
+            "Progress appears in Activity and the clip appears in Datasets. "
+            "Open CVAT to annotate it, save there, then submit the saved tracks for review. "
+            "Existing annotations and drafts are preserved."
+        )
+    elif request.evaluation_percentage is not None:
         percentage = request.evaluation_percentage
         message = (
             f"Started importing {count} cases from {template.name} into {project.name}: "

@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 import numpy as np
@@ -17,6 +18,7 @@ from monailabel.core.models import (
     SpatialPrompt,
     TrainingMode,
 )
+from monailabel.core.video import ToolDetection, VideoKeyframe
 
 Image = NDArray[np.float32]
 Mask = NDArray[np.uint8]
@@ -122,3 +124,31 @@ class BinaryArtifacts(Protocol):
     def put(self, content: bytes, suffix: str = "bin") -> str: ...
 
     def read(self, key: str) -> bytes: ...
+
+
+@dataclass(frozen=True)
+class VideoTrackingResult:
+    keyframes: list[VideoKeyframe]
+    # Lossless PNG masks on the original source grid, keyed by frame number.
+    masks: dict[int, bytes]
+    warnings: list[str]
+
+
+class VideoTracker(Protocol):
+    def track(
+        self,
+        source: "Path",
+        width: int,
+        height: int,
+        seed: VideoKeyframe,
+        frame_count: int,
+        progress: Progress,
+        output: str = "box",
+        seed_mask: bytes | None = None,
+    ) -> VideoTrackingResult: ...
+
+
+class ToolDetector(Protocol):
+    def locate(
+        self, image: Image, label: Label, prompt: str, model: ModelRecord
+    ) -> ToolDetection: ...

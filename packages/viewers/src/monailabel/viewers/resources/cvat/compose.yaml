@@ -8,6 +8,7 @@ x-environment: &environment
   CVAT_REDIS_ONDISK_HOST: cache
   CVAT_REDIS_ONDISK_PORT: 6666
   CVAT_ANALYTICS: 0
+  CVAT_BASE_URL: http://localhost:${MONAILABEL_CVAT_UI_PORT:-8093}
   ALLOWED_HOSTS: '*'
   SMOKESCREEN_OPTS: ''
   NUMPROCS: 1
@@ -59,7 +60,17 @@ services:
   server:
     <<: *backend
     command: init run server nginx
-    ports: ['127.0.0.1:8092:8080']
+    ports: ['127.0.0.1:${MONAILABEL_CVAT_API_PORT:-8092}:8080']
+  ui:
+    image: cvat/ui:v2.76.0
+    restart: unless-stopped
+    depends_on: [server]
+  gateway:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    depends_on: [server, ui]
+    ports: ['127.0.0.1:${MONAILABEL_CVAT_UI_PORT:-8093}:8080']
+    volumes: ['./gateway.conf:/etc/nginx/conf.d/default.conf:ro']
   importer:
     <<: *backend
     command: run worker import

@@ -108,6 +108,13 @@ export async function evaluationSetAction(name, id, ui) {
     return render();
   }
   if (!manage) throw new Error("Project manager access is required.");
+  if (
+    ["evaluation-set-create", "evaluation-set-extend"].includes(name) &&
+    (state.videos || []).some((video) => state.selectedFiles.has(video.id))
+  )
+    throw new Error(
+      "Fixed evaluation references support images. Select image samples; video tracking evaluation is not available.",
+    );
   if (name === "evaluation-set-create" || name === "evaluation-set-edit") {
     const editing = Boolean(record);
     const ids = [...state.selectedFiles];

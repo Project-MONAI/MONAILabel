@@ -15,7 +15,7 @@ function confirmationStyle() {
   });
   return form;
 }
-const retention = `<p class="muted">Unused server file copies are reclaimed at the next server restart. Original files, external DICOM servers and shared model/viewer downloads are kept.</p>`;
+const retention = `<p class="muted">Unused server file copies are reclaimed at the next server restart. Original files, external DICOM servers, CVAT tasks and saved drafts, and shared model/viewer downloads are kept.</p>`;
 const cancel = '<button type="button" data-cancel-delete>Cancel</button>';
 
 export function deleteProject({

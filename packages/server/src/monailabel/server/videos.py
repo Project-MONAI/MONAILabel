@@ -3,9 +3,11 @@
 import json
 import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from monailabel.core.errors import Conflict, DomainError
-from monailabel.core.models import Asset, DecisionRequest, Project, ReviewDecision, User
+from monailabel.core.evaluation import EvaluationReservation
+from monailabel.core.models import Asset, DecisionRequest, Project, ReviewDecision, Split, User
 from monailabel.core.video import (
     TrackAnnotation,
     TrackDocument,
@@ -14,7 +16,12 @@ from monailabel.core.video import (
     VideoImport,
     VideoMetadata,
 )
+from monailabel.server.evaluation_sets import reserved, training_history
+from monailabel.server.labels import imported_labels
 from monailabel.server.storage import Artifacts, Store
+
+if TYPE_CHECKING:
+    from monailabel.server.video_editor import VideoEditor
 
 MAX_VIDEO_BYTES = 2 * 1024**3
 
@@ -26,8 +33,12 @@ def probe_video(path: Path) -> VideoMetadata:
                 "ffprobe",
                 "-v",
                 "error",
+                "-fflags",
+                "+genpts",
                 "-protocol_whitelist",
                 "file,pipe",
+                "-format_whitelist",
+                "mov,matroska,webm,avi",
                 "-select_streams",
                 "v:0",
                 "-show_frames",
@@ -64,6 +75,7 @@ def probe_video(path: Path) -> VideoMetadata:
             height=stream["height"],
             timestamps=times,
             duration=times[-1] + step,
+            start_time=start,
             codec=stream["codec_name"],
         )
     except FileNotFoundError as exc:
@@ -80,7 +92,9 @@ class Videos:
 
     def import_file(self, project_id: str, request: VideoImport, path: Path) -> VideoAsset:
         self.store.get(Project, project_id)
-        if not 0 < path.stat().st_size <= MAX_VIDEO_BYTES:
+        if not path.stat().st_size:
+            raise DomainError("Select a nonempty video clip.")
+        if path.stat().st_size > MAX_VIDEO_BYTES:
             raise DomainError("Import a nonempty video no larger than 2 GiB.", status=413)
         metadata = probe_video(path)
         source_key = self.artifacts.put_file(path)
@@ -99,10 +113,21 @@ class Videos:
         if not asset.group_id:
             raise DomainError("Enter a patient or procedure ID for related clips.")
         with self.store.transaction() as session:
+            project, _ = imported_labels(
+                session.get(Project, project_id),
+                dict(enumerate(request.labels, start=1)),
+            )
+            session.update(project)
             # Frame exports may also be imported as image assets in this project.
             images = session.list(Asset, project_id)
             videos = session.list(VideoAsset, project_id)
             existing: list[Asset | VideoAsset] = [*images, *videos]
+            groups, _ = reserved(session, project_id)
+            if asset.group_id in groups and asset.split != Split.VALIDATION:
+                raise Conflict("This procedure is reserved for evaluation only.")
+            used_groups, _ = training_history(session, project_id)
+            if asset.split == Split.VALIDATION and asset.group_id in used_groups:
+                raise Conflict("This procedure has already been used for training.")
             for old in existing:
                 if old.group_id == asset.group_id and old.split != asset.split:
                     raise Conflict("All clips and images from a procedure must share one split.")
@@ -114,6 +139,12 @@ class Videos:
                         )
                     return old
             session.insert(asset)
+            if asset.split == Split.VALIDATION and asset.group_id not in groups:
+                session.insert(
+                    EvaluationReservation(
+                        project_id=project_id, group_id=asset.group_id, image_keys=[]
+                    )
+                )
         return asset
 
     def document(self, asset: VideoAsset) -> TrackDocument:
@@ -142,6 +173,8 @@ class Videos:
         request: TrackSubmission,
         user: User,
         decision: DecisionRequest | None = None,
+        *,
+        editor: "VideoEditor | None" = None,
     ) -> TrackAnnotation:
         with self.store.transaction() as session:
             asset = session.get(VideoAsset, asset_id)
@@ -159,6 +192,8 @@ class Videos:
                 tracks_key=self.artifacts.put(request.document.model_dump_json().encode(), "json"),
             )
             session.insert(annotation)
+            if editor is not None:
+                session.update(editor.model_copy(update={"submitted_annotation_id": annotation.id}))
             session.update(
                 asset.model_copy(
                     update={

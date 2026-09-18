@@ -32,6 +32,9 @@ from monailabel.server.secrets import Secrets
 from monailabel.server.selection import Selection
 from monailabel.server.storage import Artifacts, Store
 from monailabel.server.training_reports import TrainingReports
+from monailabel.server.video_editor import VideoEditors
+from monailabel.server.video_tracking import VideoTracking
+from monailabel.server.videos import Videos
 
 
 class Services:
@@ -54,6 +57,8 @@ class Services:
             self.artifacts = Artifacts(data_dir / "artifacts")
             cleanup_storage(self.store, self.artifacts)
             self.deletion = Deletion(self.store)
+            # Registered before workers so their clients close after jobs have finished.
+            editor_cleanup = cleanup.enter_context(ExitStack())
             self.jobs = Jobs(self.store)
             cleanup.callback(self.jobs.close)
             self.models = Models(self.store, self.artifacts, self.secrets.resolve)
@@ -64,6 +69,10 @@ class Services:
                 self.presets.ensure(project.id)
             self.evaluation_sets = EvaluationSets(self.store)
             self.datasets = Datasets(self.store, self.artifacts)
+            self.videos = Videos(self.store, self.artifacts)
+            self.video_tracking = VideoTracking(self.store, self.artifacts, self.jobs, self.models)
+            self.video_editors = VideoEditors(self.store, self.videos, self.jobs, self.secrets)
+            editor_cleanup.callback(self.video_editors.close)
             self.reference_imports = ReferenceImports(self.store, self.artifacts)
             self.dicom = Dicom(self.store, self.artifacts, self.jobs)
             self.dicom_connections = DicomConnections(
@@ -79,6 +88,7 @@ class Services:
                 self.jobs,
                 dataset_cache_dir(data_dir),
                 references=self.reference_imports,
+                videos=self.videos,
                 legacy_cache=data_dir / "dataset-downloads",
             )
             self.classifications = Classifications(

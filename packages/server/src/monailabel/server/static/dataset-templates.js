@@ -10,7 +10,7 @@ export async function importDatasetTemplate(ui) {
       selectField(
         "From where to import",
         "template_id",
-        ["Radiology", "Pathology"]
+        ["Radiology", "Pathology", "Video"]
           .map(
             (category) =>
               `<optgroup label="${category}">${catalog
@@ -31,7 +31,8 @@ export async function importDatasetTemplate(ui) {
       const template = catalog.find((t) => t.id === form.get("template_id"));
       if (!template.importable)
         throw new Error("Use the dataset website to download this collection.");
-      const evaluation = form.get("split") === "validation";
+      const isVideo = template.kind === "video";
+      const evaluation = !isVideo && form.get("split") === "validation";
       const includeMasks = evaluation || form.get("include_masks") === "yes";
       const allSamples = form.get("amount") === "all";
       const targets = includeMasks ? form.getAll("targets") : [];
@@ -43,7 +44,7 @@ export async function importDatasetTemplate(ui) {
         template_id: template.id,
         include_masks: includeMasks,
         targets,
-        split: form.get("split"),
+        split: isVideo ? "pool" : form.get("split"),
         evaluation_set_id: evaluation
           ? form.get("evaluation_set") || null
           : null,
@@ -69,6 +70,27 @@ export async function importDatasetTemplate(ui) {
       template.download_bytes >= 1e9
         ? `${(template.download_bytes / 1e9).toFixed(1)} GB`
         : `${(template.download_bytes / 1e6).toFixed(1)} MB`;
+    const isVideo = template.kind === "video";
+    form.elements.split.disabled = isVideo;
+    form.elements.split.options[0].textContent = isVideo
+      ? "Annotation only"
+      : "Annotation & training";
+    if (isVideo) {
+      form.elements.split.value = "pool";
+      form.elements.split.onchange = null;
+      document.querySelector("#dataset-content-choice").innerHTML = selectField(
+        "What to import",
+        "include_masks",
+        '<option value="no">Video clip only</option>',
+      );
+      document.querySelector("#dataset-template-options").innerHTML =
+        `<p>${esc(template.description)}</p><p><a href="${esc(template.source_url)}" target="_blank" rel="noopener">Dataset website ↗</a> · ${esc(template.license)}</p>` +
+        `<p class="muted">${template.cached ? "Already downloaded." : `Downloads ${size}.`}</p>` +
+        '<p id="dataset-import-summary" role="status">Imports one clip into Datasets. Open CVAT to draw and save instrument tracks, then submit them for review.</p>' +
+        '<p class="muted">No reference tracks are included. Video training and evaluation are not available. Repeating the import preserves your annotations and CVAT drafts.</p>';
+      form.querySelector('[type="submit"]').disabled = !template.importable;
+      return;
+    }
     const isArchive = template.id !== "openslide-cmu-small";
     const hasTestImages = template.sections.includes("test");
     const normalize = (name) => name.toLowerCase().replaceAll("_", " ");

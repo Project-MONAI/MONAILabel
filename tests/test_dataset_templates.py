@@ -75,7 +75,7 @@ def test_catalog_and_images_only(client, http, template_fixture):
     prefix, _, _, _, _ = template_fixture
     catalog = client.get(prefix + "/dataset-templates")
     assert len([x for x in catalog if x["id"].startswith("Task")]) == 10
-    assert {x["category"] for x in catalog} == {"Radiology", "Pathology"}
+    assert {x["category"] for x in catalog} == {"Radiology", "Pathology", "Video"}
     assert "url" not in catalog[0] and "checksum" not in catalog[0]
     before = client.get(prefix)["labels"]
     result = imported(client, prefix)

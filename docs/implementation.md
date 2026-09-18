@@ -9,7 +9,7 @@
 | `monai` | U-Net and VISTA3D runtimes |
 | `sam` | SAM 2.1 and MedSAM2 inference |
 | `dicom` | DICOMweb import, decoding and NIfTI viewing conversion |
-| `viewers` | Provisioning and Slicer, QuPath and OHIF adapters |
+| `viewers` | Provisioning and Slicer, QuPath, OHIF and CVAT adapters |
 | `server` | Services, SQLite/artifacts, jobs, authentication, API and web console |
 | `client` | Public HTTP client, CLI and synthetic demo |
 
@@ -36,6 +36,8 @@ flowchart LR
 - Validation requires accepted references and rejects known training lineage and duplicates. Promotion is a separate, per-class decision; training never switches annotation defaults automatically.
 
 Source-plane inference applies lossless orientation changes and restores the source layout afterwards. A slice updates only its requested plane. Selected pathology regions run as one crop; whole-image inference can use tiles. Failed or cancelled multi-part inference publishes no partial proposal.
+
+Video clips use separate `VideoAsset` and `TrackAnnotation` records. Original source files and presentation timestamps are immutable; rectangle and polygon tracks refer to zero-based source frames and source pixel edge coordinates. CVAT transport/conversion lives in `viewers/cvat.py`; server editor bindings retain label/track mappings and the base revision. Reopening resumes saved drafts, review uses a separate task, and submission publishes the track revision and consumed editor receipt atomically. A managed, workspace-specific CVAT runtime serves the native editor through authenticated project-scoped routes. Vision providers implement the independent `ToolDetector` port for localization; compatible 2D `Segmenter` providers produce masks from the chosen annotation model. Single-frame requests skip temporal tracking. SAM 2.1 implements the independent `VideoTracker` port with bounded overlapping chunks, returning box/polygon keyframes, lossless source masks and contour warnings. Proposals retain these masks separately from editable polygon approximations, record model provenance and require unchanged native drafts and submitted revisions before application. Video is excluded from image learning; evaluation-only procedure groups also exclude related images from training. See [video annotation](video.md).
 
 ## Services and storage
 

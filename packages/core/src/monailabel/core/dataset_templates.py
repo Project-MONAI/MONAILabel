@@ -10,7 +10,8 @@ from monailabel.core.models import Contract, Split
 class DatasetTemplate(Contract):
     id: str
     name: str
-    category: Literal["Radiology", "Pathology"]
+    category: Literal["Radiology", "Pathology", "Video"]
+    kind: Literal["image", "video"] = "image"
     description: str
     source_url: str
     license: str

@@ -78,3 +78,31 @@ Open **Activity → View logs** for training, evaluation and batch annotation. T
 **Results** shows per-structure Dice/IoU, mean Dice, case count and reference version; training reports also include available losses. **Download report** exports JSON. A failed evaluation keeps the completed checkpoint; **Retry evaluation** retries scoring alone. Cancelled training does not publish an incomplete checkpoint.
 
 Dice and IoU pool voxel counts across cases for each foreground structure. Mean Dice averages structure scores and excludes background; it is not a per-patient average. Empty, unreviewed or known overlapping references produce an error rather than a fabricated score. A fine-tuned model is not assumed to outperform its base.
+
+## Try the Spleen learning workflow
+
+Send these prompts one at a time in the main window. Wait for each job to finish; Activity shows progress and logs. Inspect the imported references and generated annotations before accepting their reviews.
+
+<!-- spleen-prompts:start -->
+
+> Create new project "Radiology - Spleen Segmentation"
+
+> From Medical Decathlon Spleen Dataset import 80% images only for
+> annotation and remaining 20% images+labels for evaluation.
+
+> Mark all reviews as good for imported evaluation samples.
+
+> Run VISTA3D segmentation to annotate spleen for first 5 images and submit
+> for review.
+
+> Mark all pending reviews as good
+
+> Create VISTA 3D based model "VISTA3D-Spleen" for spleen
+
+> Finetune VISTA3D-Spleen and use fixed Decathlon Spleen set for evaluation
+
+> Compare VISTA3D-Spleen vs VISTA3D against fixed Decathlon Spleen set
+
+<!-- spleen-prompts:end -->
+
+The split imports 32 images for annotation and 9 image/label pairs for independent evaluation. Training creates a derived model; comparison reports Dice scores against the same held-out references.

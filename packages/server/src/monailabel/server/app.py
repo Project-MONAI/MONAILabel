@@ -19,10 +19,12 @@ from monailabel.providers.chat.config import CoordinatorConfig
 from monailabel.server.accounts_api import router as accounts_router
 from monailabel.server.api import router
 from monailabel.server.console_api import router as console_router
+from monailabel.server.cvat_site import router as cvat_router
 from monailabel.server.dicom_api import router as dicom_router
 from monailabel.server.evaluation_api import router as evaluation_router
 from monailabel.server.reference_api import router as reference_router
 from monailabel.server.service import Services
+from monailabel.server.video_api import router as video_router
 from monailabel.server.viewer_site import router as viewer_router
 from monailabel.server.workspace import workspace_dir
 
@@ -84,7 +86,14 @@ def create_app(
                 "connect-src 'self' blob:; worker-src 'self' blob:; font-src 'self' data:; "
                 "frame-ancestors 'none'"
             )
-        if request.url.path.startswith("/api"):
+        if request.url.path.startswith(("/tasks/", "/cvat/", "/assets/")):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+                "connect-src 'self' blob:; worker-src 'self' blob:; font-src 'self' data:; "
+                "frame-src 'self'; frame-ancestors 'self'"
+            )
+        if request.url.path.startswith(("/api", "/cvat-api", "/tasks/", "/cvat/")):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -124,5 +133,7 @@ def create_app(
     app.include_router(evaluation_router)
     app.include_router(reference_router)
     app.include_router(viewer_router)
+    app.include_router(video_router)
+    app.include_router(cvat_router)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
     return app

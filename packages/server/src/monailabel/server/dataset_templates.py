@@ -22,6 +22,7 @@ from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.labels import imported_labels
 from monailabel.server.reference_imports import ReferenceImports
 from monailabel.server.storage import Store
+from monailabel.server.videos import Videos
 
 
 class DatasetTemplates:
@@ -34,11 +35,13 @@ class DatasetTemplates:
         cache: Path,
         *,
         references: ReferenceImports,
+        videos: Videos,
         legacy_cache: Path | None = None,
     ):
         self.store, self.datasets, self.annotations, self.jobs = store, datasets, annotations, jobs
         self.downloads = Downloads(cache, legacy_cache)
         self.references = references
+        self.videos = videos
 
     def catalog(self) -> list[DatasetTemplate]:
         return [
@@ -54,6 +57,23 @@ class DatasetTemplates:
         source = next((s for s in sources() if s.id == request.template_id), None)
         if source is None or not source.importable:
             raise DomainError("Choose an importable dataset template.")
+        if source.format == "video":
+            if source.video is None:
+                raise DomainError("This video template is missing its clip metadata.")
+            if (
+                request.split != Split.POOL
+                or request.include_masks
+                or request.evaluation_percentage is not None
+                or request.evaluation_set_id
+                or request.section != "training"
+                or request.offset
+                or request.channel
+                or request.targets
+            ):
+                raise DomainError(
+                    "This sample imports one video for CVAT annotation, without reference tracks. "
+                    "Training, evaluation, image channels and case offsets are not available."
+                )
         if request.section not in source.sections:
             raise DomainError("This dataset does not have the requested source section.")
         needs_masks = request.include_masks or request.evaluation_percentage is not None
@@ -82,6 +102,19 @@ class DatasetTemplates:
 
         def work(context: JobContext) -> Outcome:
             path = self.downloads.fetch(source, context)
+            if source.format == "video":
+                assert source.video is not None
+                context.progress(0.8, "Reading video frames and importing the CVAT sample")
+                video = self.videos.import_file(project_id, source.video, path)
+                return Outcome(
+                    {
+                        "video_ids": [video.id],
+                        "asset_ids": [],
+                        "annotation_ids": [],
+                        "failed": [],
+                        "source_url": source.source_url,
+                    }
+                )
             if source.format == "image":
                 context.progress(0.8, "Importing pathology image")
                 asset = self.datasets.import_content(

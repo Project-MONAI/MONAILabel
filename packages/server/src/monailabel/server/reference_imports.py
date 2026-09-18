@@ -13,6 +13,7 @@ from monailabel.core.reference_imports import (
     LabelImportRequest,
     ReferenceImport,
 )
+from monailabel.core.video import VideoAsset
 from monailabel.server.data import MAX_FILE_BYTES, MAX_IMAGE_PIXELS, decode_image
 from monailabel.server.evaluation_sets import EvaluationSets, components, reserved, training_history
 from monailabel.server.labels import imported_labels
@@ -128,6 +129,12 @@ class ReferenceImports:
                 for group_assets in components([*assets, *([asset] if new_asset else [])]).values()
                 if any(a.id == asset.id for a in group_assets)
             )
+            videos = [v for v in session.list(VideoAsset, project_id) if v.group_id == group]
+            if any(
+                v.split == Split.TRAIN if record is not None else v.split != request.split
+                for v in videos
+            ):
+                raise Conflict("Related video clips already have a different dataset use.")
             if record is not None:
                 used_groups, used_images = training_history(session, project_id)
                 if any(a.group_id in used_groups or a.image_key in used_images for a in linked):
@@ -207,6 +214,9 @@ class ReferenceImports:
                     current = asset if item.id == asset.id else item
                     if current.split != Split.VALIDATION:
                         session.update(current.model_copy(update={"split": Split.VALIDATION}))
+                for video in videos:
+                    if video.split != Split.VALIDATION:
+                        session.update(video.model_copy(update={"split": Split.VALIDATION}))
                 members = sorted(set(record.member_groups) | groups)
                 cohort = sorted(set(record.cohort_groups) | groups)
                 if members != record.member_groups or cohort != record.cohort_groups:

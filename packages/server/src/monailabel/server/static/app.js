@@ -4,6 +4,12 @@ import {
   trainingSampleRequest,
 } from "./training-samples.js";
 import { importFiles } from "./dataset-import.js";
+import { videoReviews, videoAction } from "./videos.js";
+import {
+  reserveViewerTab,
+  openPreparedViewer,
+  closePendingViewer,
+} from "./viewer-launch.js";
 import { trainingResults } from "./training-results.js";
 ("use strict");
 import { actionLabel, submitLabel, staticIcons } from "./icons.js";
@@ -27,6 +33,10 @@ import { deleteProject, deleteFiles } from "./deletion.js";
 import { escapeHTML, badge, button, jobName } from "./ui.js";
 import {
   datasets,
+  samples,
+  sampleType,
+  sampleDimensions,
+  sampleUse,
   reviewQueue,
   activity,
   team,
@@ -64,6 +74,8 @@ const state = {
   projects: [],
   project: null,
   assets: [],
+  videos: [],
+  videoCapabilities: {},
   dicomSeries: [],
   models: [],
   learners: [],
@@ -256,6 +268,7 @@ async function selectProject(id) {
   state.datasetFilter = "all";
   state.members = [];
   state.assets = [];
+  state.videos = [];
   state.dicomSeries = [];
   state.models = [];
   state.learners = [];
@@ -290,6 +303,8 @@ async function refresh({ automatic = false } = {}) {
       evaluationSets,
       modelSplits,
       evaluationVersions,
+      videos,
+      videoCapabilities,
     ] = await Promise.all([
       api(prefix),
       api(`${prefix}/assets`),
@@ -304,6 +319,8 @@ async function refresh({ automatic = false } = {}) {
       api(`${prefix}/evaluation-sets`),
       api(`${prefix}/model-splits`),
       api(`${prefix}/evaluation-set-versions`),
+      api(`${prefix}/videos`),
+      api(`${prefix}/video-capabilities`),
     ]);
     const [credentials, members] = permissions.roles.includes("manager")
       ? await Promise.all([
@@ -339,6 +356,8 @@ async function refresh({ automatic = false } = {}) {
       learners,
       recipes,
       dicomSeries,
+      videos,
+      videoCapabilities,
     });
   }
   render();
@@ -355,7 +374,7 @@ function render() {
     );
   replaceNavigation = false;
   document.title = `${titles[state.page]} · MONAI Label`;
-  const existing = new Set(state.assets.map((a) => a.id));
+  const existing = new Set(samples(state).map((a) => a.id));
   state.selectedFiles = new Set(
     [...state.selectedFiles].filter((id) => existing.has(id)),
   );
@@ -371,9 +390,11 @@ function render() {
   $("#chat-context").textContent = state.project
     ? `${state.project.name}${selectedAsset() ? ` / ${selectedAsset().name}` : ""}`
     : "No project selected";
-  $("#asset-count").textContent = state.assets.length || "";
+  $("#asset-count").textContent =
+    state.assets.length + state.videos.length || "";
   $("#review-count").textContent =
-    state.assets.filter((a) => statusOf(a) === "pending").length || "";
+    [...state.assets, ...state.videos].filter((a) => statusOf(a) === "pending")
+      .length || "";
   document
     .querySelectorAll("nav button")
     .forEach((b) =>
@@ -383,7 +404,9 @@ function render() {
     overview,
     datasets: () => datasets(state, canManage(), statusOf),
     models: () => modelLibrary(state, canManage, latestDecision),
-    review: () => reviewQueue(state, statusOf, latestDecision),
+    review: () =>
+      reviewQueue(state, statusOf, latestDecision) +
+      videoReviews(state, statusOf),
     activity: () =>
       activity(state, canManage() || state.roles.includes("annotator")),
     team: () => team(state, canManage()),
@@ -414,12 +437,11 @@ function render() {
 function overview() {
   if (!state.project)
     return `<section class="hero"><h2>Start an annotation project</h2><p>Import images, choose a model and annotate in your preferred viewer.</p>${button("Create project", "project", "", "primary")}${button("Explore synthetic demo", "seed")}</section>`;
-  const pending = state.assets.filter((a) => statusOf(a) === "pending").length;
-  const accepted = state.assets.filter(
-    (a) => statusOf(a) === "accepted",
-  ).length;
+  const all = samples(state);
+  const pending = all.filter((a) => statusOf(a) === "pending").length;
+  const accepted = all.filter((a) => statusOf(a) === "accepted").length;
   const links = [
-    ["datasets", "Samples", state.assets.length],
+    ["datasets", "Samples", all.length],
     ["review", "Pending review", pending],
     ["review", "Accepted", accepted],
   ];
@@ -453,8 +475,12 @@ function modal(title, html, submit, label = "Save") {
     $("#dialog").dataset.busy = "true";
     try {
       const close = await submit(new FormData(form));
-      if (close !== false) $("#dialog").close();
-      await refresh();
+      try {
+        // Keep the old revision's actions inaccessible until the view is current.
+        await refresh();
+      } finally {
+        if (close !== false) $("#dialog").close();
+      }
     } catch (error) {
       form.querySelector(".form-error").textContent = error.message;
     } finally {
@@ -470,6 +496,17 @@ async function openForm(kind, id) {
   if (kind !== "project" && !state.project)
     throw new Error("Select a project first.");
   const prefix = `/projects/${state.project?.id}`;
+  if (kind === "video-import")
+    return videoAction(kind, id, {
+      state,
+      api,
+      modal,
+      field,
+      selectField,
+      message,
+      watch,
+      safely,
+    });
   if (kind === "project")
     return modal(
       "Create a project",
@@ -832,6 +869,14 @@ function updateContext(data) {
     if (data[key]) state.context[key] = data[key];
 }
 async function watch(jobId, originProject, viewerTab = null) {
+  try {
+    await watchJob(jobId, originProject, viewerTab);
+  } catch (error) {
+    closePendingViewer(viewerTab);
+    throw error;
+  }
+}
+async function watchJob(jobId, originProject, viewerTab) {
   const bubble = message("Job queued. You can continue using the workspace.");
   let job;
   do {
@@ -857,17 +902,18 @@ async function watch(jobId, originProject, viewerTab = null) {
     await refresh();
   }
   if (job.result.url) {
+    const viewerName = job.kind === "video_editor" ? "CVAT" : "OHIF";
     const viewerUrl = new URL(job.result.url, location.origin);
-    viewerUrl.searchParams.set("workspace", workspaceId);
-    if (viewerTab && !viewerTab.closed) {
-      viewerTab.location.replace(viewerUrl.href);
-      message("OHIF opened in a new tab.");
+    if (viewerName === "OHIF")
+      viewerUrl.searchParams.set("workspace", workspaceId);
+    if (openPreparedViewer(viewerUrl.href, viewerTab, viewerName === "CVAT")) {
+      message(`${viewerName} opened${viewerTab ? " in a new tab" : ""}.`);
       return;
     }
-    const bubble = message("OHIF is ready. Open the selected sample:");
+    const bubble = message(`${viewerName} is ready. Open the selected sample:`);
     const link = document.createElement("a");
     link.href = viewerUrl.href;
-    link.textContent = "Open OHIF annotation viewer ↗";
+    link.textContent = `Open ${viewerName} annotation viewer ↗`;
     link.target = "_blank";
     link.rel = "noopener";
     bubble.append(link);
@@ -888,6 +934,12 @@ async function watch(jobId, originProject, viewerTab = null) {
     return;
   }
   if (job.kind === "dataset_import") {
+    if (job.result.video_ids?.length) {
+      message(
+        `Video import finished: ${job.result.video_ids.length} clip available in Datasets. Open CVAT to annotate, then submit the saved tracks for review.`,
+      );
+      return;
+    }
     message(
       `Dataset import finished: ${job.result.asset_ids.length} cases available, ${job.result.annotation_ids.length} reference masks pending review, ${job.result.failed.length} failed.`,
     );
@@ -911,12 +963,7 @@ async function watch(jobId, originProject, viewerTab = null) {
 }
 async function launchViewer(id, name) {
   if (!id) throw new Error("Select a sample first.");
-  // Reserve the tab during the click, before preparation outlasts browser activation.
-  const viewerTab =
-    name === "ohif"
-      ? window.open("/static/viewer-launch.html", "_blank")
-      : null;
-  if (viewerTab) viewerTab.opener = null;
+  const viewerTab = name === "ohif" ? reserveViewerTab() : null;
   state.context.asset_id = id;
   render();
   const project = state.project.id;
@@ -930,7 +977,7 @@ async function launchViewer(id, name) {
     );
     await watch(job.id, project, viewerTab);
   } catch (error) {
-    if (viewerTab && !viewerTab.closed) viewerTab.close();
+    closePendingViewer(viewerTab);
     throw error;
   }
 }
@@ -982,6 +1029,17 @@ async function sendPrompt(text) {
   } else render();
 }
 async function action(name, id) {
+  if (name.startsWith("video-"))
+    return videoAction(name, id, {
+      state,
+      api,
+      modal,
+      field,
+      selectField,
+      message,
+      watch,
+      safely,
+    });
   if (name === "select-filtered-reviews") {
     visibleReviews(state, statusOf).forEach((a) =>
       state.selectedReviews.add(a.annotation_id),
@@ -1058,9 +1116,9 @@ async function action(name, id) {
         "Wait for the current prompt to finish before deleting data.",
       );
     const project = state.project;
-    const assets = id
-      ? state.assets.filter((a) => a.id === id)
-      : state.assets.filter((a) => state.selectedFiles.has(a.id));
+    const assets = samples(state).filter((a) =>
+      id ? a.id === id : state.selectedFiles.has(a.id),
+    );
     const finished = async () => {
       for (const key of state.conversations.keys()) {
         if (
@@ -1156,10 +1214,11 @@ async function action(name, id) {
     return render();
   }
   if (name === "sample-details") {
-    const sample = state.assets.find((a) => a.id === id);
+    const sample = samples(state).find((a) => a.id === id);
+    if (!sample) throw new Error("This sample is no longer available.");
     modal(
       sample.name,
-      `<dl class="details-list"><dt>Patient or slide group</dt><dd>${escapeHTML(sample.group_id)}</dd><dt>Dimensions</dt><dd>${sample.spatial_shape.join(" × ")}</dd><dt>Revision</dt><dd>${sample.revision}</dd><dt>Status</dt><dd>${badge(sample.split === "validation" ? "Evaluation only" : "Annotation & training")} ${badge(statusOf(sample))}</dd></dl><div class="toolbar">${sample.annotation_id && sample.kind === "volume3d" ? `<a class="download-link" href="/api/assets/${id}/segmentation.nii" download>${actionLabel("Download mask", "external")}</a>` : ""}${canManage() ? button("Delete file", "delete-files", id, "danger") : ""}</div>`,
+      `<dl class="details-list"><dt>Type</dt><dd>${sampleType(sample)}</dd><dt>Patient, slide or procedure group</dt><dd>${escapeHTML(sample.group_id)}</dd><dt>Dimensions</dt><dd>${escapeHTML(sampleDimensions(sample))}</dd><dt>Revision</dt><dd>${sample.revision}</dd><dt>Status</dt><dd>${badge(sampleUse(sample))} ${badge(statusOf(sample))}</dd>${sample.kind === "video" ? "<dt>Training and evaluation</dt><dd>Video model training and tracking metrics are not available.</dd>" : ""}</dl><div class="toolbar">${sample.kind === "video" ? button("Track data", "video-tracks", id) : ""}${sample.annotation_id && sample.kind === "volume3d" ? `<a class="download-link" href="/api/assets/${id}/segmentation.nii" download>${actionLabel("Download mask", "external")}</a>` : ""}${canManage() ? button("Delete file", "delete-files", id, "danger") : ""}</div>`,
       async () => true,
       "Close",
     );

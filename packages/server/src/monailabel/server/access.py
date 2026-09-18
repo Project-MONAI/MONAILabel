@@ -16,6 +16,7 @@ from monailabel.core.models import (
     RegionProposal,
     User,
 )
+from monailabel.core.video import VideoAsset
 from monailabel.server.service import Services
 
 
@@ -46,6 +47,7 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
     params = request.path_params
     project_id = params.get("project_id")
     for key, model in (
+        ("video_id", VideoAsset),
         ("asset_id", Asset),
         ("annotation_id", Annotation),
         ("proposal_id", Proposal),
@@ -68,6 +70,7 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
                     Job,
                     RegionProposal,
                     ClassificationProposal,
+                    VideoAsset,
                 ),
             ):
                 project_id = record.project_id
@@ -89,9 +92,9 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
             action = "annotate"
         elif endpoint in {"decision", "review-complete", "review-decisions"}:
             action = "review"
-        elif endpoint == "label-colors":
+        elif endpoint in {"label-colors", "cvat-submit", "track", "find-and-track"}:
             action = "edit"
-        elif endpoint not in {"assistant", "viewer"}:
+        elif endpoint not in {"assistant", "viewer", "editor"}:
             action = "manage"
     if request.url.path.endswith(("/credentials", "/members")):
         action = "manage"

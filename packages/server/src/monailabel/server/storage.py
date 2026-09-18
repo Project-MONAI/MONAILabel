@@ -89,7 +89,7 @@ class Session:
             record.id if type(record).__name__ == "Project" else getattr(record, "project_id", None)
         )
         assets = referenced_assets(record.model_dump())
-        if type(record).__name__ == "Asset":
+        if type(record).__name__ in {"Asset", "VideoAsset"}:
             assets.add(record.id)
         for kind, identifiers in (
             ("Project", [project_id] if project_id else []),

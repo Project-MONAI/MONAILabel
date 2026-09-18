@@ -1,0 +1,40 @@
+name: Video and CVAT E2E
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/video-e2e.yml'
+      - 'tests/e2e/**'
+      - 'tests/conftest.py'
+      - 'packages/core/src/monailabel/core/video.py'
+      - 'packages/viewers/src/monailabel/viewers/cvat*.py'
+      - 'packages/sam/**'
+      - 'packages/providers/**'
+      - 'packages/core/src/monailabel/core/models.py'
+      - 'packages/core/src/monailabel/core/ports.py'
+      - 'packages/viewers/src/monailabel/viewers/resources/cvat/**'
+      - 'packages/server/src/monailabel/server/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+permissions:
+  contents: read
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.8'
+          enable-cache: true
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: uv sync --locked --group e2e
+      - run: uv run --locked --group e2e playwright install --with-deps chromium
+      - run: uv run --locked --group e2e pytest tests/e2e --video-e2e -v -s --junitxml=test-results/video-e2e.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: video-e2e-results
+          path: test-results/
+          retention-days: 7

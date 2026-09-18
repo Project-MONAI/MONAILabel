@@ -35,14 +35,20 @@ dev = [
     "types-pyyaml>=6.0.12.20260906",
     "shellcheck-py>=0.11.0.1",
 ]
+e2e = [
+    "playwright==1.63.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+markers = ["video_e2e: browser workflow against disposable CVAT services"]
 filterwarnings = [
   "error",
   # MONAI 1.5.2 uses list indexing in its sliding-window utility; checked with Torch 2.10.
   "ignore:Using a non-tuple sequence for multidimensional indexing is deprecated.*:UserWarning:monai.inferers.utils",
+  # The pinned SAM runtime uses this Torch context; real tracking is checked in video E2E.
+  "ignore:.*torch.backends.cuda.sdp_kernel.*deprecated.*:FutureWarning",
   # Starlette 1.6 still imports this compatibility alias from AnyIO.
   "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
 ]

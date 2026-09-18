@@ -452,6 +452,24 @@
     "format": "totalsegmentator"
   },
   {
+    "id": "hyperkvasir-tool-tracking",
+    "name": "HyperKvasir · endoscopic tool tracking (CVAT)",
+    "category": "Video",
+    "kind": "video",
+    "description": "A 71-second endoscopy clip with a moving snare: practice tracking the tool across frames in CVAT. Imports the original 720 × 576 video and a Snare label, without reference tracks. Source: Borgli et al., HyperKvasir (2020), snare-resection video 99b387e7-d07b-4268-9226-4df450c2a198.",
+    "source_url": "https://osf.io/mh9sj/",
+    "license": "CC BY-NC 4.0 (OSF dataset license)",
+    "download_bytes": 50151936,
+    "url": "https://files.de-1.osf.io/v1/resources/mh9sj/providers/osfstorage/5dfba318fad251000b6b19d1?version=1",
+    "checksum": "sha256:5bfdc1b263785eadf1c6286f63c241b15337ad8e6e589b2c7dbc03026f638164",
+    "format": "video",
+    "video": {
+      "name": "HyperKvasir-snare-99b387e7-d07b-4268-9226-4df450c2a198.avi",
+      "group_id": "hyperkvasir:99b387e7-d07b-4268-9226-4df450c2a198",
+      "labels": ["Snare"]
+    }
+  },
+  {
     "id": "openslide-cmu-small",
     "name": "OpenSlide \u00b7 small pathology region",
     "category": "Pathology",

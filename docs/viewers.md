@@ -7,6 +7,7 @@ Open a sample from **Datasets** to annotate, or from **Reviews** to review it. V
 | Scalar NIfTI / CT volumes      | 3D Slicer           |
 | Bounded RGB pathology images   | QuPath              |
 | Imported DICOM or scalar NIfTI | OHIF in the browser |
+| Video / endoscopy clips        | CVAT in the browser |
 
 Server-launched desktop tools are discovered first, then downloaded if supported, and cached in `workspace/.cache/tools/`. `MONAILABEL_TOOLS_DIR` overrides this path; standalone CLI provisioning uses its OS user cache. OHIF is prepared separately on first use. NIfTI viewing in OHIF does not require a DICOM server.
 
@@ -46,6 +47,10 @@ Classify native objects as project structures before mask submission. Selection 
 Saved masks load automatically with the selected source image, including while the assistant is collapsed. Opening/closing the panel preserves local mask edits and chat. A failed mask load offers Retry and blocks submission until ready.
 
 Use native editing or chat, then submit. **Return to workspace** reuses the launch page when possible. NIfTI uses a cached local DICOM viewing copy while annotations stay on the original grid. See [DICOM import and viewing](#dicom-import-and-viewing).
+
+## CVAT
+
+The [video workflow](video.md) imports clips, opens CVAT directly into a rectangle/polygon annotation job and submits saved tracks for workspace review. It requires FFmpeg and Docker Compose. The workspace prepares CVAT on first launch and opens an integrated viewer using the workspace sign-in, with an assistant-focused panel. Configured annotation models locate or segment tools on a source frame; local SAM 2.1 tracks them over a requested range or whole clip. Describe the tool, shape and frame range in chat. `uv run monailabel viewer cvat` can download the images in advance. Saved drafts and submitted revisions are distinct; review tasks start from the submitted revision.
 
 ## Colors
 

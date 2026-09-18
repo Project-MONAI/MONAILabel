@@ -71,9 +71,12 @@ class ToolContext:
                 # A model name selects its latest active version, never another family.
                 matches = matches[-1:]
             if len(matches) != 1:
-                raise DomainError("Choose one exact model name from the available models.")
-            if identifier and identifier != matches[0].id:
-                raise DomainError("The model name and ID refer to different models.")
+                raise DomainError(
+                    "Choose one exact model name from the available models. "
+                    "If supplying a model ID as well, it must identify that same model. "
+                    "No operation was started.",
+                    code="invalid_model_selection",
+                )
             identifier = matches[0].id
         chosen = identifier or self.context.model_id
         if chosen:

@@ -37,7 +37,16 @@ class ProjectArgs(Contract):
 
 
 class FormArgs(Contract):
-    form: Literal["project", "dataset", "dataset-template", "dicom", "model", "credential", "team"]
+    form: Literal[
+        "project",
+        "dataset",
+        "dataset-template",
+        "dicom",
+        "model",
+        "credential",
+        "team",
+        "video-import",
+    ]
 
 
 class ClarifyArgs(Contract):

@@ -17,6 +17,7 @@ from monailabel.core.models import (
     Project,
     Snapshot,
 )
+from monailabel.core.video import VideoAsset
 from monailabel.server.storage import Artifacts, Session, Store, referenced_assets
 
 logger = logging.getLogger(__name__)
@@ -110,7 +111,7 @@ class Deletion:
             if confirmation_name != project.name:
                 raise DomainError("Type the project's exact name to confirm deletion.")
             self.idle(session, project_id)
-            assets = session.list(Asset, project_id)
+            assets = [*session.list(Asset, project_id), *session.list(VideoAsset, project_id)]
             session.connection.execute(
                 "INSERT INTO deleted_resources(kind,id) VALUES('Project',?)", (project_id,)
             )
@@ -127,7 +128,11 @@ class Deletion:
         with self.store.transaction() as session:
             session.get(Project, project_id)
             self.idle(session, project_id)
-            assets = [session.get(Asset, identifier) for identifier in identifiers]
+            videos = {video.id: video for video in session.list(VideoAsset, project_id)}
+            assets: list[Asset | VideoAsset] = [
+                videos[identifier] if identifier in videos else session.get(Asset, identifier)
+                for identifier in identifiers
+            ]
             if any(a.project_id != project_id for a in assets):
                 raise DomainError("Every selected file must belong to this project.")
             history = [
@@ -149,7 +154,8 @@ class Deletion:
             protected.update(
                 a.id
                 for a in assets
-                if a.group_id in protected_groups or a.image_key in protected_images
+                if a.group_id in protected_groups
+                or (isinstance(a, Asset) and a.image_key in protected_images)
             )
             if blocked := [a.name for a in assets if a.id in protected]:
                 raise Conflict(
@@ -163,7 +169,7 @@ class Deletion:
             rows = [
                 row
                 for row in self.rows(session, project_id)
-                if (row[0] == "Asset" and row[1] in identifiers)
+                if (row[0] in {"Asset", "VideoAsset"} and row[1] in identifiers)
                 or referenced_assets(row[2]) & identifiers
             ]
             session.connection.executemany(
@@ -175,14 +181,17 @@ class Deletion:
 
     @staticmethod
     def detach_unused_evaluation(
-        session: Session, project_id: str, assets: list[Asset], identifiers: set[str]
+        session: Session, project_id: str, assets: list[Asset | VideoAsset], identifiers: set[str]
     ) -> None:
         """Remove unused membership, retaining reservations for surviving patient/image aliases."""
         remaining = [a for a in session.list(Asset, project_id) if a.id not in identifiers]
         remaining_groups = {a.group_id for a in remaining}
+        remaining_groups.update(
+            v.group_id for v in session.list(VideoAsset, project_id) if v.id not in identifiers
+        )
         remaining_images = {a.image_key for a in remaining}
         removed_groups = {a.group_id for a in assets} - remaining_groups
-        removed_images = {a.image_key for a in assets}
+        removed_images = {a.image_key for a in assets if isinstance(a, Asset)}
         for record in session.list(EvaluationSet, project_id):
             if removed_groups.intersection(record.cohort_groups + record.member_groups):
                 session.update(

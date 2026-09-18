@@ -1,0 +1,4 @@
+/* Project navigation and account actions belong to the surrounding workspace. */
+.cvat-header {
+  display: none !important;
+}

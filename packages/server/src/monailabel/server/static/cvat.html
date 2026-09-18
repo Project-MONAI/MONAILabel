@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CVAT · MONAI Label</title>
+    <link rel="stylesheet" href="/static/cvat.css" />
+    <script type="module" src="/static/cvat.js"></script>
+  </head>
+  <body>
+    <header>
+      <a id="back" href="/datasets">← Workspace</a>
+      <strong id="title">Preparing CVAT…</strong><span id="revision"></span>
+    </header>
+    <main>
+      <iframe id="editor" title="CVAT annotation editor"></iframe>
+      <aside aria-label="MONAI Label assistant">
+        <h2>Assistant</h2>
+        <select id="detection-model" aria-label="Annotation model">
+          <option value="">Choose a vision model…</option>
+        </select>
+        <p id="selection" class="muted">Loading the video…</p>
+        <div
+          id="messages"
+          role="log"
+          aria-label="Conversation"
+          aria-live="polite"
+        >
+          <p id="welcome" class="muted">
+            Ask me to locate or segment a tool on this frame, for N frames, or
+            throughout the video. You can name the model in your message.
+          </p>
+        </div>
+        <form id="chat" class="composer">
+          <label for="prompt" class="visually-hidden"
+            >Ask about this video</label
+          >
+          <textarea
+            id="prompt"
+            rows="3"
+            placeholder="Locate or segment a tool…"
+            required
+          ></textarea>
+          <div class="composer-actions">
+            <span class="muted">Ctrl+Enter to send</span>
+            <button id="send" disabled>Send</button>
+          </div>
+        </form>
+        <button id="cancel" class="secondary" hidden>Cancel job</button>
+        <p id="status" role="status" aria-live="polite"></p>
+        <div class="annotation-actions">
+          <div class="actions">
+            <button id="save" class="secondary" disabled>Save draft</button>
+            <button id="submit" disabled>Submit for review</button>
+          </div>
+          <details id="review" hidden>
+            <summary>Review submitted revision</summary>
+            <div class="actions">
+              <button id="accept">Accept</button>
+              <button id="changes" class="secondary">Request changes</button>
+            </div>
+          </details>
+        </div>
+      </aside>
+    </main>
+  </body>
+</html>

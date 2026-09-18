@@ -704,7 +704,20 @@ class WorkItem(Contract):
     reason: str
 
 
+class VideoPrompt(Contract):
+    video_id: str
+    editor_id: str
+    frame: int = Field(ge=0)
+    client_id: int | None = Field(default=None, ge=0)
+    label_id: int | None = Field(default=None, gt=0, le=255)
+    box: list[float] | None = Field(default=None, min_length=4, max_length=4)
+    points: list[float] | None = Field(default=None, min_length=6, max_length=4096)
+    occluded: bool = False
+    draft_signature: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
 class AssistantContext(Contract):
+    video: VideoPrompt | None = None
     evaluation_set_id: str | None = None
     evaluation_version_id: str | None = None
     viewer_actions: list[str] = Field(default_factory=list, max_length=16)

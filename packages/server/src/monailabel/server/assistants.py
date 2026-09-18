@@ -26,11 +26,13 @@ from monailabel.core.models import (
     ModelRecord,
     ReviewDecision,
 )
+from monailabel.core.video import VideoAsset
 from monailabel.server.assistant_tools import catalog
 from monailabel.server.assistant_tools.base import ToolContext
 from monailabel.server.assistant_tools.workspace import model_summary
 from monailabel.server.batch_annotation import candidates
 from monailabel.server.instructions import SkillSession, coordinator_instructions
+from monailabel.server.video_editor import VideoEditor
 
 if TYPE_CHECKING:
     from monailabel.core.models import User
@@ -121,6 +123,11 @@ class Assistants:
                 raise DomainError("Selected asset belongs to another project.")
             if context.base_revision is None:
                 context = context.model_copy(update={"base_revision": asset.revision})
+        if context.video:
+            video = store.get(VideoAsset, context.video.video_id)
+            editor = store.get(VideoEditor, context.video.editor_id)
+            if video.project_id != project_id or editor.asset_id != video.id:
+                raise DomainError("Selected video editor belongs to another project.")
         ctx = ToolContext(self.services, project_id, user, context, request.message)
         registry = catalog(ctx)
         skill_session = SkillSession(
@@ -239,7 +246,12 @@ class Assistants:
                 )
                 break
             call = response.tool_calls[0]
-            if repair_tool and call.name not in {repair_tool, "inspect_workspace", "load_skill"}:
+            if repair_tool and call.name not in {
+                repair_tool,
+                "inspect_workspace",
+                "load_skill",
+                "clarify_request",
+            }:
                 raise DomainError(
                     f"Could not repair {repair_tool}. No replacement action was executed."
                 )
@@ -291,7 +303,8 @@ class Assistants:
                 result = registry.execute(call)
             except DomainError as error:
                 if repairs >= 2 or not (
-                    isinstance(error, NotFound) or error.code == "invalid_tool_arguments"
+                    isinstance(error, NotFound)
+                    or error.code in {"invalid_tool_arguments", "invalid_model_selection"}
                 ):
                     raise
                 repairs += 1
@@ -303,7 +316,15 @@ class Assistants:
                         {
                             "error": str(error),
                             "guidance": (
-                                f"Repair the arguments of {call.name} using its schema: remove "
+                                "Resolve the annotation model using exact names and IDs from "
+                                "current workspace data. When the user did not name a model, "
+                                "omit model_name and model_id to use context.model_id. "
+                                "When the user named a model, preserve that choice; do not "
+                                "substitute the selected model or the tracker. If that model "
+                                "is unavailable or ambiguous, call clarify_request. Otherwise "
+                                "retry the same operation with the corrected selector."
+                                if error.code == "invalid_model_selection"
+                                else f"Repair {call.name} arguments using its schema: remove "
                                 "unsupported fields, supply missing required fields, and use "
                                 "the allowed enum values. Retry that same operation; do not "
                                 "substitute another action."
@@ -329,7 +350,7 @@ class Assistants:
             )
             current.append(output)
             messages.append(output)
-            if call.name == "inspect_workspace":
+            if call.name in {"inspect_workspace", "list_videos"}:
                 reply = result
                 continue
             # Operational replies come from the actual tool, not an LLM's claim of success.
@@ -406,6 +427,17 @@ class Assistants:
                     if not m.archived
                 ][:64]
             )
+            if ctx.context.video:
+                video = self.services.store.get(VideoAsset, ctx.context.video.video_id)
+                result["viewer"] = "cvat"
+                result["video"] = {
+                    "id": video.id,
+                    "name": video.name,
+                    "width": video.width,
+                    "height": video.height,
+                    "frames": video.frames,
+                    "revision": video.revision,
+                }
             result["learners"] = list(
                 [
                     {
