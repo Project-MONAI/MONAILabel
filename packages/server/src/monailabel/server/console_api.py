@@ -1,5 +1,7 @@
 """Web workspace actions, sharing the same services as desktop clients."""
 
+import os
+from ipaddress import ip_address
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
@@ -29,6 +31,20 @@ from monailabel.server.labels import update_colors
 from monailabel.viewers.manager import ViewerManager
 
 router = APIRouter(prefix="/api", dependencies=[Depends(authorize)])
+
+
+def local_desktop(request: Request) -> bool:
+    def loopback(host: str) -> bool:
+        if host == "localhost":
+            return True
+        try:
+            return ip_address(host).is_loopback
+        except ValueError:
+            return False
+
+    return bool(
+        request.client and loopback(request.client.host) and loopback(request.url.hostname or "")
+    )
 
 
 @router.patch("/projects/{project_id}/label-colors")
@@ -147,6 +163,7 @@ def viewer(
     user: Principal,
     name: Literal["slicer", "qupath", "ohif"] | None = None,
     mode: Literal["annotation", "review"] = "annotation",
+    target: Literal["auto", "browser"] = "auto",
 ) -> Job:
     asset = service.store.get(Asset, asset_id)
     if mode == "review":
@@ -177,39 +194,62 @@ def viewer(
             prepare,
         )
 
-    if not request.client or request.client.host not in {"127.0.0.1", "::1", "testclient"}:
-        raise DomainError(
-            "Desktop launch requires the server on this computer. "
-            "Use the desktop CLI for a remote server."
-        )
     if (selected == "slicer") != (asset.kind == "volume3d"):
         raise DomainError("Use Slicer for volumes or QuPath for 2D pathology images.")
-    url = str(request.base_url).rstrip("/")
+    if target == "auto" and local_desktop(request):
+
+        def launch_native(context: JobContext) -> Outcome:
+            manager = ViewerManager()
+            installation = manager.ensure(
+                selected, progress=lambda message: context.progress(0.3, message)
+            )
+            current = service.store.get(User, user.id)
+            if not current.active:
+                raise DomainError("Your account is disabled.", status=403)
+            service.auth.require(
+                current, asset.project_id, "review" if mode == "review" else "read"
+            )
+            service.store.get(Asset, asset.id)
+            token = service.auth.issue(current)
+            secret_env = {
+                name
+                for model in service.store.list(ModelRecord)
+                if isinstance(name := model.config.get("token_env"), str)
+            }
+            return Outcome(
+                dict(
+                    manager.launch(
+                        installation,
+                        str(request.base_url).rstrip("/"),
+                        asset.project_id,
+                        asset_id=asset.id,
+                        token=token,
+                        secret_env=secret_env,
+                        mode=mode,
+                        shared_filesystem=selected == "slicer",
+                    )
+                )
+            )
+
+        return service.jobs.submit(
+            "viewer",
+            asset.project_id,
+            {"asset_id": asset_id, "viewer": selected, "mode": mode, "target": "native"},
+            launch_native,
+        )
+    # Native viewers run on this server, including behind an HTTPS reverse proxy.
+    server = request.scope.get("server")
+    default_url = f"http://127.0.0.1:{server[1]}" if server else str(request.base_url).rstrip("/")
+    if getattr(request.app.state, "direct_tls", False):
+        default_url = str(request.base_url).rstrip("/")
+    url = os.environ.get("MONAILABEL_DESKTOP_BACKEND_URL", default_url).rstrip("/")
 
     def work(context: JobContext) -> Outcome:
-        manager = ViewerManager()
-        installation = manager.ensure(selected, progress=lambda message: context.progress(0.25))
-        context.progress(0.9)
-        token = service.auth.issue(user)
-        secret_env = {
-            name
-            for model in service.store.list(ModelRecord)
-            if isinstance(name := model.config.get("token_env"), str)
-        }
-        launch = manager.launch(
-            installation,
-            url,
-            asset.project_id,
-            asset_id=asset.id,
-            token=token,
-            secret_env=secret_env,
-            mode=mode,
-            shared_filesystem=selected == "slicer",
-        )
-        return Outcome(dict(launch))
+        desktop = service.desktops.open(asset, user, selected, mode, url, context)
+        return Outcome({"url": f"/desktop/{desktop.id}", "viewer": selected})
 
     return service.jobs.submit(
-        "viewer", asset.project_id, {"asset_id": asset_id, "mode": mode}, work
+        "viewer", asset.project_id, {"asset_id": asset_id, "viewer": selected, "mode": mode}, work
     )
 
 

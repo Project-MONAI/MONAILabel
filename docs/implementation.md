@@ -15,6 +15,8 @@
 
 Core has no HTTP, persistence or vendor dependencies. Providers and clients do not import server code. The server includes the MONAI and SAM runtimes as dependencies. These separate packages implement the interfaces in `core/ports.py`; model loading happens when a job needs it.
 
+Within the server, `desktops/`, `dicom/` and `video/` group their routes and workflow services. Persistent desktop/CVAT identities live in feature-local `models.py` modules so other services can refer to them without importing runtime orchestration. `assistant_tools/` adapts typed chat actions to the same services. Keep Docker provisioning in `viewers` and DICOM decoding in the separate `dicom` package; feature routes handle authentication and transport, while services own lifecycle and revision rules.
+
 Python imports use the `monailabel` namespace, such as `monailabel.core` and `monailabel.server`. Each distribution contributes its own subpackage without a shared `monailabel/__init__.py`. Installable names remain `monailabel-core`, `monailabel-server`, etc.; CLI commands remain `monailabel` and `monailabel-server`.
 
 ```mermaid
@@ -53,6 +55,6 @@ Run the server for interactive **/docs** and **/openapi.json**. Browser cookies 
 
 The web console uses small JavaScript modules without a frontend build. Section URLs, browser history and the selected project survive navigation. Committed project changes trigger polling refreshes while preserving active forms and drafts.
 
-Desktop viewers use private session files. OHIF uses authenticated browser sessions and workspace DICOMweb routes. Viewer adapters own native geometry and editing; model execution stays behind backend providers. See [viewer setup](viewers.md) and [provider contracts](providers.md).
+Desktop viewers use private session files. Loopback workspace access launches native Slicer/QuPath; remote access prepares account-owned Docker desktops with noVNC. Provisioning and display processes live in `viewers`; ownership, credential renewal, session limits and the authenticated WebSocket-to-Unix-socket relay live in `server`. Closing the last viewer tab ends the native process after a short grace period that permits refreshes. A network disconnect without a tab-close notification preserves the draft. OHIF uses authenticated browser sessions and workspace DICOMweb routes. Viewer adapters own native geometry and editing; model execution stays behind backend providers. See [viewer setup](viewers.md) and [provider contracts](providers.md).
 
 Run the [development checks](../AGENTS.md#development) and relevant viewer checks in disposable workspaces. Synthetic fixtures demonstrate software behavior, not clinical quality. [Remaining work](roadmap.md) is separate from these contracts.

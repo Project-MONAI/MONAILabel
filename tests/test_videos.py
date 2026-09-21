@@ -516,7 +516,7 @@ def test_reserved_video_procedure_cannot_enter_image_training(http, client, clip
 def test_upload_limits_and_invalid_video(http, video, monkeypatch):
     path = f"/api/projects/{video['project_id']}/videos/upload"
     params = {"name": "bad.mp4", "group_id": "other"}
-    monkeypatch.setattr("monailabel.server.video_api.MAX_VIDEO_BYTES", 32)
+    monkeypatch.setattr("monailabel.server.video.api.MAX_VIDEO_BYTES", 32)
     for content in (b"x" * 33, iter([b"x" * 20, b"x" * 20])):
         assert http.post(path, params=params, content=content).status_code == 413
     for content in (b"", b"invalid"):
@@ -624,7 +624,7 @@ def test_cvat_frame_deletion_or_resampling_is_rejected(video):
 
 
 def test_original_timestamp_origin_is_retained(monkeypatch, tmp_path):
-    from monailabel.server.videos import probe_video
+    from monailabel.server.video.assets import probe_video
 
     data = {
         "streams": [{"width": 64, "height": 48, "codec_name": "h264"}],
@@ -634,7 +634,7 @@ def test_original_timestamp_origin_is_retained(monkeypatch, tmp_path):
         ],
     }
     monkeypatch.setattr(
-        "monailabel.server.videos.subprocess.run",
+        "monailabel.server.video.assets.subprocess.run",
         lambda *args, **kwargs: subprocess.CompletedProcess([], 0, stdout=json.dumps(data)),
     )
     metadata = probe_video(tmp_path / "clip.mp4")
@@ -694,7 +694,7 @@ def test_deleting_unused_evaluation_clip_releases_its_procedure(http, client, cl
 
 @pytest.fixture
 def managed_editor(http, video):
-    from monailabel.server.video_editor import VideoEditor
+    from monailabel.server.video.models import VideoEditor
 
     service = http.app.state.services
     calls = []
@@ -1070,18 +1070,25 @@ def test_find_tracking_validates_range_label_model_and_editor_before_inference(
     assert not calls
 
 
+@pytest.mark.parametrize(
+    "name,provider,provider_model",
+    [
+        ("GPT-6 Astra", "openai-polygons", "astra-fixture"),
+        ("Claude Opus 5", "openai-chat-polygons", "azure/anthropic/claude-opus-5"),
+    ],
+)
 def test_find_tracking_chat_honors_named_model_and_selected_label(
-    http, client, video, find_tracking
+    http, client, video, find_tracking, name, provider, provider_model
 ):
     from monailabel.core.chat import ChatMessage, ToolCall
 
     request, calls = find_tracking
-    astra = client.post(
+    model = client.post(
         f"/api/projects/{video['project_id']}/models",
         {
-            "name": "GPT-6 Astra",
-            "provider": "openai-polygons",
-            "config": {"url": "https://unused.test", "model": "astra-fixture"},
+            "name": name,
+            "provider": provider,
+            "config": {"url": "https://unused.test", "model": provider_model},
         },
     )
     http.app.state.services.assistants.provider.queue.append(
@@ -1092,7 +1099,7 @@ def test_find_tracking_chat_honors_named_model_and_selected_label(
                     id="find-tool",
                     name="find_and_track_video_tool",
                     arguments={
-                        "model_name": "GPT-6 Astra",
+                        "model_name": name,
                         "frame_count": 3,
                         "prompt": "leftmost grasper",
                     },
@@ -1103,7 +1110,7 @@ def test_find_tracking_chat_honors_named_model_and_selected_label(
     response = http.post(
         f"/api/projects/{video['project_id']}/assistant",
         json={
-            "message": "Use GPT-6 Astra to find the grasper and track it for 3 frames",
+            "message": f"Use {name} to find the grasper and track it for 3 frames",
             "context": {
                 "base_revision": 0,
                 "model_id": request["model_id"],
@@ -1119,7 +1126,7 @@ def test_find_tracking_chat_honors_named_model_and_selected_label(
     )
     assert response.status_code == 200, response.text
     wait(http, {"id": response.json()["job_id"]})
-    assert calls == [(astra["id"], "leftmost grasper"), (2, 3)]
+    assert calls == [(model["id"], "leftmost grasper"), (2, 3)]
 
 
 @pytest.mark.parametrize("invalid", ["id_as_name", "alias", "conflicting_id"])

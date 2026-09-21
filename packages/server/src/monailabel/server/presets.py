@@ -46,18 +46,27 @@ class Presets:
                             read_only=True,
                         )
                     )
-            for key, name, legacy_name, provider_model in (
+            for key, name, legacy_name, provider_model, reasoning_effort in (
                 (
                     "nvidia-sol",
                     "GPT-5.6 Sol",
                     "GPT-5.6 Sol · NVIDIA gateway",
                     "switchyard/openai/gpt-5.6-sol",
+                    "high",
                 ),
                 (
                     "nvidia-astra",
                     "GPT-6 Astra",
                     "GPT-6 Astra · NVIDIA gateway (paid)",
                     "azure/openai/gpt-6-astra",
+                    "high",
+                ),
+                (
+                    "nvidia-claude-opus-5",
+                    "Claude Opus 5",
+                    None,
+                    "azure/anthropic/claude-opus-5",
+                    None,
                 ),
             ):
                 model = next(
@@ -87,7 +96,7 @@ class Presets:
                             "token_env": "NV_INFERENCE_API_KEY",
                             "timeout": 180,
                             "max_output_tokens": 16384,
-                            "reasoning_effort": "high",
+                            **({"reasoning_effort": reasoning_effort} if reasoning_effort else {}),
                         },
                     )
                     session.insert(model)

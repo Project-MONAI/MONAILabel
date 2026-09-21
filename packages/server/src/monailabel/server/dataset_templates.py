@@ -22,7 +22,7 @@ from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.labels import imported_labels
 from monailabel.server.reference_imports import ReferenceImports
 from monailabel.server.storage import Store
-from monailabel.server.videos import Videos
+from monailabel.server.video.assets import Videos
 
 
 class DatasetTemplates:

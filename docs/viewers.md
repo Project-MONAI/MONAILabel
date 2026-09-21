@@ -11,6 +11,32 @@ Open a sample from **Datasets** to annotate, or from **Reviews** to review it. V
 
 Server-launched desktop tools are discovered first, then downloaded if supported, and cached in `workspace/.cache/tools/`. `MONAILABEL_TOOLS_DIR` overrides this path; standalone CLI provisioning uses its OS user cache. OHIF is prepared separately on first use. NIfTI viewing in OHIF does not require a DICOM server.
 
+## Local and remote launch
+
+Open the workspace through `localhost`, `127.0.0.1` or `::1` to launch Slicer and QuPath as normal desktop windows on the server machine. Open it through a network hostname or IP address to launch a private browser desktop instead. Buttons and assistant requests use the same choice. OHIF and CVAT always open in the browser.
+
+Remote clients, including tablets, need only a browser. Slicer or QuPath runs on the Linux server in a Docker container with its existing annotation assistant. The first launch prepares the runtime and viewer; later launches reuse the downloads. The desktop resolution automatically follows the browser's available width and height, including window resizing and tablet rotation. Smaller screens use a proportionally larger native desktop scaled to fill the tab, keeping application controls within view. Use the display's side handle for touch controls and its on-screen keyboard.
+
+Use the side toolbar's **Clipboard** panel to exchange text with your computer, including over HTTP. Paste text into the panel and choose **Paste into viewer**. After copying text inside Slicer or QuPath, choose **Copy to computer** to put it on your device's clipboard. Keyboard paste also sends local clipboard text directly to the focused viewer control.
+
+Closing the last viewer tab ends its session after a ten-second grace period. Submit your annotation before closing; unsaved edits are discarded when the viewer ends. Exiting the native application also closes its browser tab, including **Exit Slicer** after submission; if the browser blocks closing, the tab returns to the project workspace. Refreshing the page or keeping another tab connected preserves the session, and a network interruption alone does not end it or close the tab. **Browser desktops** in the workspace sidebar lists running viewers; **End session** closes one immediately after confirmation. Annotation and review use separate sessions. Server restarts retain running containers, but host reboots and container crashes do not preserve unsaved native state. Saved native files remain under `workspace/viewers/desktop/`; submitted annotations remain in the workspace.
+
+For SSH port forwarding or a headless local server, open `/datasets?desktop=browser` to force browser launch for that workspace tab. The API also accepts `target=browser` on the viewer launch request. A browser cannot determine whether a localhost address was forwarded from another machine.
+
+### Browser desktop server setup
+
+Use a Linux x86_64 server with a local Docker daemon and the portable Slicer/QuPath distributions prepared by MONAI Label. Remote devices connect over HTTPS to the workspace; include its hostname in `MONAILABEL_ALLOWED_HOSTS`. An HTTPS reverse proxy must forward WebSocket upgrades for `/desktop/`. No VNC port is exposed: the backend relays the signed-in user's display through a private Unix socket. Session ownership and current project access are checked at connection and while connected.
+
+The default native bridge URL is the server's loopback HTTP address. An HTTPS reverse proxy can terminate TLS while the backend continues to listen locally. When using the server's own TLS options, the bridge uses the workspace HTTPS address, which must resolve from the container and have a certificate trusted there. For a private development CA, prefer terminating TLS at the proxy; trusting a certificate on the tablet alone does not install it in the viewer container. `MONAILABEL_DESKTOP_BACKEND_URL` overrides the bridge address for custom deployments.
+
+| Server setting | Default | Purpose |
+| --- | --- | --- |
+| `MONAILABEL_DESKTOP_LIMIT` | `8` | Maximum active browser desktops per workspace |
+| `MONAILABEL_DESKTOP_MEMORY` | `8g` | Docker memory limit per desktop |
+| `MONAILABEL_DESKTOP_CPUS` | `4` | Docker CPU limit per desktop |
+
+Desktop containers have a private home and display, read-only viewer/bridge mounts, dropped Linux capabilities and no workspace or Docker socket mount. They use host networking to reach the backend, so this is intended for trusted workspace users who may run native viewer scripts. Display rendering uses software OpenGL; annotation and training still run in the backend's configured providers. Large 3D scenes may be slower than a local GPU desktop. Runtime logs are retained in the session's private directory when it ends.
+
 ## Annotate and review
 
 Choose a compatible model and state the target and scope, such as `Annotate spleen on this slice` or `Annotate nuclei in the selected region`. Inspect and correct the result with native tools before submitting. A single slice or small region is not a complete volume/image annotation.
@@ -30,13 +56,15 @@ Change spleen color to blue
 Restore the default anatomical color for spleen
 ```
 
-Local mask edits preserve other structures and requested-outside scope. Save a Slicer scene to retain boxes, points, ROIs and other native edits. Reopen the viewer after bridge updates. Local launches can read authorized workspace files directly; remote launches use authenticated downloads.
+Local mask edits preserve other structures and requested-outside scope. Save a Slicer scene to retain boxes, points, ROIs and other native edits. After bridge updates, save or submit your work, end the old viewer session and open the sample again. Local launches can read authorized workspace files directly; remote launches use authenticated downloads.
 
 For model-assisted boxes, explicitly select a capable localization model. `Add ROI for spleen between slice 70 to 80 using Sol` evaluates all eleven slices. ROI slice numbers are one-based and inclusive; they are not Slicer's millimeter position. ROI creation does not automatically constrain later segmentation. See [SAM](#local-sam-annotation) for zero-based point/box editing prompts.
 
 ## QuPath
 
 The **MONAI Label** tab provides chat and optional pop-out controls. A selected area runs as one crop without tiling; whole-image requests can specify a tile size (default 256 pixels). Results return to source coordinates and preserve outside edits.
+
+Leave the model on **Automatic** and ask, for example, `Annotate nuclei in the selected region`. The backend matches the image and targets to compatible defaults, a dedicated model, or the configured Sol preset. Volume-only models such as VISTA3D are excluded from QuPath's choices. Incomplete models are excluded from automatic selection; an explicit choice or compatible default reports its configuration error without switching models. Name a model in chat to choose it explicitly; the Astra and Claude gateway presets require an explicit choice or configured default.
 
 Classify native objects as project structures before mask submission. Selection guides are not segmentation labels. **Save QuPath draft** preserves the native project; save before closing or reopening after an adapter update.
 
@@ -70,7 +98,7 @@ Linux desktop flows are supported. QuPath has a Windows portable installer recip
 
 OHIF's first source build needs Node.js 22, Corepack and Git. Set `MONAILABEL_OHIF_DIST` to use an existing distribution. Pinned installer recipes live in `viewers/resources/installers/`.
 
-Browser desktop launching assumes the server is on that desktop. For a remote backend, log in and launch through the CLI on the viewer machine using `--url https://your-server`. Network access requires appropriate allowed hosts and HTTPS; see [remote access](#voice-and-remote-access).
+The standalone CLI launches a viewer on the machine where the command runs. It can connect to a remote backend using `--url https://your-server`. Browser desktop sessions use the workspace sign-in and require no CLI on the client. Network access requires appropriate allowed hosts and HTTPS; see [remote access](#voice-and-remote-access).
 
 ## Local SAM annotation
 
@@ -223,9 +251,11 @@ For Safari, enable Siri and allow microphone/speech access when prompted. WebKit
 
 ### Phones, tablets and other computers
 
+The server listens on `0.0.0.0:8000` by default. Its hostname, resolved IPv4 addresses and primary network address are allowed automatically; `MONAILABEL_ALLOWED_HOSTS` replaces that list for custom DNS aliases or reverse proxies. Use `--host 127.0.0.1` to limit connections to the server machine.
+
 Use **HTTPS** with a certificate trusted by the device when connecting over your network. `localhost` on a phone refers to the phone, not your workstation. Connect to the server’s network hostname or IP address. The same responsive workspace runs on touch devices; the Menu and Assistant buttons expose navigation and chat on small screens.
 
-OHIF runs in the device browser. On tablets its study list starts collapsed; on phones both side panels start collapsed to leave room for the image. Tap the right-side panel icon to open the assistant. Swipe the phone toolbar to reach additional tools. Review controls are under **Review annotation**. Desktop Slicer and QuPath require a desktop installation and cannot launch on a phone or tablet through the server.
+OHIF runs in the device browser. On tablets its study list starts collapsed; on phones both side panels start collapsed to leave room for the image. Tap the right-side panel icon to open the assistant. Swipe the phone toolbar to reach additional tools. Review controls are under **Review annotation**. Slicer and QuPath open as [server-hosted browser desktops](#local-and-remote-launch) when connecting through a remote address.
 
 If you already use an HTTPS reverse proxy, keep it and include the hostname in `MONAILABEL_ALLOWED_HOSTS`. For a local demonstration, [mkcert](https://github.com/FiloSottile/mkcert) can create a trusted development certificate:
 

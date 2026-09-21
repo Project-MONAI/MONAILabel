@@ -1,4 +1,47 @@
 // Guided model setup. Inference connections and trainable recipes have separate forms.
+const hostedModels = {
+  "switchyard/openai/gpt-5.6-sol": "GPT-5.6 Sol",
+  "azure/openai/gpt-6-astra": "GPT-6 Astra",
+  "azure/anthropic/claude-opus-5": "Claude Opus 5",
+};
+const hostedServices = {
+  nvidia: {
+    name: "NVIDIA gateway",
+    provider: "openai-chat-polygons",
+    url: "https://inference-api.nvidia.com/v1/chat/completions",
+    env: "NV_INFERENCE_API_KEY",
+  },
+  openai: {
+    name: "OpenAI",
+    provider: "openai-polygons",
+    url: "https://api.openai.com/v1/responses",
+    env: "OPENAI_API_KEY",
+  },
+  anthropic: {
+    name: "Anthropic (Claude)",
+    provider: "anthropic-polygons",
+    url: "https://api.anthropic.com/v1/messages",
+    env: "ANTHROPIC_API_KEY",
+  },
+  gemini: {
+    name: "Google (Gemini)",
+    provider: "openai-chat-polygons",
+    url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    env: "GEMINI_API_KEY",
+    max_tokens_field: "max_tokens",
+  },
+  chat: {
+    name: "Other Chat Completions service",
+    provider: "openai-chat-polygons",
+    env: "MODEL_API_KEY",
+  },
+  responses: {
+    name: "Other Responses service",
+    provider: "openai-polygons",
+    env: "MODEL_API_KEY",
+  },
+};
+
 export function setupModel(ui, path = "") {
   const {
     state,
@@ -42,7 +85,7 @@ export function setupModel(ui, path = "") {
               "Environment variable name",
               "token_env",
               "text",
-              `required value="${esc(defaultEnv)}"`,
+              `required value="${esc(typeof defaultEnv === "function" ? defaultEnv() : defaultEnv)}"`,
               "Enter the variable name, not the secret. The server resolves it when the model runs.",
             )
           : mode === "saved"
@@ -85,7 +128,9 @@ export function setupModel(ui, path = "") {
   async function register(f, provider, config, name) {
     const ids = labelIds(
       f,
-      ["openai-polygons", "openai-chat-polygons"].includes(provider),
+      ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(
+        provider,
+      ),
     );
     await addCredentials(f, config, name);
     await api(`${prefix}/models`, "POST", {
@@ -103,7 +148,7 @@ export function setupModel(ui, path = "") {
     modal(
       "Add a model",
       `<p class="muted">What would you like to do?</p><div class="setup-paths">
-      <button type="button" data-action="model" data-id="hosted"><strong>Use a hosted vision model</strong><span>Connect Sol, Astra, or another compatible vision API for annotation.</span></button>
+      <button type="button" data-action="model" data-id="hosted"><strong>Use a hosted vision model</strong><span>Connect Sol, Astra, Claude, or another compatible vision API for annotation.</span></button>
       <button type="button" data-action="model" data-id="endpoint"><strong>Use an existing segmentation model</strong><span>Connect a deployed U-Net, Hugging Face segmentation endpoint, or another mask service.</span></button>
       <button type="button" data-action="model" data-id="learner"><strong>Train a project model</strong><span>Create a U-Net using your reviewed annotations. No inference endpoint or API key needed.</span></button>
       </div>`,
@@ -121,32 +166,35 @@ export function setupModel(ui, path = "") {
         selectField(
           "Model service",
           "service",
-          '<option value="nvidia">NVIDIA gateway</option><option value="chat">Other Chat Completions service</option><option value="responses">Responses service</option>',
+          Object.entries(hostedServices)
+            .map(
+              ([id, service]) => `<option value="${id}">${service.name}</option>`,
+            )
+            .join(""),
         ) +
         '<div id="hosted-details"></div>' +
         credentials() +
         `<details><summary>Advanced options</summary>${field("Response limit (tokens)", "max_output_tokens", "number", "required value='4096' min='64' max='16384'", "Higher limits allow more detailed outlines. Dense nuclei may need 16384 tokens; some providers also use this allowance for reasoning.")}</details>` +
         '<p class="muted">Name structures in your annotation prompts. This vision adapter accepts new project targets without reconnecting the model.</p>',
       async (f) => {
+        const service = hostedServices[f.get("service")];
         const nvidia = f.get("service") === "nvidia";
-        const identifier = f.get("model").trim();
+        const identifier = (f.get("custom_model") || f.get("model")).trim();
         const name =
           f.get("name")?.trim() ||
-          (nvidia
-            ? identifier.includes("astra")
-              ? "GPT-6 Astra"
-              : "GPT-5.6 Sol"
-            : identifier);
+          (nvidia ? hostedModels[identifier] : null) ||
+          identifier;
         await register(
           f,
-          f.get("service") === "responses"
-            ? "openai-polygons"
-            : "openai-chat-polygons",
+          service.provider,
           {
             url: f.get("url").trim(),
             model: identifier,
             timeout: 180,
             max_output_tokens: Number(f.get("max_output_tokens")),
+            ...(service.max_tokens_field
+              ? { max_tokens_field: service.max_tokens_field }
+              : {}),
           },
           name,
         );
@@ -156,13 +204,19 @@ export function setupModel(ui, path = "") {
     const form = document.querySelector("#action-form");
     function serviceChanged() {
       const type = form.elements.service.value;
+      const service = hostedServices[type];
       form.querySelector("#hosted-details").innerHTML =
         type === "nvidia"
           ? selectField(
               "Model",
               "model",
-              '<option value="switchyard/openai/gpt-5.6-sol">GPT-5.6 Sol</option><option value="azure/openai/gpt-6-astra">GPT-6 Astra</option>',
+              Object.entries(hostedModels)
+                .map(
+                  ([id, name]) => `<option value="${esc(id)}">${esc(name)}</option>`,
+                )
+                .join("") + '<option value="custom">Another model</option>',
             ) +
+            '<div id="custom-model"></div>' +
             `<details><summary>Connection details</summary>${field("Service URL", "url", "url", 'required value="https://inference-api.nvidia.com/v1/chat/completions"')}${field("Model name (optional)", "name")}</details>`
           : field(
               "Model ID from the provider",
@@ -175,15 +229,23 @@ export function setupModel(ui, path = "") {
               "Service URL",
               "url",
               "url",
-              `required placeholder="https://your-service/v1/${type === "responses" ? "responses" : "chat/completions"}"`,
+              `required ${service.url ? `value="${esc(service.url)}"` : `placeholder="https://your-service/v1/${type === "responses" ? "responses" : "chat/completions"}"`}`,
             ) +
             `<details><summary>Custom name</summary>${field("Model name (optional)", "name")}</details>`;
       const env = form.elements.token_env;
-      if (env)
-        env.value =
-          type === "nvidia" ? "NV_INFERENCE_API_KEY" : "MODEL_API_KEY";
+      if (env) env.value = service.env;
+      if (type === "nvidia") {
+        form.elements.model.addEventListener("change", () => {
+          form.querySelector("#custom-model").innerHTML =
+            form.elements.model.value === "custom"
+              ? field(
+                  "Model ID from the provider", "custom_model", "text", "required",
+                )
+              : "";
+        });
+      }
     }
-    bindCredentials("NV_INFERENCE_API_KEY");
+    bindCredentials(() => hostedServices[form.elements.service.value].env);
     form.elements.service.addEventListener("change", serviceChanged);
     serviceChanged();
     return;

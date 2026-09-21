@@ -42,7 +42,7 @@ def project(client, name, label):
 def configure_models(client, project_id, max_output_tokens=4096, *, make_sol_default=False):
     path = "/api/projects/" + project_id
     existing = client.get(path + "/models")
-    for filename in ["nvidia-sol.json", "nvidia-astra.json"]:
+    for filename in ["nvidia-sol.json", "nvidia-astra.json", "nvidia-claude-opus-5.json"]:
         body = json.loads((Path(__file__).parent / "models" / filename).read_text())
         body["config"]["max_output_tokens"] = max_output_tokens
         model = next(

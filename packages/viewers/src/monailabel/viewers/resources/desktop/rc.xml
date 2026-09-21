@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <focus><focusNew>yes</focusNew></focus>
+  <applications>
+    <application type="normal"><maximized>yes</maximized></application>
+  </applications>
+</openbox_config>

@@ -9,7 +9,7 @@ from pydantic import Field, SecretStr
 from monailabel.core.dicom import DicomConnection, DicomFilters, DicomImportSelection, DicomSearch
 from monailabel.core.models import Contract, DicomSeries, Job
 from monailabel.server.access import Principal, Service, authorize
-from monailabel.server.dicom_read import dicom_response
+from monailabel.server.dicom.read import dicom_response
 
 router = APIRouter(prefix="/api", dependencies=[Depends(authorize)])
 

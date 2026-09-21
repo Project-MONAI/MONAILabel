@@ -12,6 +12,8 @@ metadata:
 
 Bounded RGB images use QuPath. Selected area means annotate(scope=selected_region), one crop without tiling, using viewer geometry. Explicit whole image/slide means scope=full regardless of selection; optional tile_size defaults to 256. Gigapixel streaming is unavailable.
 
+When the user does not name a model and the viewer selection is Automatic, omit model_id and model_name. The annotation tool selects a configured model using image geometry, requested targets and compatible defaults, preferring a dedicated target model or the standard Sol preset. Do not select VISTA3D or MedSAM2 for pathology, and never silently switch to Astra or Claude. Explicit model choices take precedence. The reply names the model used.
+
 Correct “nuclie” to Nuclei. classify_objects labels existing nuclei, distinct from segmentation. Default categories are Tumor/Immune/Stromal; custom categories are allowed. Only an explicit request for selected nuclei sets selected_only=true; selected ROI guides and previous selected-region annotation do not imply selected nuclei. Otherwise false. QuPath prepares categories and captured identities through a typed continuation; never reconstruct those identities/polygons.
 
 Classification drafts persist in QuPath; classification review/training is unavailable. Nuclei masks can train 2D RGB U-Net. clear_segments preserves selection guides/outside objects and clears all labels only when explicit. Ambiguous “remove it” needs clarification. A partial-region proposal is not a complete annotation: inspect the entire imported field before submission. For SAM boxes or points, also load monailabel-radiology; SAM needs one target and a current box or positive points, never an invented location.

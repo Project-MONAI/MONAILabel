@@ -1,0 +1,12 @@
+{
+  "name": "Claude Opus 5",
+  "provider": "openai-chat-polygons",
+  "label_ids": [0, 1],
+  "config": {
+    "url": "https://inference-api.nvidia.com/v1/chat/completions",
+    "model": "azure/anthropic/claude-opus-5",
+    "token_env": "NV_INFERENCE_API_KEY",
+    "timeout": 180,
+    "max_output_tokens": 16384
+  }
+}

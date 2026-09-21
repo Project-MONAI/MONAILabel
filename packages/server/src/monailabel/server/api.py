@@ -378,8 +378,8 @@ def export_segmentation(asset_id: str, service: Service) -> Response:
 
 
 @router.get("/projects/{project_id}/models")
-def models(project_id: str, service: Service) -> list[ModelRecord]:
-    return [m for m in service.store.list(ModelRecord, project_id) if not m.archived]
+def models(project_id: str, service: Service, asset_id: str | None = None) -> list[ModelRecord]:
+    return service.models.available(project_id, asset_id)
 
 
 @router.post("/projects/{project_id}/models", status_code=201)

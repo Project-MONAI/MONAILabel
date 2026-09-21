@@ -4,11 +4,13 @@ import {
   trainingSampleRequest,
 } from "./training-samples.js";
 import { importFiles } from "./dataset-import.js";
+import { randomId } from "./random-id.js";
 import { videoReviews, videoAction } from "./videos.js";
 import {
   reserveViewerTab,
   openPreparedViewer,
   closePendingViewer,
+  desktopTarget,
 } from "./viewer-launch.js";
 import { trainingResults } from "./training-results.js";
 ("use strict");
@@ -52,10 +54,8 @@ import { openDicomImport } from "./dicom-import.js";
 import { pageFromURL, pageURL } from "./navigation.js";
 // A small server-backed console: no build step, UI framework, or client-side secrets.
 const $ = (selector) => document.querySelector(selector);
-const workspaceId = Array.from(
-  crypto.getRandomValues(new Uint32Array(4)),
-  (n) => n.toString(16),
-).join("-");
+const desktopLaunchTarget = desktopTarget();
+const workspaceId = randomId();
 let viewerReturns = null;
 try {
   if ("BroadcastChannel" in window)
@@ -902,11 +902,15 @@ async function watchJob(jobId, originProject, viewerTab) {
     await refresh();
   }
   if (job.result.url) {
-    const viewerName = job.kind === "video_editor" ? "CVAT" : "OHIF";
+    const viewerName =
+      job.kind === "video_editor"
+        ? "CVAT"
+        : { slicer: "3D Slicer", qupath: "QuPath" }[job.result.viewer] ||
+          "OHIF";
     const viewerUrl = new URL(job.result.url, location.origin);
     if (viewerName === "OHIF")
       viewerUrl.searchParams.set("workspace", workspaceId);
-    if (openPreparedViewer(viewerUrl.href, viewerTab, viewerName === "CVAT")) {
+    if (openPreparedViewer(viewerUrl.href, viewerTab, viewerName !== "OHIF")) {
       message(`${viewerName} opened${viewerTab ? " in a new tab" : ""}.`);
       return;
     }
@@ -963,17 +967,19 @@ async function watchJob(jobId, originProject, viewerTab) {
 }
 async function launchViewer(id, name) {
   if (!id) throw new Error("Select a sample first.");
-  const viewerTab = name === "ohif" ? reserveViewerTab() : null;
+  const target = desktopLaunchTarget;
+  const viewerTab =
+    name === "ohif" || target === "browser" ? reserveViewerTab() : null;
   state.context.asset_id = id;
   render();
   const project = state.project.id;
   try {
     const job = await api(
-      `/assets/${id}/viewer?mode=${state.page === "review" ? "review" : "annotation"}${name ? "&name=" + name : ""}`,
+      `/assets/${id}/viewer?mode=${state.page === "review" ? "review" : "annotation"}&target=${target}${name ? "&name=" + name : ""}`,
       "POST",
     );
     message(
-      "Preparing the selected viewer on this computer. The first installation may take several minutes; later launches reuse it.",
+      `Preparing the viewer ${target === "browser" || name === "ohif" ? "in your browser" : "on this computer"}. The first launch may take several minutes; later launches reuse it.`,
     );
     await watch(job.id, project, viewerTab);
   } catch (error) {
@@ -1003,7 +1009,7 @@ async function sendPrompt(text) {
     project_id: projectId,
     context: state.context,
     conversation_id: state.conversations.get(conversationKey) || null,
-    request_id: crypto.randomUUID().replaceAll("-", ""),
+    request_id: randomId(),
   });
   state.conversations.set(conversationKey, reply.conversation_id);
   message(reply.message);

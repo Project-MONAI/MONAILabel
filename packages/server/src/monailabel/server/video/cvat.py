@@ -14,10 +14,10 @@ from monailabel.core.models import ModelRecord, Project, User
 from monailabel.core.video import VideoAsset
 from monailabel.server.access import Principal, Service
 from monailabel.server.service import Services
-from monailabel.server.video_editor import VideoEditor
+from monailabel.server.video.models import VideoEditor
 
 router = APIRouter()
-STATIC = Path(__file__).parent / "static"
+STATIC = Path(__file__).parents[1] / "static"
 
 
 def binding(

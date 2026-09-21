@@ -7,6 +7,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
+from monailabel.core.chat import ChatMessage, ToolCall
 from monailabel.core.models import Proposal
 from monailabel.core.ports import Prediction
 
@@ -179,21 +180,21 @@ def test_binary_review_checks_size_labels_and_revision(client, http, annotation_
 
 
 @pytest.mark.parametrize("selected", [None, "sol"])
-def test_prompt_named_astra_overrides_selection_and_default_through_provider_http(
-    client, http, annotation_project, monkeypatch, selected
+@pytest.mark.parametrize("named", ["astra", "claude"])
+def test_prompt_named_model_overrides_selection_and_default_through_provider_http(
+    client, http, annotation_project, monkeypatch, selected, named
 ):
     project, asset = annotation_project
     registered = {}
-    for name, provider_id in [
-        ("sol", "switchyard/openai/gpt-5.6-sol"),
-        ("astra", "azure/openai/gpt-6-astra"),
+    for name, title, provider_id in [
+        ("sol", "GPT-5.6 Sol", "switchyard/openai/gpt-5.6-sol"),
+        ("astra", "GPT-6 Astra", "azure/openai/gpt-6-astra"),
+        ("claude", "Claude Opus 5", "azure/anthropic/claude-opus-5"),
     ]:
         registered[name] = client.post(
             f"/api/projects/{project['id']}/models",
             {
-                "name": "GPT-5.6 Sol · NVIDIA gateway"
-                if name == "sol"
-                else "GPT-6 Astra · NVIDIA gateway (paid)",
+                "name": title,
                 "provider": "openai-chat-polygons",
                 "label_ids": [0, 1],
                 "config": {"url": "https://example.test/chat/completions", "model": provider_id},
@@ -230,19 +231,27 @@ def test_prompt_named_astra_overrides_selection_and_default_through_provider_htt
     }
     if selected:
         context["model_id"] = registered[selected]["id"]
+    chosen = registered[named]
+    http.app.state.services.assistants.provider.queue = [
+        ChatMessage(
+            role="assistant",
+            tool_calls=[
+                ToolCall(
+                    id="named-model",
+                    name="annotate",
+                    arguments={"model_name": chosen["name"], "scope": "current_slice"},
+                )
+            ],
+        )
+    ]
     reply = client.post(
         f"/api/projects/{project['id']}/assistant",
-        {"message": "annotate this slice using GPT Astra model", "context": context},
+        {"message": f"annotate this slice using {chosen['name']}", "context": context},
     )
     result = client.wait(reply["job_id"])
-    assert "GPT-6 Astra" in reply["message"] and "Sol" not in reply["message"]
-    assert (
-        client.get(f"/api/jobs/{reply['job_id']}")["request"]["model_id"]
-        == registered["astra"]["id"]
-    )
-    assert client.get(f"/api/proposals/{result['proposal_id']}")["model_ids"] == [
-        registered["astra"]["id"]
-    ]
+    assert chosen["name"] in reply["message"] and "Sol" not in reply["message"]
+    assert client.get(f"/api/jobs/{reply['job_id']}")["request"]["model_id"] == chosen["id"]
+    assert client.get(f"/api/proposals/{result['proposal_id']}")["model_ids"] == [chosen["id"]]
     # Prompt-specific overrides are not saved as project defaults or sticky chat context.
     assert "model_id" not in reply["data"]
     assert client.get(f"/api/projects/{project['id']}")["defaults"] == default["defaults"]
@@ -251,7 +260,7 @@ def test_prompt_named_astra_overrides_selection_and_default_through_provider_htt
         {"message": "annotate this slice", "context": context},
     )
     client.wait(reply["job_id"])
-    assert calls == ["azure/openai/gpt-6-astra", "switchyard/openai/gpt-5.6-sol"]
+    assert calls == [chosen["config"]["model"], "switchyard/openai/gpt-5.6-sol"]
     count = len(client.get(f"/api/projects/{project['id']}/jobs"))
     for message in ["using Missing model", "using GPT model"]:
         response = http.post(

@@ -1,3 +1,5 @@
+import { randomId } from "./random-id.js";
+
 // Reuse the launching workspace without granting the viewer access to window.opener.
 // A copied link, closed workspace or blocked tab close falls back to this tab.
 export async function returnToWorkspace(projectId, page) {
@@ -10,7 +12,7 @@ export async function returnToWorkspace(projectId, page) {
     let channel;
     try {
       channel = new BroadcastChannel("monailabel-workspace-" + workspace);
-      const requestId = crypto.randomUUID();
+      const requestId = randomId();
       returned = await new Promise((resolve) => {
         const timeout = setTimeout(() => resolve(false), 3000);
         channel.onmessage = ({ data }) => {

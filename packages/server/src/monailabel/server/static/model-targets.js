@@ -2,7 +2,11 @@ import { paginationButton } from "./icons.js";
 import { escapeHTML, button, targetNames } from "./ui.js";
 
 export function availableTargets(state, model) {
-  if (["openai-polygons", "openai-chat-polygons"].includes(model.provider))
+  if (
+    ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(
+      model.provider,
+    )
+  )
     return null;
   if (
     model.provider === "vista3d" &&

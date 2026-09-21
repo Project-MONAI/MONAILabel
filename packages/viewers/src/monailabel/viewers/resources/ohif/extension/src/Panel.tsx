@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createSpeech } from "./speech";
 import { panelSession, usePanelState } from "./panel-session";
 import { api } from "./api";
+import { randomId } from "./random-id";
 import "./panel.css";
 import {
   drawHint,
@@ -138,7 +139,7 @@ export default function Panel({ servicesManager }) {
         message: text,
         context,
         conversation_id: s.conversationId || null,
-        request_id: crypto.randomUUID().replaceAll("-", ""),
+        request_id: randomId(),
       });
       s.conversationId = reply.conversation_id;
       log(reply.message);

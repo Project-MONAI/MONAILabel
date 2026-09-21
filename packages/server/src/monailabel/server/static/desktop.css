@@ -1,0 +1,70 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #141820;
+  color: #e8eef5;
+}
+body {
+  margin: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: #222937;
+  flex-wrap: wrap;
+}
+a {
+  color: #8ac6ff;
+}
+button {
+  background: #354052;
+  color: inherit;
+  border: 1px solid #68758a;
+  border-radius: 5px;
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+}
+#status {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #bfccdd;
+}
+#viewport {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+#display {
+  border: 0;
+  position: absolute;
+  inset: 0 auto auto 0;
+  transform-origin: top left;
+}
+#error {
+  padding: 1rem;
+  color: #ffc3c3;
+}
+main {
+  padding: 1.5rem;
+  max-width: 60rem;
+}
+.session {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid #354052;
+}
+.session a,
+.session span {
+  flex: 1;
+}
+[hidden] {
+  display: none !important;
+}

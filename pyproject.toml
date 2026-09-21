@@ -42,7 +42,11 @@ e2e = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
-markers = ["video_e2e: browser workflow against disposable CVAT services"]
+markers = [
+    "browser_e2e: workspace browser workflows against a disposable server",
+    "video_e2e: browser workflow against disposable CVAT services",
+    "desktop_e2e: real Slicer and QuPath streamed into a browser using disposable containers",
+]
 filterwarnings = [
   "error",
   # MONAI 1.5.2 uses list indexing in its sliding-window utility; checked with Torch 2.10.

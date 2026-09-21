@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>MONAI Label — Browser desktop</title>
+    <link rel="stylesheet" href="/static/desktop.css" />
+    <script type="module" src="/static/desktop.js"></script>
+  </head>
+  <body>
+    <header hidden>
+      <a href="/datasets">MONAI Label</a>
+      <span id="status" role="status"></span>
+    </header>
+    <p id="error" role="alert" hidden></p>
+    <main id="sessions" hidden>
+      <h1>Browser desktops</h1>
+      <p>
+        Open viewers are listed here. Submit your work before closing their tabs
+        or ending a session.
+      </p>
+      <div id="list"></div>
+    </main>
+    <div id="viewport" hidden>
+      <iframe
+        id="display"
+        title="Native annotation viewer"
+        allow="fullscreen"
+      ></iframe>
+    </div>
+  </body>
+</html>

@@ -15,7 +15,7 @@ from monailabel.core.video import (
     VideoFindTrackingRequest,
     VideoTrackingRequest,
 )
-from monailabel.server.video_editor import VideoEditor
+from monailabel.server.video.models import VideoEditor
 
 from .base import Empty, ToolContext, ToolRegistry
 

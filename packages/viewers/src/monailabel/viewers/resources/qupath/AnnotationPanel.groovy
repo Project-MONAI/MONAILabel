@@ -152,7 +152,7 @@ class AnnotationPanel {
         def project = backend.request('/api/projects/' + pid)
         def asset = backend.request('/api/assets/' + aid)
         if (asset.project_id != pid || asset.kind != 'image2d') throw new IllegalArgumentException('Select a 2D pathology image for QuPath.')
-        def models = backend.request('/api/projects/' + pid + '/models')
+        def models = backend.request('/api/projects/' + pid + '/models?asset_id=' + aid)
         def permissions = backend.request('/api/projects/' + pid + '/permissions')
         def root = Path.of(System.getenv('MONAILABEL_QUPATH_DATA'), pid, aid)
         Files.createDirectories(root)
@@ -166,7 +166,7 @@ class AnnotationPanel {
         project = data.project; asset = data.asset; models = data.models
         canAnnotate = data.permissions.roles.any { it in ['manager', 'annotator'] }
         canReview = data.permissions.roles.any { it in ['manager', 'reviewer'] }
-        modelChoice.items.setAll(['Project defaults'] + models.collect { it.name })
+        modelChoice.items.setAll(['Automatic'] + models.collect { it.name })
         modelChoice.selectionModel.select(0)
         def projectFile = data.root.resolve('project.qpproj').toFile()
         def nativeProject
@@ -190,7 +190,7 @@ class AnnotationPanel {
         imageData.setImageType(ImageData.ImageType.BRIGHTFIELD_H_E)
         controls()
         log('Connected to ' + project.name + ' · ' + asset.name + '. ' +
-            (reviewMode ? 'Review the annotation, make corrections and submit Good or Needs changes.' : 'Select a model and annotate this image.') + ' Ctrl+Enter sends.')
+            (reviewMode ? 'Review the annotation, make corrections and submit Good or Needs changes.' : 'Ask me to annotate a region or the full image. You can name a model in your message.') + ' Ctrl+Enter sends.')
         if (restoring && imageData.getProperty('MONAILabel.BaseRevision') != null) {
             int savedRevision = (int)imageData.getProperty('MONAILabel.BaseRevision')
             if (savedRevision != asset.revision) {

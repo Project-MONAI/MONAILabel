@@ -3,9 +3,21 @@ import test from "node:test";
 import {
   closePendingViewer,
   openPreparedViewer,
+  desktopTarget,
 } from "../../packages/server/src/monailabel/server/static/viewer-launch.js";
 
 globalThis.location = { origin: "http://workspace.test" };
+
+test("desktop launch is native for loopback and streamed for remote addresses", () => {
+  for (const host of ["localhost", "127.0.0.1", "127.0.0.2", "[::1]"])
+    assert.equal(desktopTarget(new URL(`http://${host}:8000`)), "auto");
+  for (const host of ["192.168.1.4", "workspace.example", "localhost.example"])
+    assert.equal(desktopTarget(new URL(`https://${host}`)), "browser");
+  assert.equal(
+    desktopTarget(new URL("http://localhost:8000/?desktop=browser")),
+    "browser",
+  );
+});
 
 test("failed setup closes only its loading page and preserves other viewer drafts", () => {
   const closed = [];

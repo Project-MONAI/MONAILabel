@@ -2,6 +2,41 @@
 
 Use disposable workspaces for mutation and viewer tests. Never run a second server against an active workspace. The standard lint, type and test commands are in [AGENTS.md](../AGENTS.md#development).
 
+## Workspace browser
+
+Workspace chat and file import can also be checked on an HTTP network hostname, where `crypto.randomUUID` is unavailable:
+
+```bash
+uv run --group e2e playwright install chromium
+uv run --group e2e pytest --browser-e2e tests/e2e/test_workspace_http.py
+```
+
+This check uses Chromium and a disposable workspace with scripted chat responses; it does not call a model. It also registers hosted presets and custom OpenAI, Anthropic, Gemini and NVIDIA model IDs through the UI, checks environment references and encrypted saved keys, and verifies that API responses do not expose keys.
+
+The radiology Quickstart can also be exercised through a real OHIF build:
+
+```bash
+uv run --group e2e pytest --browser-e2e tests/e2e/test_ohif_quickstart.py
+```
+
+This test uses a synthetic CT, deterministic VISTA3D/Astra annotation fixtures, and the production OHIF adapter to annotate a volume, correct a slice and submit the result through chat. OHIF is prepared in the disposable cache; `MONAILABEL_OHIF_DIST` can point to an existing build of the current extension. No hosted inference is called.
+
+## Browser desktops
+
+```bash
+uv sync --group e2e
+uv run playwright install chromium
+uv run --group e2e pytest --desktop-e2e tests/e2e/test_browser_desktop.py
+```
+
+These opt-in tests require Linux and Docker. They launch real Slicer and QuPath in disposable containers through an HTTP network hostname, verify the full-tab layout, selected sample and submitted annotation, and exchange Unicode clipboard text with a separate browser page. They check that the remote resolution and native application follow browser resizing and tablet orientation changes while preserving draft text. They also refresh without losing the draft and close the last tab to end the session without changing the submitted revision. QuPath exercises tablet-sized touch and keyboard controls and excludes volume-only models. Native probes observe application state; image loading and browser input use the production adapters. No paid models are called. Artifacts are written under `test-results/` and test containers are removed afterward.
+
+The standard suite checks loopback/native versus remote/browser selection, explicit browser override, owner and role enforcement, cross-origin WebSocket rejection, streaming, logout revocation, session limits, reconnect renewal and failed-start cleanup. It also checks status requests during slow setup, continued access to existing desktops, cancellation and account changes during launch, and cleanup when log collection fails. Physical iPad/Safari interaction and GPU rendering performance require separate device checks.
+
+The Slicer exit test submits through the native viewer, chooses **Exit Slicer**, and verifies that its browser tab closes only after the submission is saved. A second tab with closing disabled returns to the project workspace. Lifecycle checks distinguish a confirmed native exit from network failures, unavailable Docker, lost access and obsolete disconnect notifications.
+
+The pathology Quickstart test imports the public OpenSlide sample, draws a native QuPath region through the browser, sends the documented segmentation and submission prompts, and checks that only the selected crop reaches the annotation fixture. QuPath applies the returned objects and publishes the submitted mask through its production adapter.
+
 ## Golden prompts
 
 The eight [Spleen learning workflow prompts](workflows.md#try-the-spleen-learning-workflow) come from [spleen.json](../examples/prompts/spleen.json). The runner verifies imports, scoped reviews, batch annotation, named model creation, training and comparison against independent fixed references. The README keeps shorter first-use prompts for each modality.

@@ -129,6 +129,56 @@ def test_masks_remapped_pending_review_and_retry_preserves_edits(client, http, t
     assert client.get("/api/assets/" + second["asset_ids"][0])["group_id"] != before[0]["group_id"]
 
 
+@pytest.mark.parametrize("include_masks", [False, True])
+def test_recreated_project_import_does_not_restore_deleted_annotations(
+    client, http, template_fixture, include_masks
+):
+    prefix, path, _, _, source_mask = template_fixture
+    original_project = client.get(prefix)
+    imported_asset = imported(client, prefix)["asset_ids"][0]
+    edited = client.post(
+        f"/api/assets/{imported_asset}/review",
+        {
+            "base_revision": 0,
+            "mask": np.full(source_mask.shape, 4, dtype=np.uint8).tolist(),
+            "covered_labels": [0, 4],
+        },
+    )
+    response = http.request("DELETE", prefix, json={"confirmation_name": original_project["name"]})
+    assert response.status_code == 200
+    assert path.exists()  # The source archive remains reusable after project deletion.
+    assert http.get(f"/api/annotations/{edited['id']}/mask.bin").status_code == 404
+
+    recreated = client.post(
+        "/api/projects",
+        {"name": original_project["name"], "labels": original_project["labels"]},
+    )
+    assert recreated["id"] != original_project["id"]
+    result = imported(
+        client,
+        f"/api/projects/{recreated['id']}",
+        include_masks=include_masks,
+        split="validation" if include_masks else "pool",
+    )
+    assert result["failed"] == []
+    asset = client.get(f"/api/assets/{result['asset_ids'][0]}")
+    assert asset["id"] != imported_asset
+    annotations = client.get(f"/api/assets/{asset['id']}/annotations")
+    if include_masks:
+        assert len(annotations) == 1
+        annotation = annotations[0]
+        assert annotation["id"] != edited["id"]
+        assert annotation["revision"] == 1
+        actual = np.frombuffer(
+            http.get(f"/api/annotations/{annotation['id']}/mask.bin").content, dtype=np.uint8
+        ).reshape(source_mask.shape)
+        np.testing.assert_array_equal(actual, source_mask * 4)
+    else:
+        assert asset["revision"] == 0
+        assert asset["annotation_id"] is None
+        assert annotations == []
+
+
 @pytest.mark.parametrize("broken", ["affine", "missing", "fractional", "unknown_id"])
 def test_bad_reference_never_publishes_annotation(client, http, template_fixture, broken):
     prefix, _, entries, write, mask = template_fixture

@@ -23,7 +23,6 @@ from monailabel.core.models import (
     AssistantRequest,
     Job,
     Learner,
-    ModelRecord,
     ReviewDecision,
 )
 from monailabel.core.video import VideoAsset
@@ -32,7 +31,7 @@ from monailabel.server.assistant_tools.base import ToolContext
 from monailabel.server.assistant_tools.workspace import model_summary
 from monailabel.server.batch_annotation import candidates
 from monailabel.server.instructions import SkillSession, coordinator_instructions
-from monailabel.server.video_editor import VideoEditor
+from monailabel.server.video.models import VideoEditor
 
 if TYPE_CHECKING:
     from monailabel.core.models import User
@@ -423,8 +422,7 @@ class Assistants:
             result["models"] = list[JsonValue](
                 [
                     model_summary(m)
-                    for m in self.services.store.list(ModelRecord, project.id)
-                    if not m.archived
+                    for m in self.services.models.available(project.id, ctx.context.asset_id)
                 ][:64]
             )
             if ctx.context.video:

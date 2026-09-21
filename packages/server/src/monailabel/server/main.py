@@ -16,7 +16,9 @@ def main() -> None:
         type=Path,
         help="Workspace folder (default: MONAILABEL_DATA_DIR or ./workspace).",
     )
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument(
+        "--host", default="0.0.0.0", help="Listen address (default: all IPv4 interfaces)."
+    )
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--ssl-certfile", type=Path, help="TLS certificate for HTTPS access.")
     parser.add_argument(
@@ -69,8 +71,10 @@ def main() -> None:
             "compatible also needs --assistant-base-url. Pass key environment "
             "names, never secret values."
         )
+    app = create_app(configure_workspace(args.data_dir), coordinator=coordinator)
+    app.state.direct_tls = bool(args.ssl_certfile)
     uvicorn.run(
-        create_app(configure_workspace(args.data_dir), coordinator=coordinator),
+        app,
         host=args.host,
         port=args.port,
         ssl_certfile=str(args.ssl_certfile) if args.ssl_certfile else None,

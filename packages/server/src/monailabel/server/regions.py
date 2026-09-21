@@ -1,6 +1,6 @@
 """Slice boxes and 3D ROI proposals, separate from segmentation training labels."""
 
-from typing import Literal, cast
+from typing import cast
 
 import numpy as np
 
@@ -9,6 +9,7 @@ from monailabel.core.geometry import orient_plane, restore_plane
 from monailabel.core.models import Asset, BoxRequest, Job, Label, RegionProposal, RoiRequest
 from monailabel.core.ports import Image
 from monailabel.providers.remote import RemoteSegmenter
+from monailabel.providers.vision import VISION_PROVIDERS, VisionProvider
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.models import Models
 from monailabel.server.storage import Artifacts, Store
@@ -21,7 +22,7 @@ class Regions:
     def locate(self, asset_id: str, request: BoxRequest | RoiRequest) -> Job:
         asset = self.store.get(Asset, asset_id)
         model = self.models.get(asset.project_id, request.model_id)
-        if model.provider not in {"openai-polygons", "openai-chat-polygons"}:
+        if model.provider not in VISION_PROVIDERS:
             raise DomainError(
                 "Free-text boxes and ROIs currently require a configured vision API model."
             )
@@ -41,7 +42,7 @@ class Regions:
             # target does not change the project's segmentation protocol or model record.
             target = Label(id=1, name=request.target, color="#ffc857")
             provider = RemoteSegmenter(
-                cast(Literal["openai-polygons", "openai-chat-polygons"], model.provider),
+                cast(VisionProvider, model.provider),
                 self.models.credentials,
             )
             volume = self.artifacts.array(asset.image_key)

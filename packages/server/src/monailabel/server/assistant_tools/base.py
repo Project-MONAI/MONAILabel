@@ -54,7 +54,9 @@ class ToolContext:
             )
         return asset
 
-    def model_id(self, identifier: str | None, name: str | None = None) -> str | None:
+    def model_id(
+        self, identifier: str | None, name: str | None = None, *, targets: list[str] | None = None
+    ) -> str | None:
         if name:
             matches = [
                 model
@@ -81,6 +83,8 @@ class ToolContext:
         chosen = identifier or self.context.model_id
         if chosen:
             self.service.models.get(self.project.id, chosen)
+        if targets is not None:
+            return self.service.models.select_for_targets(self.project, self.asset, targets, chosen)
         return prompt_model(self.service.store, self.project, chosen)
 
     def model(self, identifier: str | None) -> ModelRecord:

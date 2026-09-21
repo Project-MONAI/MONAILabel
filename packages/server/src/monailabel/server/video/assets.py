@@ -3,7 +3,6 @@
 import json
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from monailabel.core.errors import Conflict, DomainError
 from monailabel.core.evaluation import EvaluationReservation
@@ -19,9 +18,7 @@ from monailabel.core.video import (
 from monailabel.server.evaluation_sets import reserved, training_history
 from monailabel.server.labels import imported_labels
 from monailabel.server.storage import Artifacts, Store
-
-if TYPE_CHECKING:
-    from monailabel.server.video_editor import VideoEditor
+from monailabel.server.video.models import VideoEditor
 
 MAX_VIDEO_BYTES = 2 * 1024**3
 
@@ -174,7 +171,7 @@ class Videos:
         user: User,
         decision: DecisionRequest | None = None,
         *,
-        editor: "VideoEditor | None" = None,
+        editor: VideoEditor | None = None,
     ) -> TrackAnnotation:
         with self.store.transaction() as session:
             asset = session.get(VideoAsset, asset_id)

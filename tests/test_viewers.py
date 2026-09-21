@@ -253,6 +253,7 @@ def test_browser_launch_uses_current_user_and_sample(
     )
     calls = []
     monkeypatch.setattr(ViewerManager, "ensure", lambda self, *args, **kw: object())
+    http.headers["host"] = "localhost"
 
     expected_mode = mode
 
@@ -270,7 +271,7 @@ def test_browser_launch_uses_current_user_and_sample(
     job = client.post(f"/api/assets/{assets[0]['id']}/viewer?mode={mode}")
     result = client.wait(job["id"])
     assert result["pid"] == 123
-    assert calls == [(setup["project_id"], assets[0]["id"], "owner", "http://testserver")]
+    assert calls == [(setup["project_id"], assets[0]["id"], "owner", "http://localhost")]
     assert "token" not in json.dumps(result)
 
 

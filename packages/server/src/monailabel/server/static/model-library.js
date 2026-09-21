@@ -51,7 +51,11 @@ export function modelLibrary(state, canManage, latestDecision) {
     if (model.mode === "continue")
       return parent ? `Continued from ${parent.name}` : "Continued training";
     if (trained(model)) return "Trained in this project";
-    if (["openai-polygons", "openai-chat-polygons"].includes(model.provider))
+    if (
+      ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(
+        model.provider,
+      )
+    )
       return "Hosted vision model";
     return model.preset ? "Pretrained model" : "Added to this project";
   };
@@ -69,9 +73,12 @@ export function modelLibrary(state, canManage, latestDecision) {
         ? m.provider === "vista3d"
           ? "3D CT · local GPU"
           : `${m.config.spatial_dims || 3}D U-Net`
-        : ["openai-polygons", "openai-chat-polygons", "huggingface"].includes(
-              m.provider,
-            )
+        : [
+              "openai-polygons",
+              "openai-chat-polygons",
+              "anthropic-polygons",
+              "huggingface",
+            ].includes(m.provider)
           ? "2D / selected slice"
           : m.provider === "pixel-gaussian" || m.provider === "threshold"
             ? "CPU demo baseline"
@@ -80,7 +87,7 @@ export function modelLibrary(state, canManage, latestDecision) {
     return `<article class="card" data-model-id="${escapeHTML(m.id)}">
       <div class="model-top"><h3>${escapeHTML(m.name)}</h3>${isDefault ? badge("Default") : ""}</div>
       <p class="model-provenance">${escapeHTML(origin(m))}</p>
-      <div class="model-meta">${badge(sam ? "Box / point prompts" : m.read_only && m.provider === "vista3d" ? "CT anatomy" : ["openai-polygons", "openai-chat-polygons"].includes(m.provider) ? "Prompt-defined labels" : names(m.label_ids))}${badge(scope)}${m.unreviewed_training ? badge("Trained on unreviewed predictions") : ""}</div>
+      <div class="model-meta">${badge(sam ? "Box / point prompts" : m.read_only && m.provider === "vista3d" ? "CT anatomy" : ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(m.provider) ? "Prompt-defined labels" : names(m.label_ids))}${badge(scope)}${m.unreviewed_training ? badge("Trained on unreviewed predictions") : ""}</div>
       <div class="model-card-footer">
         <details><summary>Model details</summary><div class="model-detail-body">
           ${targetSummary(state, m)}

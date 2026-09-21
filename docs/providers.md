@@ -18,6 +18,23 @@ Provider configurations store credential references, never raw API keys:
 
 Alternatively use `credential_id` from the credential API/UI; choose only one credential mechanism. Credentials are resolved on each invocation, so rotation does not require restarting the server. Plaintext keys are not returned by model/credential listing or validation errors.
 
+### Bring your own vision model
+
+In **Models → Add model → Use a hosted vision model**, choose OpenAI, Anthropic (Claude), Google (Gemini), NVIDIA gateway, or another compatible service. Enter the model ID supplied by your provider and optionally give it a friendly name for chat. NVIDIA presets are shortcuts; **Another model** accepts an arbitrary gateway model ID. New models using a supported API do not require a code change.
+
+Choose **Key configured on the server** to enter an environment variable name, **Save a new API key** to store an encrypted key, or **Use a saved API key** to reuse one in the project. Each model keeps its own credential reference. Use an API key with access to the chosen model; a chat subscription is not an API credential. The model must support image input and structured JSON output.
+
+The direct-service choices fill these connection defaults, which remain editable:
+
+| Service | Annotation provider | API key environment variable |
+| --- | --- | --- |
+| OpenAI | `openai-polygons` (Responses) | `OPENAI_API_KEY` |
+| Anthropic | `anthropic-polygons` (Messages) | `ANTHROPIC_API_KEY` |
+| Gemini | `openai-chat-polygons` (Google's compatibility API) | `GEMINI_API_KEY` |
+| NVIDIA gateway | `openai-chat-polygons` | `NV_INFERENCE_API_KEY` |
+
+These models can segment images or selected volume slices, locate targets, classify existing objects and seed video tracking. SAM2 remains the temporal tracker. Annotation connections are separate from the [conversation coordinator](coordinator.md).
+
 ### HTTP mask
 
 `POST` to the configured endpoint, with an optional bearer token:
@@ -73,9 +90,17 @@ Contract references: [image inputs](https://developers.openai.com/api/docs/guide
 
 `openai-chat-polygons` shares the polygon schema/rasterizer with the Responses adapter. It sends image messages, `response_format.json_schema`, an explicit model identifier, a configurable completion budget, and optional reasoning effort to a full `/chat/completions` URL. Incomplete, refused, malformed, out-of-bounds, and overlapping responses fail validation. The gateway is not inferred from a model name and there is no model fallback.
 
-The bundled NVIDIA example uses `switchyard/openai/gpt-5.6-sol` at `https://inference-api.nvidia.com/v1/chat/completions`, using `NV_INFERENCE_API_KEY`. See `examples/models/nvidia-sol.json`. Optional `max_output_tokens` maps to `max_completion_tokens` for Chat and `max_output_tokens` for Responses; `reasoning_effort` maps to the appropriate API field.
+The NVIDIA presets use `https://inference-api.nvidia.com/v1/chat/completions` and `NV_INFERENCE_API_KEY`: GPT-5.6 Sol (`switchyard/openai/gpt-5.6-sol`), GPT-6 Astra (`azure/openai/gpt-6-astra`) and Claude Opus 5 (`azure/anthropic/claude-opus-5`). Matching registration examples are in [`examples/models`](../examples/models). Select a model in your viewer or name it in chat, for example, `Segment the tool on this frame using Claude Opus 5`. For video tracking, the selected vision model creates the initial box or polygon; SAM2 propagates it. Astra and Claude require an explicit choice or configured default.
+
+Optional `max_output_tokens` maps to `max_completion_tokens` for Chat and `max_output_tokens` for Responses; `reasoning_effort` maps to the appropriate API field. The Claude preset omits GPT-specific reasoning settings. Chat services may configure `max_tokens_field` as `max_tokens`; the Gemini connection uses that option with `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`. See [Google's OpenAI compatibility API](https://ai.google.dev/gemini-api/docs/openai).
 
 A source slice can specify a lossless `orientation` with `transpose`, `flip_rows`, and `flip_columns`. Slicer derives it from the active view's XY-to-RAS transform and volume's RAS-to-IJK transform. The backend applies the transform before inference and its inverse before merging the result. In-plane rotations needing resampling are rejected explicitly. Tests cover asymmetric arrays and actual coordinates returned through a mock inference endpoint.
+
+### Anthropic Messages
+
+`anthropic-polygons` connects directly to `https://api.anthropic.com/v1/messages` using `x-api-key` authentication and the Messages API version header. It sends PNG image blocks, an explicit model ID and `output_config.format` for structured JSON. `max_output_tokens` maps to `max_tokens`; GPT-specific reasoning settings are rejected.
+
+Segmentation, localization and object classification share the same transport. The adapter expresses unsupported schema limits in field descriptions, then validates the original geometry and label constraints locally. Refused, incomplete or invalid results fail without applying partial output or switching models. See [Anthropic structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).
 
 ### Adding a provider or training recipe
 

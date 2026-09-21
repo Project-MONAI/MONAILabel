@@ -1,4 +1,12 @@
 // Reserve a tab during the click, before viewer preparation outlasts browser activation.
+export function desktopTarget(url = new URL(location.href)) {
+  if (url.searchParams.get("desktop") === "browser") return "browser";
+  const host = url.hostname.toLowerCase();
+  return host === "localhost" || host === "[::1]" || /^127\./.test(host)
+    ? "auto"
+    : "browser";
+}
+
 export function reserveViewerTab() {
   const tab = window.open("/static/viewer-launch.html", "_blank");
   if (tab) tab.opener = null;

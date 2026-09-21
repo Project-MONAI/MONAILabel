@@ -218,7 +218,12 @@ def register(registry: ToolRegistry) -> None:
 
 def annotate(ctx: ToolContext, args: AnnotationArgs) -> AssistantReply:
     asset, project, context, service = ctx.asset, ctx.project, ctx.context, ctx.service
-    model_id = ctx.model_id(args.model_id, args.model_name)
+    targets = args.targets or [
+        label.name
+        for label in project.labels
+        if label.id and (not context.label_ids or label.id in context.label_ids)
+    ]
+    model_id = ctx.model_id(args.model_id, args.model_name, targets=targets)
     scope = args.scope
     if scope == "auto":
         scope = (

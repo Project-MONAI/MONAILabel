@@ -17,8 +17,9 @@ from monailabel.server.data import Datasets
 from monailabel.server.dataset_downloads import dataset_cache_dir
 from monailabel.server.dataset_templates import DatasetTemplates
 from monailabel.server.deletion import Deletion, cleanup_storage
-from monailabel.server.dicom import Dicom
-from monailabel.server.dicom_connections import DicomConnections
+from monailabel.server.desktops.sessions import DesktopSessions
+from monailabel.server.dicom.connections import DicomConnections
+from monailabel.server.dicom.service import Dicom
 from monailabel.server.evaluation_sets import EvaluationSets
 from monailabel.server.jobs import Jobs
 from monailabel.server.learning import Learning
@@ -32,9 +33,9 @@ from monailabel.server.secrets import Secrets
 from monailabel.server.selection import Selection
 from monailabel.server.storage import Artifacts, Store
 from monailabel.server.training_reports import TrainingReports
-from monailabel.server.video_editor import VideoEditors
-from monailabel.server.video_tracking import VideoTracking
-from monailabel.server.videos import Videos
+from monailabel.server.video.assets import Videos
+from monailabel.server.video.editor import VideoEditors
+from monailabel.server.video.tracking import VideoTracking
 
 
 class Services:
@@ -52,6 +53,8 @@ class Services:
             cleanup.callback(self.lock.release)
             self.store = Store(data_dir / "monailabel.sqlite3")
             self.auth = Auth(self.store)
+            self.desktops = DesktopSessions(self.store, self.auth, data_dir)
+            cleanup.callback(self.desktops.close)
             self.secrets = Secrets(self.store, data_dir)
             self.reviews = Reviews(self.store)
             self.artifacts = Artifacts(data_dir / "artifacts")

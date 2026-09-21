@@ -7,14 +7,12 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
-from typing import Literal
 
 import httpx
 from filelock import FileLock, Timeout
-from pydantic import Field
 
 from monailabel.core.errors import Conflict, DomainError
-from monailabel.core.models import Job, Project, Record, User
+from monailabel.core.models import Job, Project, User
 from monailabel.core.video import (
     TrackAnnotation,
     TrackSubmission,
@@ -24,27 +22,10 @@ from monailabel.core.video import (
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.secrets import EncryptedCredential, Secrets
 from monailabel.server.storage import Store
-from monailabel.server.videos import Videos
+from monailabel.server.video.assets import Videos
+from monailabel.server.video.models import ManagedCvatRuntime, VideoEditor
 from monailabel.viewers.cvat import CvatClient, decode_tracks, validate_url
 from monailabel.viewers.cvat_runtime import CvatManager
-
-
-class VideoEditor(Record):
-    project_id: str
-    asset_id: str
-    base_revision: int
-    mode: Literal["annotation", "review"]
-    server_url: str
-    task_id: int
-    job_id: int | None = None
-    ready: bool = False
-    label_map: dict[int, int] = Field(default_factory=dict)
-    track_ids: dict[int, str] = Field(default_factory=dict)
-    submitted_annotation_id: str | None = None
-
-
-class ManagedCvatRuntime(Record):
-    namespace: str = Field(default_factory=lambda: secrets.token_hex(6), pattern=r"^[a-f0-9]{12}$")
 
 
 class VideoEditors:

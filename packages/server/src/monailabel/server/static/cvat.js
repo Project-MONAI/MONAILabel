@@ -1,3 +1,5 @@
+import { randomId } from "./random-id.js";
+
 const $ = (s) => document.querySelector(s);
 const editorId = location.pathname.split("/").at(-1);
 let info,
@@ -111,7 +113,8 @@ $("#cancel").onclick = safely(async () => {
   }
 });
 async function applyResult(proposal) {
-  if (writing) throw new Error("Wait for the current draft operation to finish.");
+  if (writing)
+    throw new Error("Wait for the current draft operation to finish.");
   writing = true;
   iframe.inert = true;
   try {
@@ -218,7 +221,7 @@ $("#chat").onsubmit = safely(async () => {
       message: prompt,
       context: await currentContext(),
       conversation_id: conversation || null,
-      request_id: crypto.randomUUID().replaceAll("-", ""),
+      request_id: randomId(),
     });
     conversation = reply.conversation_id;
     message(reply.message);

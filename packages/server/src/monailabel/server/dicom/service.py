@@ -10,7 +10,7 @@ import pydicom
 from monailabel.core.errors import Cancelled, Conflict, DomainError
 from monailabel.core.models import Asset, DicomSeries, Job, JobStatus, Project, Split
 from monailabel.dicom.nifti_view import viewing_series
-from monailabel.server.dicom_imports import prepare_series
+from monailabel.server.dicom.imports import prepare_series
 from monailabel.server.evaluation_sets import EvaluationSets
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.storage import Artifacts, Store

@@ -294,7 +294,8 @@ def inspect(ctx: ToolContext, args: InspectArgs) -> AssistantReply:
                 items.append(summary)
         elif args.collection == "models":
             items = [
-                model_summary(m) for m in store.list(ModelRecord, project_id) if not m.archived
+                model_summary(m)
+                for m in ctx.service.models.available(project_id, ctx.context.asset_id)
             ]
         elif args.collection == "assets":
             items = [
@@ -359,6 +360,8 @@ def inspect(ctx: ToolContext, args: InspectArgs) -> AssistantReply:
 
 def select_model(ctx: ToolContext, args: SelectModelArgs) -> AssistantReply:
     model = ctx.service.models.get(ctx.project.id, args.model_id)
+    if ctx.context.asset_id and not ctx.service.models.compatible(model, ctx.asset):
+        raise DomainError(f"{model.name} requires a volume. Choose a model for 2D images.")
     return AssistantReply(
         assistant="model",
         message=f"Selected {model.name} for annotation in this conversation.",

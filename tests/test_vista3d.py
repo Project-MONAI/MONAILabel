@@ -36,10 +36,15 @@ def test_presets_default_to_vista_without_overriding_user_choices(
     )
     prefix = f"/api/projects/{project['id']}"
     first = client.get(prefix + "/models")
-    assert len(first) == 5
+    assert len(first) == 6
     base = next(m for m in first if m["preset"] == "vista3d")
     assert base["read_only"] and base["state_key"] is None and base["label_ids"] == [0]
     sol = next(m for m in first if m["preset"] == "nvidia-sol")
+    claude = next(m for m in first if m["preset"] == "nvidia-claude-opus-5")
+    assert claude["name"] == "Claude Opus 5"
+    assert claude["config"]["model"] == "azure/anthropic/claude-opus-5"
+    assert claude["config"]["token_env"] == "NV_INFERENCE_API_KEY"
+    assert "reasoning_effort" not in claude["config"]
     assert project["annotation_model_id"] == base["id"]
     assert project["defaults"] == {"1": base["id"]}
     assert "test-key-never-sent" not in str(first)
@@ -69,6 +74,7 @@ def test_preset_title_update_preserves_configuration_and_custom_names(client, ht
         "VISTA3D",
         "GPT-5.6 Sol",
         "GPT-6 Astra",
+        "Claude Opus 5",
         "SAM 2.1",
         "MedSAM2",
     }

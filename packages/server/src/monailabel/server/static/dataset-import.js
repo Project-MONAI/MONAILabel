@@ -1,4 +1,5 @@
 import { escapeHTML as esc } from "./ui.js";
+import { randomId } from "./random-id.js";
 
 const stem = (name) =>
   name.toLowerCase().replace(/\.(nii\.gz|nii|png|tiff?|jpe?g|svs)$/, "");
@@ -72,7 +73,7 @@ export function importFiles(ui, defaultUse = "pool") {
   const sets = state.evaluationSets.filter((s) => !s.archived);
   let currentSet = null;
   const imported = new Set();
-  const relatedGroup = `case:${crypto.randomUUID()}`;
+  const relatedGroup = `case:${randomId()}`;
   const initialName = state.project.labels.filter((l) => l.id);
   const row = (value = 1, name = "") =>
     `<div class="reference-label-row"><label>Label value<input type="number" data-label-value min="1" max="65535" value="${value}" required></label><label>Structure<input type="text" data-label-name list="reference-structure-names" maxlength="80" value="${esc(name)}" placeholder="e.g. Spleen" required></label><button type="button" data-remove-structure aria-label="Remove structure" title="Remove structure">×</button></div>`;

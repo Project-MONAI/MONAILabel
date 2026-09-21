@@ -24,8 +24,8 @@ from monailabel.core.video import (
     VideoTrackingRequest,
 )
 from monailabel.server.access import Principal, Service, authorize
-from monailabel.server.video_editor import VideoEditor
-from monailabel.server.videos import MAX_VIDEO_BYTES
+from monailabel.server.video.assets import MAX_VIDEO_BYTES
+from monailabel.server.video.models import VideoEditor
 
 router = APIRouter(prefix="/api", dependencies=[Depends(authorize)])
 

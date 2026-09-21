@@ -31,14 +31,14 @@ Import datasets, review annotations, train and fine-tune models, and compare the
 - NVIDIA GPU with a compatible driver for local inference and training.
 - [Docker](https://docs.docker.com/engine/install/) with [NVIDIA GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for [local chat](docs/coordinator.md#setup). CVAT also uses Docker Compose and [FFmpeg](https://ffmpeg.org/).
 - Internet access and disk space for downloads and project data.
-- Modern browser; [Slicer](https://download.slicer.org/) or [QuPath](https://qupath.github.io/) for their respective viewers.
+- Modern browser. Slicer and QuPath launch normally on localhost; remote clients use a browser desktop hosted by the Linux server with Docker. No viewer installation is needed on remote clients.
 - [Node.js 22](https://nodejs.org/en/download) and [Corepack](https://github.com/nodejs/corepack) to build OHIF from source.
 
 ## Quickstart
 
 On Ubuntu/Debian, run `./setup.sh` once to install missing dependencies and prepare the viewers. It uses sudo for system packages and requires a working NVIDIA driver. Use `./setup.sh --check` to check prerequisites.
 
-Generate an [NVIDIA Inference API key](https://inference.nvidia.com) and export it in the shell so hosted GPT annotation (Sol/Astra) is available. NVIDIA Inference is one option; you can also bring any OpenAI-compatible model (see [providers](docs/providers.md)).
+Generate an [NVIDIA Inference API key](https://inference.nvidia.com) and export it in the shell so hosted annotation (Sol, Astra or Claude Opus 5) is available. You can also connect your own OpenAI, Claude, Gemini or compatible vision model and API key in **Models → Add model** (see [providers](docs/providers.md)).
 
 Start the server. Local chat uses Nemotron 3.5 Lightning by default; Nano 9B and Nano 4B are experimental options for smaller GPUs:
 
@@ -51,7 +51,7 @@ uv run monailabel-server --assistant-variant 9b
 uv run monailabel-server --assistant-variant 4b
 ```
 
-Open **http://localhost:8000**, create an administrator account, and wait for **Assistant ready**. Send prompts one at a time and wait for each job to finish. Inspect and apply proposals before submitting.
+Open **http://localhost:8000**, create an administrator account, and wait for **Assistant ready**. From another device, use the server's hostname or IP instead of `localhost`. Send prompts one at a time and wait for each job to finish. Inspect and apply proposals before submitting.
 
 Each example session below is one prompt per line, sent in order from the window named in the comment. Choose the specialty that matches your data.
 
@@ -67,6 +67,7 @@ Open the first image in OHIF.
 
 # OHIF assistant
 Segment the spleen in the whole volume using VISTA3D.
+Fix the current slice using GPT Asta.
 Submit this annotation for review.
 
 # Main window, after inspecting the annotations and evaluation labels
@@ -91,7 +92,7 @@ Import the OpenSlide pathology sample.
 Open this sample in QuPath.
 
 # QuPath assistant, after drawing a region
-Segment nuclei in the selected region using GPT-5.6 Sol.
+Segment nuclei in the selected region using GPT Sol.
 Submit this annotation for review.
 ```
 
@@ -107,10 +108,9 @@ Import the HyperKvasir tool-tracking sample.
 Open the video in CVAT.
 
 # CVAT assistant
-Use GPT-5.6 Sol to locate the snare on this frame.
-Use GPT-5.6 Sol to segment the snare on this frame.
-Use GPT-5.6 Sol to segment the snare and track it for 16 frames.
-Use GPT-5.6 Sol to segment the snare and track the whole video.
+Use GPT Sol to locate the snare on this frame.
+Use GPT Asta to segment the snare and track it for 16 frames.
+Use GPT Asta to segment the snare and track the whole video.
 ```
 
 </details>

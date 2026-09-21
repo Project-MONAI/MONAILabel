@@ -158,7 +158,9 @@ class ModelRecord(Record):
 
 class ModelRegister(Contract):
     name: str = Field(min_length=1, max_length=120)
-    provider: Literal["http-mask", "openai-polygons", "openai-chat-polygons", "huggingface"]
+    provider: Literal[
+        "http-mask", "openai-polygons", "openai-chat-polygons", "anthropic-polygons", "huggingface"
+    ]
     label_ids: list[int] = Field(default_factory=lambda: [0], min_length=1, max_length=32)
     config: dict[str, JsonValue] = Field(default_factory=dict)
 

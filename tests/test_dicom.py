@@ -8,7 +8,7 @@ import pytest
 from monailabel.core.errors import DomainError
 from monailabel.core.models import Asset, DicomSeries
 from monailabel.dicom.series import derived_ct_series, read_series
-from monailabel.server.dicom import Dicom
+from monailabel.server.dicom.service import Dicom
 
 
 def sample_series():

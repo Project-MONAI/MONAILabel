@@ -1,6 +1,5 @@
 """Single-frame tool localization through configured vision model endpoints."""
 
-import base64
 import json
 from collections.abc import Callable
 
@@ -11,6 +10,7 @@ from monailabel.core.models import Label, ModelRecord
 from monailabel.core.ports import Image
 from monailabel.core.video import ToolDetection
 from monailabel.providers.remote import headers, parse_config, png_bytes
+from monailabel.providers.vision import vision_request, vision_text
 
 
 class RemoteToolDetector:
@@ -21,14 +21,7 @@ class RemoteToolDetector:
         config = parse_config(model)
         if not config.model:
             raise DomainError("Choose an explicit vision model to find the tool.")
-        request_headers = headers(config)
-        if config.credential_id:
-            if model.project_id is None:
-                raise DomainError("The detection model must belong to this project.")
-            request_headers = {
-                "Authorization": "Bearer "
-                + self.credentials(model.project_id, config.credential_id)
-            }
+        request_headers = headers(config, model, self.credentials)
         instructions = (
             "Locate one visible instance of the requested tool in this frame for human review. "
             "Return a tight bounding rectangle around its visible extent, including any visible "
@@ -50,72 +43,22 @@ class RemoteToolDetector:
                 "request": prompt,
             }
         )
-        url = "data:image/png;base64," + base64.b64encode(png_bytes(image)).decode()
-        specification = {
-            "name": "tool_detection",
-            "strict": True,
-            "schema": ToolDetection.model_json_schema(),
-        }
-        chat = model.provider == "openai-chat-polygons"
-        if chat:
-            body = {
-                "model": config.model,
-                "messages": [
-                    {"role": "system", "content": instructions},
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": text},
-                            {"type": "image_url", "image_url": {"url": url, "detail": "high"}},
-                        ],
-                    },
-                ],
-                "response_format": {"type": "json_schema", "json_schema": specification},
-                "max_completion_tokens": config.max_output_tokens,
-            }
-            if config.reasoning_effort is not None:
-                body["reasoning_effort"] = config.reasoning_effort
-        else:
-            body = {
-                "model": config.model,
-                "instructions": instructions,
-                "input": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "input_text", "text": text},
-                            {"type": "input_image", "image_url": url, "detail": "high"},
-                        ],
-                    }
-                ],
-                "text": {"format": {"type": "json_schema", **specification}},
-                "max_output_tokens": config.max_output_tokens,
-                "store": False,
-            }
-            if config.reasoning_effort is not None:
-                body["reasoning"] = {"effort": config.reasoning_effort}
+        body = vision_request(
+            model.provider,
+            config,
+            instructions,
+            text,
+            [png_bytes(image)],
+            {"name": "tool_detection", "strict": True, "schema": ToolDetection.model_json_schema()},
+        )
         try:
             with httpx.Client(timeout=config.timeout, follow_redirects=False) as client:
                 response = client.post(config.url, headers=request_headers, json=body)
                 response.raise_for_status()
                 payload = response.json()
-            if chat:
-                choice = payload["choices"][0]
-                if choice.get("finish_reason") != "stop" or choice["message"].get("refusal"):
-                    raise ValueError("Incomplete detection")
-                text = choice["message"]["content"]
-            else:
-                if payload.get("status") != "completed":
-                    raise ValueError("Incomplete detection")
-                content = [
-                    c
-                    for item in payload["output"]
-                    if item.get("type") == "message"
-                    for c in item.get("content", [])
-                ]
-                if any(c.get("type") == "refusal" for c in content):
-                    raise ValueError("Detection refused")
-                text = "".join(c["text"] for c in content if c.get("type") == "output_text")
+            if model.provider == "openai-polygons" and payload.get("status") != "completed":
+                raise ValueError("Incomplete detection")
+            text = vision_text(model.provider, payload)
             result = ToolDetection.model_validate_json(text)
             if result.box and (result.box[2] > image.shape[1] or result.box[3] > image.shape[0]):
                 raise ValueError("Detection exceeds source image")

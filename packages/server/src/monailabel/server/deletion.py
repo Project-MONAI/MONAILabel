@@ -18,6 +18,7 @@ from monailabel.core.models import (
     Snapshot,
 )
 from monailabel.core.video import VideoAsset
+from monailabel.server.desktops.models import DesktopSession
 from monailabel.server.storage import Artifacts, Session, Store, referenced_assets
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,8 @@ class Deletion:
 
     @staticmethod
     def idle(session: Session, project_id: str) -> None:
+        if any(not desktop.ended for desktop in session.list(DesktopSession, project_id)):
+            raise Conflict("End this project's browser desktops before deleting data.")
         if any(job.status not in TERMINAL_STATUSES for job in session.list(Job, project_id)):
             raise Conflict("Finish or cancel this project's active jobs before deleting data.")
 

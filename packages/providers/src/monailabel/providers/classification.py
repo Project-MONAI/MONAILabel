@@ -1,6 +1,5 @@
-"""Object classification with replaceable OpenAI-compatible vision endpoints."""
+"""Object classification with replaceable structured vision endpoints."""
 
-import base64
 import io
 import json
 from collections.abc import Callable
@@ -16,6 +15,7 @@ from monailabel.core.geometry import region_pixels
 from monailabel.core.models import ClassificationObject, Contract, ModelRecord, ObjectClassification
 from monailabel.core.ports import Image
 from monailabel.providers.remote import headers, parse_config, png_bytes
+from monailabel.providers.vision import vision_request, vision_text
 
 
 class ClassifiedMarker(Contract):
@@ -59,14 +59,7 @@ class RemoteClassifier:
         model: ModelRecord,
     ) -> list[ObjectClassification]:
         config = parse_config(model)
-        request_headers = headers(config)
-        if config.credential_id:
-            if self.credentials is None or model.project_id is None:
-                raise DomainError("No credential resolver is available.")
-            request_headers = {
-                "Authorization": "Bearer "
-                + self.credentials(model.project_id, config.credential_id)
-            }
+        request_headers = headers(config, model, self.credentials)
         if not config.model:
             raise DomainError("Choose an explicit vision model for object classification.")
         output = ClassifiedMarkers.model_json_schema()
@@ -97,70 +90,20 @@ class RemoteClassifier:
                 ],
             }
         )
-        urls = [
-            "data:image/png;base64," + base64.b64encode(content).decode()
-            for content in (png_bytes(image), marked_image(image, objects))
-        ]
-        specification = {"name": "object_classification", "strict": True, "schema": output}
-        chat = model.provider == "openai-chat-polygons"
-        if chat:
-            body = {
-                "model": config.model,
-                "messages": [
-                    {"role": "system", "content": instructions},
-                    {
-                        "role": "user",
-                        "content": [{"type": "text", "text": text}]
-                        + [
-                            {"type": "image_url", "image_url": {"url": url, "detail": "high"}}
-                            for url in urls
-                        ],
-                    },
-                ],
-                "response_format": {"type": "json_schema", "json_schema": specification},
-                "max_completion_tokens": config.max_output_tokens,
-            }
-            if config.reasoning_effort is not None:
-                body["reasoning_effort"] = config.reasoning_effort
-        else:
-            body = {
-                "model": config.model,
-                "instructions": instructions,
-                "input": [
-                    {
-                        "role": "user",
-                        "content": [{"type": "input_text", "text": text}]
-                        + [
-                            {"type": "input_image", "image_url": url, "detail": "high"}
-                            for url in urls
-                        ],
-                    }
-                ],
-                "text": {"format": {"type": "json_schema", **specification}},
-                "max_output_tokens": config.max_output_tokens,
-            }
-            if config.reasoning_effort is not None:
-                body["reasoning"] = {"effort": config.reasoning_effort}
+        body = vision_request(
+            model.provider,
+            config,
+            instructions,
+            text,
+            [png_bytes(image), marked_image(image, objects)],
+            {"name": "object_classification", "strict": True, "schema": output},
+        )
         try:
             with httpx.Client(timeout=config.timeout, follow_redirects=False) as client:
                 response = client.post(config.url, headers=request_headers, json=body)
                 response.raise_for_status()
                 payload = response.json()
-            if chat:
-                choice = payload["choices"][0]
-                if choice.get("finish_reason") != "stop" or choice["message"].get("refusal"):
-                    raise ValueError("Incomplete classification")
-                text = choice["message"]["content"]
-            else:
-                if payload.get("status") == "incomplete":
-                    raise ValueError("Incomplete classification")
-                text = "".join(
-                    c["text"]
-                    for item in payload["output"]
-                    if item.get("type") == "message"
-                    for c in item.get("content", [])
-                    if c.get("type") == "output_text"
-                )
+            text = vision_text(model.provider, payload)
             result = ClassifiedMarkers.model_validate_json(text)
             numbers = [item.marker for item in result.classifications]
             if sorted(numbers) != list(range(1, len(objects) + 1)):

@@ -129,16 +129,31 @@ def test_responses_polygon_adapter_and_explicit_2d_boundary(monkeypatch):
         provider.predict(np.zeros((4, 4, 4, 1), dtype=np.float32), LABELS, "", registered)
 
 
-def test_chat_polygon_adapter_uses_exact_model_and_environment_key(monkeypatch):
+@pytest.mark.parametrize(
+    "provider_model,reasoning_effort,max_tokens_field",
+    [
+        ("switchyard/openai/gpt-5.6-sol", "high", "max_completion_tokens"),
+        ("azure/openai/gpt-6-astra", "high", "max_completion_tokens"),
+        ("azure/anthropic/claude-opus-5", None, "max_completion_tokens"),
+        ("my-custom-gemini-vision-model", None, "max_tokens"),
+    ],
+)
+def test_chat_polygon_adapter_uses_exact_model_and_environment_key(
+    monkeypatch, provider_model, reasoning_effort, max_tokens_field
+):
     monkeypatch.setenv("NV_INFERENCE_API_KEY", "test-key")
 
     def handler(request):
         data = json.loads(request.content)
-        assert data["model"] == "switchyard/openai/gpt-5.6-sol"
+        assert data["model"] == provider_model
         assert request.headers["authorization"] == "Bearer test-key"
         assert data["response_format"]["json_schema"]["strict"] is True
-        assert data["max_completion_tokens"] == 2048
-        assert data["reasoning_effort"] == "high"
+        assert data[max_tokens_field] == 2048
+        assert len({"max_tokens", "max_completion_tokens"} & data.keys()) == 1
+        if reasoning_effort:
+            assert data["reasoning_effort"] == reasoning_effort
+        else:
+            assert "reasoning_effort" not in data
         content = data["messages"][1]["content"]
         assert json.loads(content[0]["text"])["width"] == 5
         assert content[1]["image_url"]["url"].startswith("data:image/png;base64,")
@@ -176,10 +191,11 @@ def test_chat_polygon_adapter_uses_exact_model_and_environment_key(monkeypatch):
         "liver boundary",
         model(
             "openai-chat-polygons",
-            model="switchyard/openai/gpt-5.6-sol",
+            model=provider_model,
             token_env="NV_INFERENCE_API_KEY",
             max_output_tokens=2048,
-            reasoning_effort="high",
+            reasoning_effort=reasoning_effort,
+            max_tokens_field=max_tokens_field,
         ),
     )
     assert result.mask.shape == (3, 5)

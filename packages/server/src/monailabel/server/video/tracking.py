@@ -23,10 +23,11 @@ from monailabel.core.video import (
 from monailabel.providers.sam import MODELS
 from monailabel.providers.tool_detection import RemoteToolDetector
 from monailabel.providers.video_geometry import box_from_mask, mask_png, polygon_from_mask
+from monailabel.providers.vision import VISION_PROVIDERS
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.models import Models
 from monailabel.server.storage import Artifacts, Store
-from monailabel.server.video_editor import VideoEditor
+from monailabel.server.video.models import VideoEditor
 
 
 class VideoTracking:
@@ -136,10 +137,7 @@ class VideoTracking:
             seed: VideoKeyframe | None
             seed_mask = None
             seed_warnings: list[str] = []
-            if request.output == "box" and model.provider in {
-                "openai-polygons",
-                "openai-chat-polygons",
-            }:
+            if request.output == "box" and model.provider in VISION_PROVIDERS:
                 detection = self.detector.locate(image_float, label, request.prompt, model)
                 box = detection.box
                 reason = (
