@@ -63,47 +63,30 @@ Send each prompt below in order from the window named in the comment. Choose the
 
 ```text
 # Main window
-
-Create a project called "Radiology".
-
-Import 80% of Decathlon Spleen images for annotation and 20% with labels for
-  evaluation.
-
-Annotate spleen in the first 3 images using VISTA3D and submit for review.
-
-Open the first image in OHIF.
+  Create a project called "Radiology".
+  Import Decathlon Spleen: 80% to annotate, 20% with evaluation labels.
+  Annotate spleen in the first 3 images with VISTA3D; submit for review.
+  Open the first image in OHIF.
 
 # OHIF assistant
-
-Segment the spleen in the whole volume using VISTA3D.
-
-Clear the spleen annotation on the current slice.
-
-Annotate the spleen on the current slice using GPT Astra.
-
-Submit this annotation for review.
+  Segment the spleen in the whole volume using VISTA3D.
+  Clear the spleen annotation on the current slice.
+  Annotate the spleen on the current slice using GPT Astra.
+  Submit this annotation for review.
 
 # Main window, after inspecting the annotations and evaluation labels
-
-Mark all reviews as good for imported evaluation samples.
-
-Mark all pending reviews as good.
-
-Create a VISTA3D model named "VISTA3D-Spleen" for spleen.
-
-Fine-tune VISTA3D-Spleen using the fixed Decathlon Spleen evaluation set.
-
-Compare VISTA3D-Spleen with VISTA3D on that same evaluation set.
+  Mark all reviews as good for imported evaluation samples.
+  Mark all pending reviews as good.
+  Create a VISTA3D model named "VISTA3D-Spleen" for spleen.
+  Fine-tune VISTA3D-Spleen with the Decathlon Spleen evaluation set.
+  Compare VISTA3D-Spleen with VISTA3D on that same evaluation set.
 
 # Or train a new model from the approved annotations
-
-Create a U-Net model named "Spleen U-Net" for spleen.
-
-Train Spleen U-Net with approved samples.
+  Create a U-Net model named "Spleen U-Net" for spleen.
+  Train Spleen U-Net with approved samples.
 
 # OHIF assistant
-
-Segment the spleen using Spleen U-Net.
+  Segment the spleen using Spleen U-Net.
 ```
 
 The extended, tested Spleen workflow is in [datasets, models and learning](docs/workflows.md#try-the-spleen-learning-workflow).
@@ -115,34 +98,23 @@ The extended, tested Spleen workflow is in [datasets, models and learning](docs/
 
 ```text
 # Main window
-
-Create a project called "Pathology".
-
-Import the OpenSlide pathology sample.
-
-Open this sample in QuPath.
+  Create a project called "Pathology".
+  Import the OpenSlide pathology sample.
+  Open this sample in QuPath.
 
 # QuPath assistant, after drawing a region
-
-Segment nuclei in the selected region using GPT Astra.
-
-Clear all annotations in the selected region.
-
-Segment nuclei in the selected region using GPT Astra.
-
-Submit this annotation for review.
+  Segment nuclei in the selected region using GPT Astra.
+  Clear all annotations in the selected region.
+  Segment nuclei in the selected region using GPT Astra.
+  Submit this annotation for review.
 
 # Main window, after inspecting each submitted region in Reviews
-
-Mark all pending reviews as good.
-
-Create a U-Net model named "Nuclei U-Net" for nuclei.
-
-Train Nuclei U-Net with approved samples.
+  Mark all pending reviews as good.
+  Create a U-Net model named "Nuclei U-Net" for nuclei.
+  Train Nuclei U-Net with approved samples.
 
 # QuPath assistant
-
-Segment nuclei in the selected region using Nuclei U-Net.
+  Segment nuclei in the selected region using Nuclei U-Net.
 ```
 
 </details>
@@ -152,38 +124,25 @@ Segment nuclei in the selected region using Nuclei U-Net.
 
 ```text
 # Main window
-
-Create a project called "Endoscopy".
-
-Import the HyperKvasir tool-tracking sample.
-
-Open the video in CVAT.
+  Create a project called "Endoscopy".
+  Import the HyperKvasir tool-tracking sample.
+  Open the video in CVAT.
 
 # CVAT assistant
-
-Locate the snare on this frame.
-
-Segment the snare and track it for 16 frames.
-
-Clear the snare annotations for 16 frames.
-
-Undo that.
-
-Segment the snare and track the whole video.
-
-Submit this annotation for review.
+  Locate the snare on this frame.
+  Segment the snare and track it for 16 frames.
+  Clear the snare annotations for 16 frames.
+  Undo that.
+  Segment the snare and track the whole video.
+  Submit this annotation for review.
 
 # Main window, after inspecting the submitted frame ranges in Reviews
-
-Mark all pending reviews as good.
-
-Create a U-Net model named "Snare U-Net" for snare.
-
-Train Snare U-Net with approved samples.
+  Mark all pending reviews as good.
+  Create a U-Net model named "Snare U-Net" for snare.
+  Train Snare U-Net with approved samples.
 
 # CVAT assistant
-
-Segment the snare on this frame using Snare U-Net.
+  Segment the snare on this frame using Snare U-Net.
 ```
 
 </details>
