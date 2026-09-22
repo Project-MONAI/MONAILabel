@@ -4,6 +4,10 @@ MONAI Label is an open-source image labeling and learning tool for interactive A
 
 Import datasets, review annotations, train and fine-tune models, and compare their results from one web workspace.
 
+<p>
+<a href="https://github.com/user-attachments/assets/da9e6964-88ba-4f54-a041-e93d249f1e59"><strong>Watch the MONAI Label demo</strong></a>
+</p>
+
 <p align="center">
 <picture>
 <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/overview.png">
