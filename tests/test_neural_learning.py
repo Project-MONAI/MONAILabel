@@ -10,6 +10,38 @@ pytestmark = pytest.mark.filterwarnings(
 )
 
 
+def test_unet_excludes_unreviewed_pixels_from_loss_and_keeps_class_255(tmp_path, monkeypatch):
+    import torch
+
+    from monailabel.core.ports import IGNORE_LABEL
+    from monailabel.monai import runtime
+
+    net = torch.nn.Conv2d(3, 2, 1)
+    gradients = []
+    net.register_forward_hook(lambda _, __, output: output.register_hook(gradients.append) and None)
+    monkeypatch.setattr(runtime, "network", lambda config, classes: net)
+    image = np.ones((16, 16, 3), np.float32)
+    mask = np.full((16, 16), IGNORE_LABEL, np.int16)
+    mask[4:12, 4:12] = 0
+    mask[6:10, 6:10] = 255
+    state = runtime.UNetTrainer(
+        {
+            "spatial_dims": 2,
+            "in_channels": 3,
+            "patch_size": 16,
+            "epochs": 1,
+            "steps_per_epoch": 1,
+            "device": "cpu",
+        },
+        Artifacts(tmp_path),
+    ).train([(image, mask)], [0, 255], TrainingMode.SCRATCH, None, lambda _: None)
+    assert np.isfinite(state["final_loss"]) and state["label_ids"] == [0, 255]
+    assert len(gradients) == 1
+    gradient = gradients[0].numpy()[0]
+    assert np.count_nonzero(gradient[:, mask == IGNORE_LABEL]) == 0
+    assert np.count_nonzero(gradient[:, mask == 255]) > 0
+
+
 def test_unet_trains_multiclass_checkpoints_and_preserves_source_shape(tmp_path):
     from monailabel.monai.runtime import UNetSegmenter, UNetTrainer, checkpoint
 

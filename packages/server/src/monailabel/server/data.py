@@ -267,11 +267,30 @@ class Datasets:
                 )
             samples = []
             decisions = {d.annotation_id: d for d in session.list(ReviewDecision, project_id)}
-            for asset in session.list(Asset, project_id):
+            from monailabel.server.learning_data.cases import accepted_whole, cases, unit_samples
+
+            for case in cases(session, project_id):
+                asset = case.source
                 split = assignments.get(asset.id) if assignments is not None else asset.split
                 if split is None or split == Split.POOL or not asset.annotation_id:
                     continue
+                if (
+                    learner_id
+                    and not validation_percentage
+                    and not external_validation
+                    and split == Split.VALIDATION
+                ):
+                    continue
+                if accepted_whole(session, case, required, decisions) is None:
+                    units = unit_samples(session, self.artifacts, case, required, split, decisions)
+                    if units:
+                        samples.extend(units)
+                        continue
+                if not isinstance(asset, Asset):
+                    continue
                 annotation = session.get(Annotation, asset.annotation_id)
+                if annotation.regions:
+                    continue
                 if not required <= set(annotation.covered_labels):
                     continue
                 decision = decisions.get(annotation.id)
@@ -312,6 +331,7 @@ class Datasets:
                         label_source="model_prediction" if proposal else "reviewed",
                         proposal_id=proposal.id if proposal else None,
                         model_ids=proposal.model_ids if proposal else [],
+                        annotation_id=annotation.id,
                     )
                 )
             if not any(s.split == Split.TRAIN for s in samples):
@@ -325,6 +345,9 @@ class Datasets:
                 else:
                     session.insert(model_split)
             snapshot = Snapshot(
+                evaluation_requested=not learner_id
+                or external_validation
+                or validation_percentage > 0,
                 sample_filter=request.sample_filter,
                 model_split_id=model_split.id if model_split else None,
                 model_split_version=model_split.version if model_split else None,

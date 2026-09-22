@@ -1,4 +1,4 @@
-"""Video ingestion and immutable track revisions; image learning stays separate."""
+"""Video ingestion, immutable track revisions and independent range submissions."""
 
 import json
 import subprocess
@@ -17,6 +17,8 @@ from monailabel.core.video import (
 )
 from monailabel.server.evaluation_sets import reserved, training_history
 from monailabel.server.labels import imported_labels
+from monailabel.server.model_splits import refresh_percentage_sets
+from monailabel.server.review_units.decisions import decide_source_units
 from monailabel.server.storage import Artifacts, Store
 from monailabel.server.video.models import VideoEditor
 
@@ -180,6 +182,15 @@ class Videos:
                     "This video has a newer submitted revision. Your viewer draft is preserved."
                 )
             self.validate(request.document, asset, session.get(Project, asset.project_id))
+            previous = (
+                TrackDocument.model_validate_json(
+                    self.artifacts.read(
+                        session.get(TrackAnnotation, asset.annotation_id).tracks_key
+                    )
+                )
+                if asset.annotation_id
+                else TrackDocument()
+            )
             annotation = TrackAnnotation(
                 project_id=asset.project_id,
                 asset_id=asset.id,
@@ -189,6 +200,11 @@ class Videos:
                 tracks_key=self.artifacts.put(request.document.model_dump_json().encode(), "json"),
             )
             session.insert(annotation)
+            from monailabel.server.review_units import ReviewUnits
+
+            ReviewUnits(self.store, self.artifacts).submit_frames(
+                session, asset, annotation, request.document, previous
+            )
             if editor is not None:
                 session.update(editor.model_copy(update={"submitted_annotation_id": annotation.id}))
             session.update(
@@ -210,6 +226,9 @@ class Videos:
                         **decision.model_dump(),
                     )
                 )
+                decide_source_units(session, asset.project_id, asset.id, decision, user.id)
+                if decision.verdict == "accepted":
+                    refresh_percentage_sets(session, asset.project_id)
         return annotation
 
     def decide(
@@ -228,4 +247,7 @@ class Videos:
                 **request.model_dump(),
             )
             session.insert(decision)
+            decide_source_units(session, asset.project_id, asset.id, request, user.id)
+            if request.verdict == "accepted":
+                refresh_percentage_sets(session, asset.project_id)
         return decision

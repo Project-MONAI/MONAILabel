@@ -1,9 +1,9 @@
 {
-  "name": "GPT-6 Astra",
-  "provider": "openai-chat-polygons",
-  "label_ids": [0, 1],
+  "name": "Project Astra",
+  "provider": "openai-polygons",
+  "label_ids": [0],
   "config": {
-    "url": "https://inference-api.nvidia.com/v1/chat/completions",
+    "url": "https://inference-api.nvidia.com/v1/responses",
     "model": "azure/openai/gpt-6-astra",
     "token_env": "NV_INFERENCE_API_KEY",
     "timeout": 180,

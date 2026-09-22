@@ -62,7 +62,9 @@ def import_video(
     expect(page.locator("#dialog")).not_to_be_visible(timeout=30000)
     expect(page.locator("#content table")).to_contain_text(f"{frames} frames")
     # Read the committed record independently; Chromium can evict an XHR upload response.
-    videos = page.request.get(f"{stack.url}/api/projects/{project_id}/videos").json()
+    videos = page.evaluate(
+        "async (id) => (await fetch('/api/projects/' + id + '/videos')).json()", project_id
+    )
     return next(
         video for video in videos if video["group_id"] == group and video["name"] == clip.name
     )

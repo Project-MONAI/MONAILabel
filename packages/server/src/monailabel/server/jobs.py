@@ -57,6 +57,10 @@ class JobContext:
     def __init__(self, store: Store, job_id: str):
         self.store, self.job_id = store, job_id
 
+    def check_cancelled(self) -> None:
+        if self.store.get(Job, self.job_id).status in TERMINAL_STATUSES:
+            raise Cancelled()
+
     def progress(self, value: float, message: str | None = None) -> None:
         with self.store.transaction() as session:
             job = session.get(Job, self.job_id)

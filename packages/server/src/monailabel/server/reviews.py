@@ -2,14 +2,14 @@
 
 from monailabel.core.errors import Conflict, DomainError
 from monailabel.core.models import (
-    Annotation,
-    Asset,
     BatchReviewRequest,
     DecisionRequest,
     ReviewDecision,
     User,
 )
+from monailabel.core.review_units import UnitAnnotation
 from monailabel.server.model_splits import refresh_percentage_sets
+from monailabel.server.review_units.decisions import decide_source_units, target
 from monailabel.server.storage import Store
 
 
@@ -19,19 +19,20 @@ class Reviews:
 
     def decide(self, annotation_id: str, request: DecisionRequest, user: User) -> ReviewDecision:
         with self.store.transaction() as session:
-            annotation = session.get(Annotation, annotation_id)
-            asset = session.get(Asset, annotation.asset_id)
+            annotation, asset = target(session, annotation_id)
             if asset.annotation_id != annotation.id:
                 raise Conflict("This annotation was superseded. Review the current revision.")
             decision = ReviewDecision(
                 project_id=asset.project_id,
-                asset_id=asset.id,
+                asset_id=annotation.asset_id,
                 annotation_id=annotation.id,
                 revision=annotation.revision,
                 reviewer_id=user.id,
                 **request.model_dump(),
             )
             session.insert(decision)
+            if not isinstance(annotation, UnitAnnotation):
+                decide_source_units(session, asset.project_id, asset.id, request, user.id)
             if request.verdict == "accepted":
                 refresh_percentage_sets(session, asset.project_id)
         return decision
@@ -48,8 +49,7 @@ class Reviews:
                 if identifier in seen:
                     continue
                 seen.add(identifier)
-                annotation = session.get(Annotation, identifier)
-                asset = session.get(Asset, annotation.asset_id)
+                annotation, asset = target(session, identifier)
                 if asset.project_id != project_id:
                     raise DomainError("Every review must belong to this project.")
                 if asset.annotation_id != annotation.id:
@@ -61,7 +61,7 @@ class Reviews:
                     continue
                 decision = ReviewDecision(
                     project_id=project_id,
-                    asset_id=asset.id,
+                    asset_id=annotation.asset_id,
                     annotation_id=annotation.id,
                     revision=annotation.revision,
                     reviewer_id=user.id,
@@ -69,6 +69,14 @@ class Reviews:
                     comment=request.comment,
                 )
                 session.insert(decision)
+                if not isinstance(annotation, UnitAnnotation):
+                    decide_source_units(
+                        session,
+                        project_id,
+                        asset.id,
+                        DecisionRequest(verdict=request.verdict, comment=request.comment),
+                        user.id,
+                    )
                 result.append(decision)
             if result and request.verdict == "accepted":
                 refresh_percentage_sets(session, project_id)

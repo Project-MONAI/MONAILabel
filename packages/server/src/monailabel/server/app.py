@@ -21,8 +21,10 @@ from monailabel.server.console_api import router as console_router
 from monailabel.server.desktops.api import router as desktop_router
 from monailabel.server.dicom.api import router as dicom_router
 from monailabel.server.evaluation_api import router as evaluation_router
+from monailabel.server.models.api import router as model_router
 from monailabel.server.network import allowed_hosts
 from monailabel.server.reference_api import router as reference_router
+from monailabel.server.review_units.api import router as review_unit_router
 from monailabel.server.service import Services
 from monailabel.server.video.api import router as video_router
 from monailabel.server.video.cvat import router as cvat_router
@@ -138,9 +140,11 @@ def create_app(
     app.include_router(console_router)
     app.include_router(dicom_router)
     app.include_router(evaluation_router)
+    app.include_router(model_router)
     app.include_router(reference_router)
     app.include_router(viewer_router)
     app.include_router(video_router)
+    app.include_router(review_unit_router)
     app.include_router(cvat_router)
     app.include_router(desktop_router)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")

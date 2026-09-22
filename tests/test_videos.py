@@ -133,11 +133,13 @@ def test_tool_tracking_sample_import_preserves_source_and_existing_tracks(
     client.post(path + "/review", {"base_revision": 0, "document": tracks})
     client.post(path + "/decision", {"base_revision": 1, "verdict": "accepted"})
     saved = client.get(path + "/tracks")
+    decisions = client.get(prefix + "/decisions")
+    assert decisions and all(d["verdict"] == "accepted" for d in decisions)
     again = client.wait(client.post(prefix + "/dataset-imports", request)["id"])
     assert again["video_ids"] == result["video_ids"]
     assert len(client.get(prefix + "/videos")) == 1
     assert client.get(path + "/tracks") == saved
-    assert len(client.get(prefix + "/decisions")) == 1
+    assert client.get(prefix + "/decisions") == decisions
     assert client.get(prefix + "/assets") == []
 
 
@@ -860,9 +862,14 @@ def test_workspace_tracking_chat_opens_the_only_clip_without_running_inference(h
     assert {job["kind"] for job in jobs} == {"video_editor"}
 
 
-def test_cvat_chat_without_a_selected_track_returns_guidance_and_keeps_the_draft(
+def test_cvat_chat_without_a_selected_track_requires_an_unambiguous_label(
     http, video, managed_editor
 ):
+    from monailabel.core.errors import DomainError
+    from monailabel.core.models import AssistantContext, User
+    from monailabel.server.assistant_tools.base import ToolContext
+    from monailabel.server.assistant_tools.videos import TrackVideo, track_selected
+
     editor, calls = managed_editor
     context = {
         "base_revision": 0,
@@ -873,10 +880,16 @@ def test_cvat_chat_without_a_selected_track_returns_guidance_and_keeps_the_draft
             "draft_signature": "a" * 64,
         },
     }
-    reply = tracking_chat(http, video["project_id"], context)
-    assert reply["job_id"] is None
-    assert "choose Track" in reply["message"]
-    assert "Track this tool for 3 frames" in reply["message"]
+    service = http.app.state.services
+    ctx = ToolContext(
+        service,
+        video["project_id"],
+        service.store.list(User)[0],
+        AssistantContext.model_validate(context),
+        "Track tool for 3 frames",
+    )
+    with pytest.raises(DomainError, match="Name one project tool label"):
+        track_selected(ctx, TrackVideo(frame_count=3))
     assert not calls
     assert http.get(f"/api/projects/{video['project_id']}/jobs").json() == []
 
@@ -1127,6 +1140,71 @@ def test_find_tracking_chat_honors_named_model_and_selected_label(
     assert response.status_code == 200, response.text
     wait(http, {"id": response.json()["job_id"]})
     assert calls == [(model["id"], "leftmost grasper"), (2, 3)]
+
+
+@pytest.mark.parametrize(
+    "tool,label_source",
+    [
+        ("find_and_track_video_tool", "selected"),
+        ("find_and_track_video_tool", "named"),
+        ("find_and_track_video_tool", "only_label"),
+        ("track_selected_video_tool", "only_label"),
+    ],
+)
+def test_video_chat_automatically_uses_astra_without_a_model_or_track(
+    http, video, find_tracking, hosted_presets, tool, label_source
+):
+    from monailabel.core.chat import ChatMessage, ToolCall
+    from monailabel.core.models import Project
+
+    request, calls = find_tracking
+    service = http.app.state.services
+    hosted_presets.ensure(video["project_id"])
+    astra = next(
+        m for m in service.models.available(video["project_id"]) if m.preset == "nvidia-astra"
+    )
+    if label_source == "only_label":
+        with service.store.transaction() as session:
+            project = session.get(Project, video["project_id"])
+            session.update(
+                project.model_copy(
+                    update={"labels": [label for label in project.labels if label.id < 2]}
+                )
+            )
+    arguments = {"frame_count": 3}
+    if label_source == "named":
+        arguments["label_name"] = "Grasper"
+    service.assistants.provider.queue.append(
+        ChatMessage(
+            role="assistant",
+            tool_calls=[ToolCall(id="automatic", name=tool, arguments=arguments)],
+        )
+    )
+    response = http.post(
+        f"/api/projects/{video['project_id']}/assistant",
+        json={
+            "message": "Locate tool and track for 3 frames",
+            "context": {
+                "base_revision": 0,
+                "label_ids": [1] if label_source == "selected" else [],
+                "video": {
+                    "video_id": video["id"],
+                    "editor_id": request["editor_id"],
+                    "frame": 2,
+                    "draft_signature": request["draft_signature"],
+                },
+            },
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert "GPT-6 Astra" in response.json()["message"]
+    result = wait(http, {"id": response.json()["job_id"]})
+    proposal = http.get(
+        f"/api/videos/{video['id']}/tracking-proposals/{result['video_proposal_id']}"
+    ).json()
+    assert calls == [(astra.id, ""), (2, 3)]
+    assert proposal["detection"]["model_id"] == astra.id
+    assert http.get(f"/api/videos/{video['id']}/tracks").json()["base_revision"] == 0
 
 
 @pytest.mark.parametrize("invalid", ["id_as_name", "alias", "conflicting_id"])

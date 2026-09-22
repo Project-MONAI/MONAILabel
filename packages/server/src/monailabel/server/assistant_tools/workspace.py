@@ -201,7 +201,7 @@ def register(registry: ToolRegistry) -> None:
         ),
         ViewerEditArgs,
         lambda a: viewer_edit(ctx, a),
-        requires_asset=True,
+        requires_asset=ctx.context.video is None,
         action="edit",
     )
     registry.add(
@@ -342,9 +342,18 @@ def inspect(ctx: ToolContext, args: InspectArgs) -> AssistantReply:
             items = [e.model_dump(mode="json") for e in store.list(Evaluation, project_id)]
         else:
             decisions = {d.annotation_id: d for d in store.list(ReviewDecision, project_id)}
+            from monailabel.server.review_units.queue import saved_reviews
+
+            with store.transaction() as session:
+                reviews = saved_reviews(session, project_id)
             items = [
-                {"asset_id": a.id, "annotation_id": a.annotation_id, "name": a.name}
-                for a in store.list(Asset, project_id)
+                {
+                    "asset_id": a.asset_id,
+                    "annotation_id": a.annotation_id,
+                    "name": a.name,
+                    "unit_id": a.unit_id,
+                }
+                for a in reviews
                 if a.annotation_id
                 and (
                     a.annotation_id not in decisions
@@ -387,6 +396,26 @@ def open_viewer(ctx: ToolContext, args: ViewerArgs) -> AssistantReply:
 
 
 def viewer_edit(ctx: ToolContext, args: ViewerEditArgs) -> AssistantReply:
+    if ctx.context.video:
+        from monailabel.core.video import EditVideoAction
+
+        from .videos import draft_context
+
+        prompt, video, editor = draft_context(ctx)
+        if args.operation not in ctx.context.viewer_actions:
+            raise DomainError("This operation is unavailable in the current CVAT session.")
+        return AssistantReply(
+            assistant="viewer",
+            message=f"Requested {args.operation.replace('_', ' ')} in CVAT.",
+            data=EditVideoAction(
+                project_id=video.project_id,
+                video_id=video.id,
+                editor_id=editor.id,
+                base_revision=video.revision,
+                draft_signature=prompt.draft_signature,
+                operation=args.operation,
+            ).model_dump(mode="json"),
+        )
     if args.operation == "submit":
         ctx.service.auth.require(ctx.user, ctx.project.id, "annotate")
     if args.operation not in ctx.context.viewer_actions:

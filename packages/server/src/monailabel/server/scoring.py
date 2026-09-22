@@ -15,6 +15,8 @@ from monailabel.core.models import (
     Snapshot,
     Split,
 )
+from monailabel.core.ports import IGNORE_LABEL
+from monailabel.server.learning_data.arrays import SampleArrays
 from monailabel.server.lineage import training_identity
 from monailabel.server.models import Models
 from monailabel.server.storage import Artifacts, Store
@@ -57,26 +59,27 @@ class ValidationScorer:
         validation: list[Sample],
         label_ids: list[int],
         progress: Callable[[int, int], None],
+        check_cancelled: Callable[[], None] = lambda: None,
     ) -> tuple[ModelMetrics, dict[int, float]]:
         model = self.models.for_labels(model, label_ids)
         intersections = {label: 0 for label in label_ids}
         denominators = {label: 0 for label in label_ids}
         references = {label: 0 for label in label_ids}
-        for index, sample in enumerate(validation):
-            progress(index, len(validation))
-            predicted = self.models.predict(
-                project,
-                model,
-                self.artifacts.array(sample.image_key),
-                project.instructions,
-                sample.affine or self.store.get(Asset, sample.asset_id).affine,
-            )
-            reference = self.artifacts.array(sample.mask_key)
-            for label in label_ids:
-                truth, output = reference == label, predicted == label
-                intersections[label] += int(np.count_nonzero(truth & output))
-                denominators[label] += int(truth.sum() + output.sum())
-                references[label] += int(truth.sum())
+        with SampleArrays(self.artifacts, validation, [0, *label_ids], check_cancelled) as arrays:
+            for index, (sample, (image, reference)) in enumerate(
+                zip(validation, arrays, strict=True)
+            ):
+                progress(index, len(validation))
+                affine = sample.affine
+                if affine is None and sample.video_frame is None and sample.image_region is None:
+                    affine = self.store.get(Asset, sample.asset_id).affine
+                predicted = self.models.predict(project, model, image, project.instructions, affine)
+                coverage = reference != IGNORE_LABEL
+                for label in label_ids:
+                    truth, output = reference == label, (predicted == label) & coverage
+                    intersections[label] += int(np.count_nonzero(truth & output))
+                    denominators[label] += int(truth.sum() + output.sum())
+                    references[label] += int(truth.sum())
         if any(count == 0 for count in references.values()):
             raise DomainError(
                 "Evaluation must contain reviewed examples of every target structure."

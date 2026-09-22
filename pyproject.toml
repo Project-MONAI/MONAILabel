@@ -20,6 +20,13 @@ monailabel-providers = { workspace = true }
 monailabel-server = { workspace = true }
 monailabel-client = { workspace = true }
 monailabel-viewers = { workspace = true }
+torch = { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" }
+torchvision = { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 [dependency-groups]
 dev = [

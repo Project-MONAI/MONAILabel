@@ -7,15 +7,18 @@ SETUP_TEMP=""
 SETUP_PENDING=()
 SETUP_DOCKER=(docker)
 SETUP_APT_UPDATED=0
+SETUP_NODE_ARCH=x64
 
 usage() {
     cat <<'EOF'
 Usage: ./setup.sh [--check] [--cpu]
 
-Prepare MONAI Label on Ubuntu 22.04+ or Debian 12+ (x86_64).
+Prepare MONAI Label on Ubuntu 22.04+ or Debian 12+.
 Installs missing system libraries, uv/Python, Node/Corepack, Docker and
 NVIDIA Container Toolkit, then prepares Slicer, QuPath, OHIF and CVAT images.
 Existing installations and cached downloads are reused.
+ARM64 setup prepares the server and OHIF experimentally; managed Slicer,
+QuPath and CVAT currently require x86_64. See docs/spark.md.
 
   --check   Check prerequisites without installing or downloading anything.
   --cpu     Skip Docker/GPU setup; use a hosted chat model and CPU-capable models.
@@ -59,8 +62,12 @@ apt_install() {
 }
 
 platform_setup() {
-    [[ "$(uname -s)" == Linux && "$(uname -m)" == x86_64 ]] ||
-        die "Automatic setup supports Linux x86_64. See README.md for manual prerequisites."
+    [[ "$(uname -s)" == Linux ]] || die "Automatic setup requires Linux."
+    case "$(uname -m)" in
+        x86_64) SETUP_NODE_ARCH=x64 ;;
+        aarch64|arm64) SETUP_NODE_ARCH=arm64 ;;
+        *) die "Automatic setup supports x86_64 and ARM64. See README.md." ;;
+    esac
     # shellcheck disable=SC1091
     source /etc/os-release
     case "$ID" in
@@ -122,7 +129,10 @@ ensure_node() {
     # Official Node 22 LTS archive includes npm and Corepack. Keep it project-local.
     local version=22.23.2
     local checksum=d60acfe00a2932254bb0ad20e01b0d74397a0875595de719654b214f4b03f307
-    local name="node-v${version}-linux-x64" archive destination executable
+    if [[ "$SETUP_NODE_ARCH" == arm64 ]]; then
+        checksum=fff4078c5def658577f92c88db7db3bc0072924bfb93fe52c1e744a54e94abb8
+    fi
+    local name="node-v${version}-linux-${SETUP_NODE_ARCH}" archive destination executable
     archive="$MONAILABEL_TOOLS_DIR/downloads/$name.tar.xz"
     destination="$MONAILABEL_TOOLS_DIR/node/$name"
     if [[ ! -x "$destination/bin/node" ]]; then
@@ -236,7 +246,7 @@ check_prerequisites() {
 }
 
 main() {
-    local check=0 arg viewer original_path="$PATH"
+    local check=0 arg viewer original_path="$PATH" viewers=(slicer qupath ohif)
     SETUP_CPU=0
     for arg in "$@"; do
         case "$arg" in
@@ -248,6 +258,10 @@ main() {
     done
     cd "$SETUP_ROOT"
     platform_setup
+    if [[ "$SETUP_NODE_ARCH" == arm64 ]]; then
+        viewers=(ohif)
+        say "Experimental ARM64 server setup. Managed Slicer, QuPath and CVAT require x86_64; see docs/spark.md."
+    fi
     SETUP_ENV="${UV_PROJECT_ENVIRONMENT:-$SETUP_ROOT/.venv}"
     [[ "$SETUP_ENV" == /* ]] || SETUP_ENV="$SETUP_ROOT/$SETUP_ENV"
     export PATH="$SETUP_ENV/bin:$PATH"
@@ -271,11 +285,11 @@ main() {
                 "${SETUP_DOCKER[@]}" run --rm --gpus all ubuntu:24.04 nvidia-smi
             fi
         fi
-        for viewer in slicer qupath ohif; do
+        for viewer in "${viewers[@]}"; do
             say "Preparing $viewer"
             env -u VIRTUAL_ENV uv run --locked --no-sync monailabel viewer "$viewer"
         done
-        if docker info >/dev/null 2>&1; then
+        if [[ "$SETUP_NODE_ARCH" == x64 ]] && docker info >/dev/null 2>&1; then
             say "Preparing CVAT images"
             env -u VIRTUAL_ENV uv run --locked --no-sync monailabel viewer cvat
         fi
@@ -290,6 +304,8 @@ main() {
     fi
     if (( check )); then say "Prerequisites are ready";
     elif (( SETUP_CPU )); then say "Ready. Start uv run monailabel-server with your hosted chat settings (docs/coordinator.md).";
+    elif [[ "$SETUP_NODE_ARCH" == arm64 ]]; then
+        say "ARM64 dependencies prepared. Next run the GPU smoke check in docs/spark.md before starting the server."
     else say "Ready. Start with: uv run monailabel-server"; fi
 }
 

@@ -1,6 +1,7 @@
 import { videoButtons } from "./videos.js";
 import { paginationButton } from "./icons.js";
 import { reviewDecisionControl } from "./review-controls.js";
+import { reviewItems, reviewSummary } from "./review-items.js";
 // Compact project lists. Page/search/filter state stays with the application controller.
 import {
   escapeHTML as esc,
@@ -46,11 +47,7 @@ export const sampleDimensions = (a) =>
     ? `${a.width} × ${a.height} · ${a.frames} frames · ${a.duration.toFixed(2)} s`
     : a.spatial_shape.join(" × ");
 export const sampleUse = (a) =>
-  a.split === "validation"
-    ? "Evaluation only"
-    : a.kind === "video"
-      ? "Annotation"
-      : "Annotation & training";
+  a.split === "validation" ? "Evaluation only" : "Annotation & training";
 const viewerButtons = (state, a) =>
   a.kind === "video"
     ? videoButtons(state, a)
@@ -134,7 +131,7 @@ export function datasets(state, manage, statusOf) {
   );
 }
 export function visibleReviews(state, statusOf) {
-  return state.assets.filter(
+  return reviewItems(state).filter(
     (a) =>
       a.annotation_id &&
       (state.reviewFilter === "all" || statusOf(a) === state.reviewFilter) &&
@@ -144,14 +141,10 @@ export function visibleReviews(state, statusOf) {
 export function reviewQueue(state, statusOf, latestDecision) {
   const canReview = state.roles.includes("reviewer");
   const selected = state.selectedReviews || new Set();
-  const pending = state.assets.filter(
+  const pending = reviewItems(state).filter(
     (a) => a.annotation_id && statusOf(a) === "pending",
   );
-  const submittedImages = state.assets.filter((a) => a.annotation_id);
-  const submitted = [
-    ...submittedImages,
-    ...(state.videos || []).filter((v) => v.annotation_id),
-  ];
+  const submitted = reviewItems(state);
   const items = visibleReviews(state, statusOf);
   const rows = pageSlice(items, state, "review");
   const options = [
@@ -189,20 +182,16 @@ export function reviewQueue(state, statusOf, latestDecision) {
           ],
           rows.map(
             (a) =>
-              `<tr>${canReview ? `<td class="check-cell">${`<input type="checkbox" data-review-selection="${a.annotation_id}" aria-label="Select ${esc(a.name)}" ${selected.has(a.annotation_id) ? "checked" : ""}>`}</td>` : ""}<td class="sample-cell">${esc(a.name)}<small>Revision ${a.revision}</small></td><td>${badge(statusOf(a))}${latestDecision(a)?.comment ? `<p class="cell-note" title="${esc(latestDecision(a).comment)}">${esc(latestDecision(a).comment)}</p>` : ""}</td><td><div class="row-actions">${viewerButtons(state, a)}</div></td></tr>`,
+              `<tr>${canReview ? `<td class="check-cell">${`<input type="checkbox" data-review-selection="${a.annotation_id}" aria-label="Select ${esc(a.name)}" ${selected.has(a.annotation_id) ? "checked" : ""}>`}</td>` : ""}<td class="sample-cell">${esc(a.source_name || a.name)}<small>${a.unit_id ? esc(a.scope.kind === "region" ? `Region ${a.scope.region.x}, ${a.scope.region.y} · ${a.scope.region.width} × ${a.scope.region.height}` : `Frames ${a.scope.start}–${a.scope.stop - 1}`) + " · " : ""}Revision ${a.revision}</small>${a.unit_id ? `<small>${esc(reviewSummary(state, { id: a.source_id }, latestDecision))}</small>` : ""}</td><td>${badge(statusOf(a))}${latestDecision(a)?.comment ? `<p class="cell-note" title="${esc(latestDecision(a).comment)}">${esc(latestDecision(a).comment)}</p>` : ""}</td><td><div class="row-actions">${a.unit_id ? button("Inspect", "review-unit", a.unit_id) : a.kind === "video" ? button("Inspect in CVAT", "video-inspect", a.id) : viewerButtons(state, a)}</div></td></tr>`,
           ),
         )
-      : !submittedImages.length && submitted.length
-        ? ""
-        : empty(
-            submitted.length
-              ? "No annotations match this review filter."
-              : "Submitted annotations will appear here for review.",
-            !!submitted.length,
-          )) +
-    (!submittedImages.length && submitted.length
-      ? ""
-      : pagination(items, state, "review"))
+      : empty(
+          submitted.length
+            ? "No annotations match this review filter."
+            : "Submitted annotations will appear here for review.",
+          !!submitted.length,
+        )) +
+    pagination(items, state, "review")
   );
 }
 export function activity(state, canCancel) {

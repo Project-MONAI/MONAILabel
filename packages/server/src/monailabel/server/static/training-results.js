@@ -27,7 +27,7 @@ function resultHTML(report, state) {
       ? ""
       : `<p class="muted">Training loss: ${Number(report.initial_loss).toFixed(4)} → ${Number(report.final_loss).toFixed(4)}</p>`;
   if (!report.metrics)
-    return `<p role="status">${esc(report.error || "Evaluation is unavailable.")}</p>${loss}`;
+    return `<p role="status">${esc(report.evaluation_requested === false ? "Trained without evaluation. No held-out score is available." : report.error || "Evaluation is unavailable.")}</p>${loss}`;
   return `<h3>Mean Dice: ${Number(report.metrics.mean_dice).toFixed(3)}</h3><p class="muted">${report.validation_assets.length} validation case${report.validation_assets.length === 1 ? "" : "s"} · ${esc(reference)}</p><table><thead><tr><th>Structure</th><th>Dice</th><th>IoU</th></tr></thead><tbody>${report.labels.map((l) => `<tr><td>${esc(l.name)}</td><td>${Number(report.metrics.per_class[l.id]).toFixed(3)}</td><td>${Number(report.per_class_iou[l.id]).toFixed(3)}</td></tr>`).join("")}</tbody></table><p class="muted">Scores range from 0 to 1; higher is better. Each structure’s score combines its voxels or pixels across the evaluation cases. Mean Dice averages the foreground structures.</p>${loss}<button type="button" data-download-report>Download report</button>`;
 }
 
@@ -168,6 +168,7 @@ export function trainingResults(initial, { state, api, modal, canManage }) {
         !training ||
         !canManage() ||
         job.status !== "succeeded" ||
+        report?.evaluation_requested === false ||
         Boolean(report?.metrics);
       run.disabled = Boolean(reportJob);
       run.textContent = reportJob

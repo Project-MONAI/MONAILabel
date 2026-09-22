@@ -199,8 +199,9 @@ def test_hosted_provider_tool_round_trip_and_key_reference(provider, monkeypatch
         ChatMessage(role="system", content="Coordinate"),
         ChatMessage(role="user", content="List models"),
     ]
-    reply = chat.complete(messages, tools)
+    reply = chat.complete(messages, tools, require_tool=True)
     assert reply.tool_calls[0].arguments == {"collection": "models"}
+    assert seen[0]["tool_choice"] == ({"type": "any"} if provider == "anthropic" else "required")
     chat.complete(
         messages + [reply, ChatMessage(role="tool", tool_call_id="call1", content='{"models":[]}')],
         tools,

@@ -5,7 +5,7 @@ from collections.abc import Callable
 import numpy as np
 
 from monailabel.core.errors import Conflict, DomainError
-from monailabel.core.geometry import orient_plane, region_pixels, restore_plane
+from monailabel.core.geometry import orient_plane, region_pixels, region_slice, restore_plane
 from monailabel.core.models import (
     AnnotateRequest,
     Annotation,
@@ -26,6 +26,8 @@ from monailabel.server.image_annotation import annotate_tiles
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.model_splits import refresh_percentage_sets
 from monailabel.server.models import Models
+from monailabel.server.review_units import ReviewUnits
+from monailabel.server.review_units.decisions import decide_source_units
 from monailabel.server.storage import Artifacts, Store
 
 
@@ -278,6 +280,23 @@ class Annotations:
                 mask = validate_mask(self.artifacts.array(proposal.mask_key), asset, project)
             else:
                 raise DomainError("Provide a corrected mask or a pending proposal.")
+            if request.regions:
+                if asset.kind != "image2d":
+                    raise DomainError("Region submission requires a 2D source image.")
+                covered = np.zeros(asset.spatial_shape, dtype=bool)
+                for region in request.regions:
+                    if (
+                        region.y + region.height > asset.spatial_shape[0]
+                        or region.x + region.width > asset.spatial_shape[1]
+                    ):
+                        raise DomainError("The submitted region lies outside the source image.")
+                    covered[region_slice(region)] |= region_pixels(region)
+                saved = (
+                    self.artifacts.array(session.get(Annotation, asset.annotation_id).mask_key)
+                    if asset.annotation_id
+                    else np.zeros(asset.spatial_shape, dtype=np.uint8)
+                )
+                mask = np.where(covered, mask, saved).astype(np.uint8)
             previous = None
             if decision is not None:
                 if decision.verdict != "accepted" or not asset.annotation_id:
@@ -289,6 +308,10 @@ class Annotations:
                         "Good review must cover the complete image and all project labels."
                     )
                 previous = session.get(Annotation, asset.annotation_id)
+                if previous.regions is not None or request.regions is not None:
+                    raise DomainError(
+                        "Review each submitted region separately in the review queue."
+                    )
             unchanged = (
                 previous is not None
                 and set(previous.covered_labels) == ids
@@ -305,8 +328,17 @@ class Annotations:
                     covered_labels=request.covered_labels,
                     reviewer=request.reviewer,
                     proposal_id=request.proposal_id,
+                    regions=request.regions,
                 )
                 session.insert(annotation)
+                if request.regions:
+                    ReviewUnits(self.store, self.artifacts).submit_regions(
+                        session, asset, annotation, request.regions
+                    )
+                else:
+                    ReviewUnits(self.store, self.artifacts).reconcile_regions(
+                        session, asset, annotation
+                    )
                 session.update(
                     asset.model_copy(
                         update={
@@ -328,6 +360,7 @@ class Annotations:
                         **decision.model_dump(),
                     )
                 )
+                decide_source_units(session, project.id, asset.id, decision, request.reviewer)
                 refresh_percentage_sets(session, project.id)
             return annotation
 
@@ -345,8 +378,10 @@ class Annotations:
                 covered_labels=old.covered_labels,
                 reviewer=request.reviewer,
                 restored_from=old.id,
+                regions=old.regions,
             )
             session.insert(restored)
+            ReviewUnits(self.store, self.artifacts).reconcile_regions(session, asset, restored)
             session.update(
                 asset.model_copy(
                     update={

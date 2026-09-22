@@ -6,6 +6,7 @@ import { actionLabel } from "./icons.js";
 import { trainingSettingLabel } from "./training-settings.js";
 import { escapeHTML, badge, button, targetNames } from "./ui.js";
 import { targetSummary } from "./model-targets.js";
+import { reviewItems } from "./review-items.js";
 
 export function modelLibrary(state, canManage, latestDecision) {
   const tab = state.modelsTab;
@@ -52,14 +53,17 @@ export function modelLibrary(state, canManage, latestDecision) {
       return parent ? `Continued from ${parent.name}` : "Continued training";
     if (trained(model)) return "Trained in this project";
     if (
-      ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(
-        model.provider,
-      )
+      [
+        "openai-polygons",
+        "openai-chat-polygons",
+        "anthropic-polygons",
+      ].includes(model.provider)
     )
       return "Hosted vision model";
     return model.preset ? "Pretrained model" : "Added to this project";
   };
   function card(m) {
+    const provider = providerName(m);
     const trainingSetup = state.learners.find(
       (learner) => learner.id === m.learner_id,
     );
@@ -87,8 +91,10 @@ export function modelLibrary(state, canManage, latestDecision) {
     return `<article class="card" data-model-id="${escapeHTML(m.id)}">
       <div class="model-top"><h3>${escapeHTML(m.name)}</h3>${isDefault ? badge("Default") : ""}</div>
       <p class="model-provenance">${escapeHTML(origin(m))}</p>
+      <p class="model-provenance">Provider: ${escapeHTML(provider)}${m.connection_mode ? ` · ${m.connection_mode === "manual" ? "Selected for this project" : "Automatic"}` : ""}</p>
       <div class="model-meta">${badge(sam ? "Box / point prompts" : m.read_only && m.provider === "vista3d" ? "CT anatomy" : ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(m.provider) ? "Prompt-defined labels" : names(m.label_ids))}${badge(scope)}${m.unreviewed_training ? badge("Trained on unreviewed predictions") : ""}</div>
       <div class="model-card-footer">
+        ${canManage() && m.preset && m.connection_mode ? button("Change provider", "model-provider", m.id, "model-text-action") : ""}
         <details><summary>Model details</summary><div class="model-detail-body">
           ${targetSummary(state, m)}
           <p class="code">${escapeHTML(m.config.model || m.provider)}</p>
@@ -107,9 +113,13 @@ export function modelLibrary(state, canManage, latestDecision) {
       : "";
   }
   const accepted = (split) =>
-    state.assets.filter(
-      (a) => a.split === split && latestDecision(a)?.verdict === "accepted",
-    ).length;
+    new Set(
+      reviewItems(state)
+        .filter(
+          (a) => a.split === split && latestDecision(a)?.verdict === "accepted",
+        )
+        .map((a) => a.source_id || a.id),
+    ).size;
   return `<div class="section-heading"><div><p class="muted">Manage annotation models and training. Choose a model in chat or your viewer when annotating.</p></div><div class="toolbar">${canManage() ? button("API keys", "credential") + button("Add model", "model", "", "primary") : ""}</div></div>
     ${tabs}
     ${
@@ -129,7 +139,7 @@ export function modelLibrary(state, canManage, latestDecision) {
             ),
             group(
               "base",
-              "Base models",
+              "Predefined models",
               "Preloaded models available to this project.",
               state.models.filter((m) => !trained(m) && m.preset),
             ),
@@ -139,7 +149,7 @@ export function modelLibrary(state, canManage, latestDecision) {
     ${tab === "annotation" && !state.models.length ? '<div class="empty">No annotation models connected. Add a hosted model or an existing segmentation service to begin.</div>' : ""}
     ${
       tab === "training"
-        ? `<div class="section-heading"><div><h2>Training setups</h2><p class="muted">${accepted("train") + accepted("pool")} accepted cases · each model has its own split</p></div>${canManage() ? button("Create model", "model", "learner") : ""}</div>
+        ? `<div class="section-heading"><div><h2>Training setups</h2><p class="muted">${accepted("train") + accepted("pool")} source files with accepted coverage · each model has its own split</p></div>${canManage() ? button("Create model", "model", "learner") : ""}</div>
     <div class="model-grid">${
       state.learners
         .map((l) => {
@@ -207,6 +217,28 @@ export function modelLibrary(state, canManage, latestDecision) {
         : ""
     }
     `;
+}
+export function providerName(model) {
+  if (!model.config.url) return "Local";
+  try {
+    const host = new URL(model.config.url).hostname;
+    if (host === "inference-api.nvidia.com") {
+      const route = String(model.config.model || "")
+        .split("/")
+        .slice(0, -1)
+        .join("/");
+      return route ? `NVIDIA · ${route}` : "NVIDIA";
+    }
+    return (
+      {
+        "api.openai.com": "OpenAI",
+        "api.anthropic.com": "Anthropic (Claude)",
+        "generativelanguage.googleapis.com": "Google (Gemini)",
+      }[host] || host
+    );
+  } catch {
+    return "Custom service";
+  }
 }
 function evaluationDetails(state, model) {
   if (["sam2", "medsam2"].includes(model.provider)) return "";

@@ -13,13 +13,13 @@ from monailabel.core.evaluation import (
     EvaluationSetUpdate,
 )
 from monailabel.core.models import (
-    Asset,
     AssistantReply,
     BatchReviewRequest,
     Contract,
     ReviewDecision,
     ReviewTarget,
 )
+from monailabel.server.review_units.queue import saved_reviews
 
 from .base import ToolContext, ToolRegistry
 
@@ -175,7 +175,7 @@ def review(ctx: ToolContext, args: ReviewArgs) -> AssistantReply:
         decisions = {d.annotation_id: d for d in session.list(ReviewDecision, project_id)}
         annotations = {
             a.annotation_id
-            for a in session.list(Asset, project_id)
+            for a in saved_reviews(session, project_id)
             if a.annotation_id
             and (
                 args.dataset_use == "all"

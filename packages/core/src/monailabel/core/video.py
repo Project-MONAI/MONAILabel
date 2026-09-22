@@ -168,6 +168,28 @@ class VideoTrackingRequest(VideoRevision):
     draft_signature: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
+class VideoDraftAction(VideoRevision):
+    """A local viewer action bound to the exact unsubmitted CVAT draft."""
+
+    project_id: str
+    video_id: str
+    editor_id: str
+    draft_signature: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class ClearVideoAction(VideoDraftAction):
+    client_action: Literal["clear_video_annotations"] = "clear_video_annotations"
+    label_ids: list[int] = Field(min_length=1)
+    client_id: int | None = Field(default=None, ge=0)
+    start: int = Field(ge=0)
+    stop: int = Field(gt=0)
+
+
+class EditVideoAction(VideoDraftAction):
+    client_action: Literal["video_edit"] = "video_edit"
+    operation: Literal["undo", "redo", "save_draft", "submit"]
+
+
 class VideoFindTrackingRequest(VideoRevision):
     editor_id: str
     model_id: str

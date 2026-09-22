@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="930" viewBox="0 0 1200 930" role="img" aria-labelledby="title description">
+  <title id="title">MONAI Label architecture layers</title>
+  <desc id="description">Five layers: user interfaces, API and Nemotron assistant, domain services, model execution, and persistent storage. GPT Astra and other vision models annotate images; Nemotron coordinates validated actions.</desc>
+  <style>text { font-family: Inter, system-ui, sans-serif; fill: #152b43; } .heading { font-size: 23px; font-weight: 700; } .name { font-size: 20px; font-weight: 650; } .detail { font-size: 17px; fill: #41576d; }</style>
+  <rect width="1200" height="930" rx="16" fill="#fff"/>
+  <g transform="translate(20 18)">
+    <rect width="1160" height="162" rx="12" fill="#dcecff" stroke="#306ccc" stroke-width="1.5"/>
+    <text x="20" y="35" class="heading">01   User interfaces</text>
+    <rect x="18" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="33" y="78" class="name">Web workspace</text>
+    <text x="33" y="105" class="detail">Projects · Datasets · Models</text>
+    <text x="33" y="130" class="detail">Reviews · Learning · Activity</text>
+    <rect x="398" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="413" y="78" class="name">Annotation viewers</text>
+    <text x="413" y="105" class="detail">3D Slicer · QuPath</text>
+    <text x="413" y="130" class="detail">OHIF · CVAT</text>
+    <rect x="778" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="793" y="78" class="name">Integrations</text>
+    <text x="793" y="105" class="detail">Python client · CLI</text>
+    <text x="793" y="130" class="detail">Authenticated HTTP API</text>
+  </g>
+  <g transform="translate(20 194)">
+    <rect width="1160" height="162" rx="12" fill="#d9f4ef" stroke="#168777" stroke-width="1.5"/>
+    <text x="20" y="35" class="heading">02   API and assistant</text>
+    <rect x="18" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="33" y="78" class="name">Shared API</text>
+    <text x="33" y="105" class="detail">Sign-in · Project roles</text>
+    <text x="33" y="130" class="detail">Requests · Viewer context</text>
+    <rect x="398" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="413" y="78" class="name">Nemotron coordinator</text>
+    <text x="413" y="105" class="detail">Understands user intent</text>
+    <text x="413" y="130" class="detail">Selects tools · Explains results</text>
+    <rect x="778" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="793" y="78" class="name">Typed tools and skills</text>
+    <text x="793" y="105" class="detail">Workflow instructions</text>
+    <text x="793" y="130" class="detail">Validated action requests</text>
+  </g>
+  <g transform="translate(20 370)">
+    <rect width="1160" height="162" rx="12" fill="#eee4fb" stroke="#8053b6" stroke-width="1.5"/>
+    <text x="20" y="35" class="heading">03   Domain services</text>
+    <rect x="18" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="33" y="78" class="name">Data and model management</text>
+    <text x="33" y="105" class="detail">Projects · Datasets · Models</text>
+    <text x="33" y="130" class="detail">Defaults · Evaluation sets</text>
+    <rect x="398" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="413" y="78" class="name">Annotation and review</text>
+    <text x="413" y="105" class="detail">Proposals · Draft checks</text>
+    <text x="413" y="130" class="detail">Submission · Revision history</text>
+    <rect x="778" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="793" y="78" class="name">Learning rules</text>
+    <text x="793" y="105" class="detail">Grouped splits · Snapshots</text>
+    <text x="793" y="130" class="detail">Training · Evaluation · Lineage</text>
+  </g>
+  <g transform="translate(20 546)">
+    <rect width="1160" height="162" rx="12" fill="#fff0d8" stroke="#b47a12" stroke-width="1.5"/>
+    <text x="20" y="35" class="heading">04   Model execution and background jobs</text>
+    <rect x="18" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="33" y="78" class="name">Local annotation and tracking</text>
+    <text x="33" y="105" class="detail">VISTA3D · SAM2 · MedSAM2</text>
+    <text x="33" y="130" class="detail">Images · Volumes · Video frames</text>
+    <rect x="398" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="413" y="78" class="name">Hosted vision models</text>
+    <text x="413" y="105" class="detail">GPT Astra · Claude · Gemini</text>
+    <text x="413" y="130" class="detail">NVIDIA gateway or direct provider</text>
+    <rect x="778" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="793" y="78" class="name">Training recipes</text>
+    <text x="793" y="105" class="detail">VISTA3D · U-Net · Baselines</text>
+    <text x="793" y="130" class="detail">Progress · Cancellation · Reports</text>
+  </g>
+  <g transform="translate(20 722)">
+    <rect width="1160" height="162" rx="12" fill="#e6ecf2" stroke="#566b80" stroke-width="1.5"/>
+    <text x="20" y="35" class="heading">05   Storage and infrastructure</text>
+    <rect x="18" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="33" y="78" class="name">SQLite records</text>
+    <text x="33" y="105" class="detail">Projects · Models · Revisions</text>
+    <text x="33" y="130" class="detail">Reviews · Jobs · References</text>
+    <rect x="398" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="413" y="78" class="name">Immutable artifacts</text>
+    <text x="413" y="105" class="detail">Source images · Masks</text>
+    <text x="413" y="130" class="detail">Snapshots · Checkpoints</text>
+    <rect x="778" y="51" width="364" height="96" rx="8" fill="#fff" fill-opacity="0.86"/>
+    <text x="793" y="78" class="name">Managed resources</text>
+    <text x="793" y="105" class="detail">Encrypted credentials · Caches</text>
+    <text x="793" y="130" class="detail">Viewer and model runtimes</text>
+  </g>
+  <text x="30" y="917" class="detail">One backend · Shared permissions · Source geometry · Immutable revisions · Replaceable model runtimes</text>
+</svg>

@@ -215,7 +215,9 @@ def browser_session(video_stack, request):
     from playwright.sync_api import Error, sync_playwright
 
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
+        browser = playwright.chromium.launch(
+            args=["--host-resolver-rules=MAP cvat.test 127.0.0.1", "--no-proxy-server"]
+        )
         context = browser.new_context(viewport={"width": 1600, "height": 1100})
         page_errors = []
         context.on(

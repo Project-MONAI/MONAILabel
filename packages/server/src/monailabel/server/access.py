@@ -16,6 +16,7 @@ from monailabel.core.models import (
     RegionProposal,
     User,
 )
+from monailabel.core.review_units import ReviewUnit
 from monailabel.core.video import VideoAsset
 from monailabel.server.service import Services
 
@@ -47,6 +48,7 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
     params = request.path_params
     project_id = params.get("project_id")
     for key, model in (
+        ("unit_id", ReviewUnit),
         ("video_id", VideoAsset),
         ("asset_id", Asset),
         ("annotation_id", Annotation),
@@ -71,6 +73,7 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
                     RegionProposal,
                     ClassificationProposal,
                     VideoAsset,
+                    ReviewUnit,
                 ),
             ):
                 project_id = record.project_id
@@ -88,6 +91,7 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
             "reject",
             "cancel",
             "mask-import",
+            "region-submissions",
         }:
             action = "annotate"
         elif endpoint in {"decision", "review-complete", "review-decisions"}:
@@ -96,7 +100,7 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
             action = "edit"
         elif endpoint not in {"assistant", "viewer", "editor"}:
             action = "manage"
-    if request.url.path.endswith(("/credentials", "/members")):
+    if request.url.path.endswith(("/credentials", "/members", "/model-services")):
         action = "manage"
     service.auth.require(user, project_id, action)
 

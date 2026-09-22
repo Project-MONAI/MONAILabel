@@ -26,15 +26,20 @@
             throw new Error("Wait for the CVAT video to finish loading.");
           return value;
         };
+        let snapshotContent = null;
+        let snapshotSignature = null;
         const snapshot = async () => {
           const content = JSON.stringify(await job().annotations.export());
-          const hash = await crypto.subtle.digest(
-            "SHA-256",
-            new TextEncoder().encode(content),
-          );
-          return Array.from(new Uint8Array(hash), (b) =>
-            b.toString(16).padStart(2, "0"),
-          ).join("");
+          if (content !== snapshotContent) {
+            // Bind a session-local token to the exact draft, including every
+            // track/keyframe. getRandomValues also works on network HTTP origins.
+            snapshotSignature = Array.from(
+              crypto.getRandomValues(new Uint8Array(32)),
+              (byte) => byte.toString(16).padStart(2, "0"),
+            ).join("");
+            snapshotContent = content;
+          }
+          return snapshotSignature;
         };
         const selected = () => {
           const a = state().annotations;
@@ -65,9 +70,9 @@
           ready: () =>
             Boolean(
               state().job.instance &&
-              state().player.frame.data &&
-              !state().job.fetching &&
-              !state().player.frame.fetching,
+                state().player.frame.data &&
+                !state().job.fetching &&
+                !state().player.frame.fetching,
             ),
           frame: () => state().player.frame.number,
           hasSelection: () => Boolean(selected()),
@@ -96,6 +101,26 @@
           },
           async save() {
             await job().annotations.save();
+          },
+          async clear(request, labelIDs) {
+            const { clearAnnotations } = await import("/static/cvat-edits.js");
+            if ((await snapshot()) !== request.draft_signature)
+              throw new Error(
+                "The CVAT draft changed. Retry the clear request to keep your edits.",
+              );
+            const count = await clearAnnotations(job(), request, labelIDs);
+            await refresh();
+            return count;
+          },
+          async history(operation, signature) {
+            if (!["undo", "redo"].includes(operation))
+              throw new Error("Unknown history operation.");
+            if ((await snapshot()) !== signature)
+              throw new Error(
+                "The CVAT draft changed. Retry the history request.",
+              );
+            await job().actions[operation]();
+            await refresh();
           },
           async apply(proposal, labelID) {
             const request = proposal.request;

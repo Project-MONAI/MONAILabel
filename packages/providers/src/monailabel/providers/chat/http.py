@@ -40,10 +40,20 @@ class HttpChat:
             )
         return value
 
-    def complete(self, messages: list[ChatMessage], tools: list[ToolDefinition]) -> ChatMessage:
+    def complete(
+        self,
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition],
+        *,
+        require_tool: bool = False,
+    ) -> ChatMessage:
         key = self.key()
         native = self.config.provider == "anthropic"
         payload = self._claude(messages, tools) if native else self._openai(messages, tools)
+        if require_tool:
+            if not tools:
+                raise DomainError("A required tool call needs at least one available tool.")
+            payload["tool_choice"] = {"type": "any"} if native else "required"
         headers = {"Content-Type": "application/json"}
         if native:
             headers["anthropic-version"] = "2023-06-01"
@@ -94,7 +104,10 @@ class HttpChat:
                     code="coordinator_invalid_response",
                     status=502,
                 )
-            return self._parse_claude(result) if native else self._parse_openai(result)
+            parsed = self._parse_claude(result) if native else self._parse_openai(result)
+            if require_tool and not parsed.tool_calls:
+                raise ValueError("The coordinator omitted its required tool call.")
+            return parsed
         except httpx.HTTPStatusError as error:
             raise DomainError(
                 f"Coordinator endpoint returned HTTP {error.response.status_code}. "

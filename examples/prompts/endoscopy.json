@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "id": "endoscopy",
+  "title": "Endoscopy: polygon annotation to a local U-Net",
+  "steps": [
+    {
+      "id": "project",
+      "context": "workspace",
+      "prompt": "Create a project called \"Endoscopy\".",
+      "tool": "create_project",
+      "arguments": { "name": "Endoscopy" }
+    },
+    {
+      "id": "locate",
+      "context": "cvat",
+      "prompt": "Locate the snare on this frame.",
+      "tool": "find_and_track_video_tool",
+      "arguments": { "label_name": "snare", "output": "box", "scope": "current_frame" }
+    },
+    {
+      "id": "segment_track",
+      "context": "cvat",
+      "prompt": "Segment the snare and track it for 16 frames.",
+      "tool": "find_and_track_video_tool",
+      "arguments": { "label_name": "snare", "output": "polygon", "scope": "frames", "frame_count": 16 }
+    },
+    {
+      "id": "clear",
+      "context": "cvat",
+      "prompt": "Clear the snare annotations for 16 frames.",
+      "tool": "clear_video_annotations",
+      "arguments": { "targets": ["snare"], "scope": "frames", "frame_count": 16 }
+    },
+    {
+      "id": "undo",
+      "context": "cvat",
+      "prompt": "Undo that.",
+      "tool": "viewer_edit",
+      "arguments": { "operation": "undo" }
+    },
+    {
+      "id": "whole",
+      "context": "cvat",
+      "prompt": "Segment the snare and track the whole video.",
+      "tool": "find_and_track_video_tool",
+      "arguments": { "label_name": "snare", "output": "polygon", "scope": "whole_video" }
+    },
+    {
+      "id": "submit",
+      "context": "cvat",
+      "prompt": "Submit this annotation for review.",
+      "tool": "viewer_edit",
+      "arguments": { "operation": "submit" }
+    },
+    {
+      "id": "review",
+      "context": "web",
+      "prompt": "Mark all pending reviews as good.",
+      "tool": "review_saved_annotations",
+      "arguments": { "scope": "pending", "verdict": "accepted", "dataset_use": "all" }
+    },
+    {
+      "id": "unet_setup",
+      "context": "web",
+      "prompt": "Create a U-Net model named \"Snare U-Net\" for snare.",
+      "tool": "create_learner",
+      "arguments": { "name": "Snare U-Net", "recipe": "monai-unet", "targets": ["snare"], "start_now": false }
+    },
+    {
+      "id": "train",
+      "context": "web",
+      "prompt": "Train Snare U-Net with approved samples.",
+      "tool": "start_training",
+      "arguments": { "learner_name": "Snare U-Net" }
+    },
+    {
+      "id": "split",
+      "context": "web",
+      "prompt": "Train Snare U-Net with an 80:20 train/evaluation split.",
+      "tool": "start_training",
+      "arguments": { "learner_name": "Snare U-Net", "validation_percentage": 20 }
+    },
+    {
+      "id": "handoff",
+      "context": "cvat",
+      "prompt": "Segment the snare on this frame using Snare U-Net.",
+      "tool": "find_and_track_video_tool",
+      "arguments": { "label_name": "snare", "output": "polygon", "scope": "current_frame", "model_id": "unet" }
+    }
+  ]
+}

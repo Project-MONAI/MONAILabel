@@ -252,10 +252,10 @@ class AnnotationDock:
                 "<p><b>Try a prompt</b></p>"
                 "<ul><li>Annotate spleen on this slice</li>"
                 "<li>Annotate liver on all slices</li>"
-                "<li>Create a bounding box for spleen on this slice using GPT Sol</li></ul>"
+                "<li>Create a bounding box for spleen on this slice using GPT Astra</li></ul>"
                 "<p>Segmentation uses the selected model. To locate anatomy without coordinates, "
                 "name a "
-                "vision model such as GPT Sol or GPT Astra.</p>"
+                "vision model such as GPT Astra or Claude.</p>"
                 "<p>Inspect and correct the result, then submit the complete "
                 "annotation for review.</p>"
             )

@@ -5,7 +5,7 @@ import {
 } from "./training-samples.js";
 import { importFiles } from "./dataset-import.js";
 import { randomId } from "./random-id.js";
-import { videoReviews, videoAction } from "./videos.js";
+import { videoAction } from "./videos.js";
 import {
   reserveViewerTab,
   openPreparedViewer,
@@ -22,6 +22,8 @@ import {
   showModelSplit,
 } from "./training-evaluation.js";
 import { reviewAction } from "./review-controls.js";
+import { reviewItems, reviewStatus } from "./review-items.js";
+import { inspectReview } from "./review-inspection.js";
 import { learningAction } from "./learning-controls.js";
 import { voiceInput } from "./voice-input.js";
 import {
@@ -31,6 +33,7 @@ import {
 } from "./training-settings.js";
 import { modelAction } from "./model-actions.js";
 import { setupModel } from "./model-setup.js";
+import { importHostedModel } from "./model-import.js";
 import { deleteProject, deleteFiles } from "./deletion.js";
 import { escapeHTML, badge, button, jobName } from "./ui.js";
 import {
@@ -82,6 +85,7 @@ const state = {
   recipes: [],
   jobs: [],
   decisions: [],
+  reviewUnits: [],
   evaluations: [],
   evaluationSets: [],
   evaluationVersions: [],
@@ -116,8 +120,7 @@ const selectedAsset = () =>
   state.assets.find((a) => a.id === state.context.asset_id);
 const latestDecision = (a) =>
   state.decisions.filter((d) => d.annotation_id === a.annotation_id).at(-1);
-const statusOf = (a) =>
-  a.annotation_id ? (latestDecision(a)?.verdict ?? "pending") : "unannotated";
+const statusOf = (a) => reviewStatus(state, a, latestDecision);
 
 async function api(path, method = "GET", body) {
   let response;
@@ -305,6 +308,7 @@ async function refresh({ automatic = false } = {}) {
       evaluationVersions,
       videos,
       videoCapabilities,
+      reviewUnits,
     ] = await Promise.all([
       api(prefix),
       api(`${prefix}/assets`),
@@ -321,6 +325,7 @@ async function refresh({ automatic = false } = {}) {
       api(`${prefix}/evaluation-set-versions`),
       api(`${prefix}/videos`),
       api(`${prefix}/video-capabilities`),
+      api(`${prefix}/review-units`),
     ]);
     const [credentials, members] = permissions.roles.includes("manager")
       ? await Promise.all([
@@ -358,6 +363,7 @@ async function refresh({ automatic = false } = {}) {
       dicomSeries,
       videos,
       videoCapabilities,
+      reviewUnits,
     });
   }
   render();
@@ -380,7 +386,7 @@ function render() {
   );
   state.selectedReviews = new Set(
     [...state.selectedReviews].filter((id) =>
-      state.assets.some((a) => a.annotation_id === id),
+      reviewItems(state).some((a) => a.annotation_id === id),
     ),
   );
   for (const id of ["edit-project", "delete-project"])
@@ -404,9 +410,7 @@ function render() {
     overview,
     datasets: () => datasets(state, canManage(), statusOf),
     models: () => modelLibrary(state, canManage, latestDecision),
-    review: () =>
-      reviewQueue(state, statusOf, latestDecision) +
-      videoReviews(state, statusOf),
+    review: () => reviewQueue(state, statusOf, latestDecision),
     activity: () =>
       activity(state, canManage() || state.roles.includes("annotator")),
     team: () => team(state, canManage()),
@@ -445,7 +449,7 @@ function overview() {
     ["review", "Pending review", pending],
     ["review", "Accepted", accepted],
   ];
-  return `<div class="stats">${links.map(([page, label, count]) => `<button class="stat" data-page="${page}" ${label === "Accepted" ? 'data-review-filter="accepted"' : label === "Pending review" ? 'data-review-filter="pending"' : ""}><small>${label}</small><strong>${count}</strong></button>`).join("")}</div><section class="card"><h2>Continue your work</h2><p class="muted">Open a sample to annotate, or review a submitted case.</p><div class="toolbar"><button class="primary" data-page="datasets">${actionLabel("Open datasets", "library")}</button><button data-page="review">${actionLabel("Review annotations", "check")}</button>${canManage() ? button("Import files", "dataset") : ""}</div></section>${state.project.instructions ? `<section class="card"><h3>Instructions for annotators (optional)</h3><p class="preserve-lines">${escapeHTML(state.project.instructions)}</p></section>` : ""}<details class="card" open><summary>Getting started</summary><ol class="getting-started"><li><strong>Import data.</strong> NIfTI, DICOM series or bounded pathology images.</li><li><strong>Choose a model.</strong> Connect a hosted service or use a local segmentation model.</li><li><strong>Annotate and review.</strong> Prompt and edit in Slicer, QuPath or OHIF; record review decisions there.</li><li><strong>Train and compare.</strong> Train or fine-tune from reviewed labels with each model’s own split; compare on independent evaluation-only data.</li></ol></details>${state.project.is_demo ? '<p class="muted">Synthetic demonstration data and CPU baseline models.</p>' : ""}`;
+  return `<div class="stats">${links.map(([page, label, count]) => `<button class="stat" data-page="${page}" ${label === "Accepted" ? 'data-review-filter="accepted"' : label === "Pending review" ? 'data-review-filter="pending"' : ""}><small>${label}</small><strong>${count}</strong></button>`).join("")}</div><section class="card"><h2>Continue your work</h2><p class="muted">Open a sample to annotate, or review a submitted case.</p><div class="toolbar"><button class="primary" data-page="datasets">${actionLabel("Open datasets", "library")}</button><button data-page="review">${actionLabel("Review annotations", "check")}</button>${canManage() ? button("Import files", "dataset") : ""}</div></section>${state.project.instructions ? `<section class="card"><h3>Instructions for annotators (optional)</h3><p class="preserve-lines">${escapeHTML(state.project.instructions)}</p></section>` : ""}<details class="card" open><summary>Getting started</summary><ol class="getting-started"><li><strong>Import data.</strong> NIfTI, DICOM series, bounded pathology images or videos.</li><li><strong>Choose a model.</strong> Connect a hosted service or use a local segmentation model.</li><li><strong>Annotate and review.</strong> Prompt and edit in Slicer, QuPath, OHIF or CVAT; submit and review the annotated coverage.</li><li><strong>Train and compare.</strong> Train from accepted annotations; add independent evaluation data or a model-specific split when ready.</li></ol></details>${state.project.is_demo ? '<p class="muted">Synthetic demonstration data and CPU baseline models.</p>' : ""}`;
 }
 function requireProject() {
   return '<div class="empty"><h3>Select or create a project</h3><p>Your datasets, models, and team will appear here.</p></div>';
@@ -596,6 +600,12 @@ async function openForm(kind, id) {
     return setupModel(
       { state, api, modal, field, selectField, escapeHTML, message },
       id,
+    );
+  if (kind === "model-provider")
+    return importHostedModel(
+      { state, api, modal, field, selectField, escapeHTML, message },
+      "",
+      state.models.find((m) => m.id === id),
     );
   if (kind === "derive-model") {
     const recipe = state.recipes.find((item) => item.id === "vista3d");
@@ -965,7 +975,11 @@ async function watchJob(jobId, originProject, viewerTab) {
       : `${jobName(job.kind)} completed. Results are available in Models and Activity.`,
   );
 }
-async function launchViewer(id, name) {
+async function launchViewer(
+  id,
+  name,
+  mode = state.page === "review" ? "review" : "annotation",
+) {
   if (!id) throw new Error("Select a sample first.");
   const target = desktopLaunchTarget;
   const viewerTab =
@@ -975,7 +989,7 @@ async function launchViewer(id, name) {
   const project = state.project.id;
   try {
     const job = await api(
-      `/assets/${id}/viewer?mode=${state.page === "review" ? "review" : "annotation"}&target=${target}${name ? "&name=" + name : ""}`,
+      `/assets/${id}/viewer?mode=${mode}&target=${target}${name ? "&name=" + name : ""}`,
       "POST",
     );
     message(
@@ -1173,6 +1187,7 @@ async function action(name, id) {
       "rename-learner",
       "delete-learner",
       "rename-model",
+      "model-provider",
       "delete-model",
       "dataset-template",
       "derive-model",
@@ -1188,6 +1203,20 @@ async function action(name, id) {
       `Selected ${selectedAsset().name}. Ask “view in ${selectedAsset().kind === "image2d" ? "QuPath" : "3D Slicer"}” to open it${selectedAsset().kind === "volume3d" ? ", or choose OHIF" : ""}.`,
     );
   }
+  if (name === "review-unit")
+    return inspectReview(id, {
+      state,
+      modal,
+      api,
+      refresh,
+      latestDecision,
+      openViewer: (item) =>
+        safely(() =>
+          item.kind === "video"
+            ? action("video-open", item.source_id)
+            : launchViewer(item.source_id, "qupath", "annotation"),
+        ),
+    });
   if (name === "viewer") return launchViewer(id);
   if (name === "ohif") return launchViewer(id, "ohif");
   if (name === "seed") {
@@ -1224,7 +1253,7 @@ async function action(name, id) {
     if (!sample) throw new Error("This sample is no longer available.");
     modal(
       sample.name,
-      `<dl class="details-list"><dt>Type</dt><dd>${sampleType(sample)}</dd><dt>Patient, slide or procedure group</dt><dd>${escapeHTML(sample.group_id)}</dd><dt>Dimensions</dt><dd>${escapeHTML(sampleDimensions(sample))}</dd><dt>Revision</dt><dd>${sample.revision}</dd><dt>Status</dt><dd>${badge(sampleUse(sample))} ${badge(statusOf(sample))}</dd>${sample.kind === "video" ? "<dt>Training and evaluation</dt><dd>Video model training and tracking metrics are not available.</dd>" : ""}</dl><div class="toolbar">${sample.kind === "video" ? button("Track data", "video-tracks", id) : ""}${sample.annotation_id && sample.kind === "volume3d" ? `<a class="download-link" href="/api/assets/${id}/segmentation.nii" download>${actionLabel("Download mask", "external")}</a>` : ""}${canManage() ? button("Delete file", "delete-files", id, "danger") : ""}</div>`,
+      `<dl class="details-list"><dt>Type</dt><dd>${sampleType(sample)}</dd><dt>Patient, slide or procedure group</dt><dd>${escapeHTML(sample.group_id)}</dd><dt>Dimensions</dt><dd>${escapeHTML(sampleDimensions(sample))}</dd><dt>Revision</dt><dd>${sample.revision}</dd><dt>Status</dt><dd>${badge(sampleUse(sample))} ${badge(statusOf(sample))}</dd>${sample.kind === "video" ? "<dt>Training and evaluation</dt><dd>Accepted polygon ranges can train a 2D segmentation model. Tracking metrics are not available.</dd>" : ""}</dl><div class="toolbar">${sample.kind === "video" ? button("Track data", "video-tracks", id) : ""}${sample.annotation_id && sample.kind === "volume3d" ? `<a class="download-link" href="/api/assets/${id}/segmentation.nii" download>${actionLabel("Download mask", "external")}</a>` : ""}${canManage() ? button("Delete file", "delete-files", id, "danger") : ""}</div>`,
       async () => true,
       "Close",
     );

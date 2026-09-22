@@ -32,7 +32,7 @@ class AnnotationPanel {
     final Label status = new Label('Connecting…')
     final Button sendButton = new Button('Send prompt')
     final Button cancelButton = new Button('Cancel job')
-    final Button submitButton = new Button('Submit complete annotation for review')
+    final Button submitButton = new Button('Submit annotation for review')
     final Button draftButton = new Button('Save QuPath draft')
     final executor = Executors.newSingleThreadExecutor { runnable ->
         def thread = new Thread(runnable, 'monailabel-qupath'); thread.daemon = true; thread
@@ -40,6 +40,9 @@ class AnnotationPanel {
     Backend backend
     Map project, asset
     List models = []
+    List submissionRegions = []
+    List savedRegions = []
+    boolean wholeImageDraft = false
     Object imageData, entry
     String jobId, proposalId, conversationId
     boolean busy = false
@@ -154,16 +157,18 @@ class AnnotationPanel {
         if (asset.project_id != pid || asset.kind != 'image2d') throw new IllegalArgumentException('Select a 2D pathology image for QuPath.')
         def models = backend.request('/api/projects/' + pid + '/models?asset_id=' + aid)
         def permissions = backend.request('/api/projects/' + pid + '/permissions')
+        def units = backend.request('/api/projects/' + pid + '/review-units')
         def root = Path.of(System.getenv('MONAILABEL_QUPATH_DATA'), pid, aid)
         Files.createDirectories(root)
         def suffix = asset.name.lastIndexOf('.') >= 0 ? asset.name.substring(asset.name.lastIndexOf('.')) : '.png'
         def image = root.resolve('source' + suffix)
         if (!Files.exists(image)) Files.write(image, (byte[])backend.request('/api/assets/' + aid + '/image', null, true))
         return [project: project, asset: asset, models: models, permissions: permissions,
-            root: root, image: image]
+            root: root, image: image, units: units.findAll { it.asset_id == aid }]
     }
     void opened(Map data) {
         project = data.project; asset = data.asset; models = data.models
+        savedRegions = data.units.findAll { it.scope.kind == 'region' }.collect { it.scope.region }
         canAnnotate = data.permissions.roles.any { it in ['manager', 'annotator'] }
         canReview = data.permissions.roles.any { it in ['manager', 'reviewer'] }
         modelChoice.items.setAll(['Automatic'] + models.collect { it.name })
@@ -184,6 +189,8 @@ class AnnotationPanel {
         qupath.setProject(nativeProject)
         qupath.openImageEntry(entry)
         imageData = qupath.imageData
+        submissionRegions = new ArrayList((List)(imageData.getProperty('MONAILabel.SubmissionRegions') ?: []))
+        wholeImageDraft = imageData.getProperty('MONAILabel.WholeImageDraft') == true
         classificationCategories = (List)(imageData.getProperty('MONAILabel.ClassificationCategories') ?: ['Tumor', 'Immune', 'Stromal'])
         if (imageData.server.width != asset.spatial_shape[1] || imageData.server.height != asset.spatial_shape[0])
             throw new IllegalArgumentException('QuPath image dimensions differ from the backend sample.')
@@ -224,6 +231,8 @@ class AnnotationPanel {
     void saveDraft() {
         checkImage(); imageData.setProperty('MONAILabel.BaseRevision', asset.revision)
         imageData.setProperty('MONAILabel.ProposalID', proposalId)
+        imageData.setProperty('MONAILabel.SubmissionRegions', new ArrayList(submissionRegions))
+        imageData.setProperty('MONAILabel.WholeImageDraft', wholeImageDraft)
         entry.saveImageData(imageData); qupath.project.syncChanges()
     }
     void send(String continuedMessage = null, Map prepared = null) {
@@ -343,7 +352,8 @@ class AnnotationPanel {
                     if (!(canAnnotate || canReview)) throw new IllegalStateException('Annotation or review permission is required.')
                     if (MaskObjects.signature(imageData.hierarchy.annotationObjects) != signature)
                         throw new IllegalStateException('Your objects changed while requesting the edit. Retry the clear command.')
-                    def objects = SegmentationEdits.clear(imageData, project, asset, result.reply.data, region, backend.json)
+                    def clearRegion = result.reply.data.image_region != null ? region : null
+                    def objects = SegmentationEdits.clear(imageData, project, asset, result.reply.data, clearRegion, backend.json)
                     if (objects == new ArrayList(imageData.hierarchy.annotationObjects)) {
                         log('No matching segments to clear.'); return
                     }
@@ -369,9 +379,12 @@ class AnnotationPanel {
                         def replacement = SelectionRegion.replacement(imageData, merged, project.labels, selected, appliedRegion)
                         remember(); replaceObjects(replacement)
                         imageData.hierarchy.selectionModel.setSelectedObject(region.object)
+                        if (!submissionRegions.any { backend.json.toJsonTree(it).equals(backend.json.toJsonTree(region.scope)) })
+                            submissionRegions.add(new HashMap(region.scope))
                         log('Applied nuclei/structure labels inside the selected region. The selection guide and outside annotations are preserved.')
                     } else {
                         applyMask(merged)
+                        wholeImageDraft = true; submissionRegions.clear()
                         log('Added editable annotation objects. Inspect and correct them before submitting the complete annotation for review.')
                     }
                     proposalId = result.proposal.id
@@ -409,11 +422,32 @@ class AnnotationPanel {
             checkImage()
             byte[] mask = MaskObjects.encode(SelectionRegion.labels(imageData),
                 imageData.server.width, imageData.server.height, project.labels)
+            List regions = new ArrayList(submissionRegions)
+            if (!wholeImageDraft && !regions) {
+                SelectionRegion.markSelectedGuides(imageData)
+                def selected = imageData.hierarchy.selectionModel.selectedObjects
+                if (selected.size() == 1 && SelectionRegion.guide(selected.first()))
+                    regions.add(SelectionRegion.capture(imageData).scope)
+                else regions.addAll(savedRegions)
+            }
+            if (!wholeImageDraft && regions) {
+                def metadata = [base_revision: asset.revision, regions: regions,
+                    covered_labels: project.labels.collect { it.id }]
+                if (proposalId) metadata.proposal_id = proposalId
+                background({ backend.submitRegions(asset.id, metadata, mask) }, { annotation ->
+                    asset = asset + [revision: annotation.revision, annotation_id: annotation.id]
+                    savedRegions = (savedRegions + regions).unique { backend.json.toJson(it) }
+                    proposalId = null; submissionRegions.clear(); saveDraft()
+                    log('Submitted ' + regions.size() + ' region(s) for independent review. Unrelated regions are preserved.')
+                })
+                return
+            }
             def params = 'base_revision=' + asset.revision + project.labels.collect { '&covered_labels=' + it.id }.join('')
             if (proposalId) params += '&proposal_id=' + proposalId
             background({ backend.request('/api/assets/' + asset.id + '/review-mask?' + params, mask) }, { annotation ->
                 asset = new HashMap(asset); asset.revision = annotation.revision; asset.annotation_id = annotation.id
-                proposalId = null; saveDraft(); log('Submitted revision ' + annotation.revision + ' for reviewer approval.')
+                proposalId = null; submissionRegions.clear(); wholeImageDraft = false
+                saveDraft(); log('Submitted revision ' + annotation.revision + ' for reviewer approval.')
             })
         } catch (Exception error) { log(error.message ?: error.toString()) }
     }

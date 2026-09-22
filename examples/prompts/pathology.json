@@ -44,7 +44,7 @@
       "arguments": {
         "form": "model"
       },
-      "action": "Configure Sol or a nuclei segmentation endpoint. Sol is the default hosted choice; Astra requires explicit selection.",
+      "action": "Configure Astra or a nuclei segmentation endpoint. Astra is the default hosted choice for pathology; VISTA3D remains the radiology default.",
       "stage": "configure"
     },
     {
@@ -60,18 +60,18 @@
     },
     {
       "id": "select",
-      "prompt": "Use Sol for annotation from now on",
+      "prompt": "Use Astra for annotation from now on",
       "context": "qupath",
       "tool": "select_annotation_model",
       "arguments": {
-        "model_id": "sol"
+        "model_id": "astra"
       },
-      "action": "In the open QuPath MONAI Label tab, select Sol for future annotation requests. The coordinator remains independent from the annotation model.",
+      "action": "In the open QuPath MONAI Label tab, select Astra for future annotation requests. The coordinator remains independent from the annotation model.",
       "stage": "configure"
     },
     {
       "id": "region",
-      "prompt": "Run nuclei segmentation on the selected region using Sol",
+      "prompt": "Run nuclei segmentation on the selected region using Astra",
       "context": "qupath",
       "tool": "annotate",
       "arguments": {
@@ -79,14 +79,14 @@
           "nuclei"
         ],
         "scope": "selected_region",
-        "model_id": "sol"
+        "model_id": "astra"
       },
       "action": "Draw one area in QuPath. It is sent as one crop without tiling; outside objects are preserved.",
       "stage": "annotate"
     },
     {
       "id": "whole",
-      "prompt": "Run nuclei segmentation on the whole image using Sol with tile size 512",
+      "prompt": "Run nuclei segmentation on the whole image using Astra with tile size 512",
       "context": "qupath",
       "tool": "annotate",
       "arguments": {
@@ -95,7 +95,7 @@
         ],
         "scope": "full",
         "tile_size": 512,
-        "model_id": "sol"
+        "model_id": "astra"
       },
       "action": "Optional whole-image route. It overrides an active selection and processes bounded imported images in tiles; streaming gigapixel slides is not implemented.",
       "stage": "annotate"
@@ -124,7 +124,7 @@
       "arguments": {
         "operation": "submit"
       },
-      "action": "Check the complete imported field before submitting. A small selected region alone is not a complete training label.",
+      "action": "Inspect the annotated region and submit its coverage. Reviewers can accept regions independently; unreviewed pixels stay out of training.",
       "stage": "submit"
     },
     {
@@ -155,12 +155,12 @@
       "context": "web",
       "tool": "create_snapshot",
       "arguments": {},
-      "action": "Freeze full accepted masks and disjoint source groups.",
+      "action": "Freeze accepted full masks or scoped coverage and disjoint source groups.",
       "stage": "snapshot"
     },
     {
       "id": "unet_setup",
-      "prompt": "Create a U-Net segmentation model named Nuclei U-Net for nuclei from scratch; do not start training yet",
+      "prompt": "Create a U-Net model named \"Nuclei U-Net\" for nuclei.",
       "context": "web",
       "tool": "create_learner",
       "arguments": {

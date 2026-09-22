@@ -39,17 +39,17 @@ def project(client, name, label):
     )
 
 
-def configure_models(client, project_id, max_output_tokens=4096, *, make_sol_default=False):
+def configure_models(client, project_id, max_output_tokens=4096, *, make_astra_default=False):
     path = "/api/projects/" + project_id
     existing = client.get(path + "/models")
-    for filename in ["nvidia-sol.json", "nvidia-astra.json", "nvidia-claude-opus-5.json"]:
+    for filename in ["nvidia-astra.json", "nvidia-claude-opus-5.json"]:
         body = json.loads((Path(__file__).parent / "models" / filename).read_text())
         body["config"]["max_output_tokens"] = max_output_tokens
         model = next(
             (m for m in existing if m["config"].get("model") == body["config"]["model"]), None
         )
         model = model or client.post(path + "/models", body)
-        if filename == "nvidia-sol.json" and make_sol_default:
+        if filename == "nvidia-astra.json" and make_astra_default:
             client.request(
                 "PUT",
                 path + "/annotation-model",
@@ -95,7 +95,7 @@ def pathology(client, directory):
         )
         response.raise_for_status()
         assets.append(response.json()["id"])
-    configure_models(client, p["id"], max_output_tokens=16384, make_sol_default=True)
+    configure_models(client, p["id"], max_output_tokens=16384, make_astra_default=True)
     manifest = {
         "project_id": p["id"],
         "asset_ids": assets,

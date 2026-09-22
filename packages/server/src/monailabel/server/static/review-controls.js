@@ -1,3 +1,5 @@
+import { reviewItems } from "./review-items.js";
+
 const decisions = {
   accepted: "Good",
   changes_requested: "Needs changes",
@@ -19,7 +21,7 @@ export async function reviewAction(verdict, ui) {
     throw new Error("Choose a review decision.");
   if (!state.roles.includes("reviewer"))
     throw new Error("Reviewer access is required.");
-  const assets = state.assets.filter(
+  const assets = reviewItems(state).filter(
     (a) => a.annotation_id && state.selectedReviews.has(a.annotation_id),
   );
   if (!assets.length) throw new Error("Select saved annotations to review.");

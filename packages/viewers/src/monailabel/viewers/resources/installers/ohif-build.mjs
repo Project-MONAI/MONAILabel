@@ -104,6 +104,17 @@ if (matches.length === 4) {
     "Pinned ONNX browser bundle changed; review its filename fallback.",
   );
 }
+// Service workers are optional on network HTTP origins. The pinned bootstrap
+// assumes this secure-context API exists even though OHIF can run without it.
+const workerEntry = path.join(source, "platform/app/public/init-service-worker.js");
+const workerCode = fs.readFileSync(workerEntry, "utf8");
+const workerCall = "navigator.serviceWorker.getRegistrations()";
+const guardedWorkerCall = "navigator.serviceWorker?.getRegistrations()";
+if (workerCode.startsWith(workerCall)) {
+  fs.writeFileSync(workerEntry, workerCode.replace(workerCall, guardedWorkerCall));
+} else if (!workerCode.startsWith(guardedWorkerCall)) {
+  throw new Error("Pinned OHIF service worker bootstrap changed; review its guard.");
+}
 const configPath = path.join(source, "platform/app/pluginConfig.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 for (const [folder, category, name] of [

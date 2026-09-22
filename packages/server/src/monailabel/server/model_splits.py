@@ -18,6 +18,7 @@ from monailabel.core.models import (
     Split,
 )
 from monailabel.server.evaluation_sets import components, reserved
+from monailabel.server.learning_data.cases import accepted_units, accepted_whole, cases
 from monailabel.server.storage import Session
 
 
@@ -46,21 +47,24 @@ def assign(
         record = session.get(ModelSplit, learner_id)
     except NotFound:
         record = ModelSplit(id=learner_id, project_id=project.id, learner_id=learner_id)
-    assets = session.list(Asset, project.id)
+    assets = cases(session, project.id)
     decisions = {d.annotation_id: d for d in session.list(ReviewDecision, project.id)}
     eligible: set[str] = set()
     accepted: set[str] = set()
     for asset in assets:
-        if not asset.annotation_id:
-            continue
-        annotation = session.get(Annotation, asset.annotation_id)
-        if not required <= set(annotation.covered_labels):
-            continue
-        decision = decisions.get(annotation.id)
-        if decision and decision.verdict == "accepted":
+        if accepted_whole(session, asset, required, decisions) or accepted_units(
+            session, asset, required, decisions
+        ):
             accepted.add(asset.id)
             eligible.add(asset.id)
-        elif allow_predictions and decision is None and annotation.proposal_id:
+            continue
+        if not allow_predictions or not isinstance(asset.source, Asset) or not asset.annotation_id:
+            continue
+        annotation = session.get(Annotation, asset.annotation_id)
+        decision = decisions.get(annotation.id)
+        if not required <= set(annotation.covered_labels) or annotation.regions:
+            continue
+        if decision is None and annotation.proposal_id:
             proposal = session.get(Proposal, annotation.proposal_id)
             if (
                 proposal.slice is None
@@ -80,9 +84,12 @@ def assign(
         if any(a.id in eligible for a in items)
         and not any(a.group_id in excluded_groups or a.image_key in excluded_images for a in items)
     }
-    if not grouped and external_validation:
-        raise DomainError("Accept a complete training annotation outside the evaluation set first.")
-    if len(grouped) < 2 and not external_validation:
+    if not grouped:
+        raise DomainError(
+            "Accept an image annotation, region or polygon frame range covering the model's "
+            "targets and background outside the evaluation set first."
+        )
+    if len(grouped) < 2 and not external_validation and percentage:
         raise DomainError(
             "This model needs at least two independent cases with complete labels. "
             "Review labels or import more images for annotation. "
@@ -137,7 +144,7 @@ def assign(
     ]
     candidates.sort(key=lambda key: hashlib.sha256(f"{learner_id}:{key}".encode()).digest())
     target = min(len(grouped) - 1, max(1, math.ceil(len(grouped) * percentage / 100)))
-    if not external_validation:
+    if not external_validation and percentage:
         selected.update(candidates[: max(0, target - len(selected))])
     assignments: dict[str, Split] = {}
     for key, items in grouped.items():
@@ -147,7 +154,7 @@ def assign(
             (validation_images if held_out else training_images).add(asset.image_key)
             if asset.id in (accepted if held_out else eligible):
                 assignments[asset.id] = Split.VALIDATION if held_out else Split.TRAIN
-    if not external_validation and Split.VALIDATION not in assignments.values():
+    if not external_validation and percentage and Split.VALIDATION not in assignments.values():
         raise DomainError(
             "No unused, accepted cases are available for this model's validation. "
             "Import and review new cases; previously trained cases cannot become validation."
@@ -155,7 +162,11 @@ def assign(
     if Split.TRAIN not in assignments.values():
         raise DomainError("Add accepted training cases before starting this model.")
     updates = {
-        "validation_mode": "fixed" if external_validation else "percentage",
+        "validation_mode": "fixed"
+        if external_validation
+        else "percentage"
+        if percentage
+        else "none",
         "label_ids": sorted(required),
         "validation_percentage": percentage,
         "training_groups": sorted(training),

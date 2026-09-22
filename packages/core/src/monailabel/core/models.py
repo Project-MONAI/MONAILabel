@@ -149,6 +149,7 @@ class ModelRecord(Record):
     training_revisions: dict[str, int] = Field(default_factory=dict)
     mode: str | None = None
     preset: str | None = None
+    connection_mode: Literal["automatic", "manual"] | None = None
     read_only: bool = False
     inherit_targets: bool = False
     unreviewed_training: bool = False
@@ -422,6 +423,7 @@ class ReviewRequest(Contract):
     mask: list[JsonValue] | None = None
     covered_labels: list[int] = Field(min_length=1, max_length=32)
     reviewer: str = Field(default="", max_length=120)
+    regions: list[ImageRegion] | None = Field(default=None, min_length=1, max_length=1000)
 
 
 class Annotation(Record):
@@ -433,12 +435,22 @@ class Annotation(Record):
     reviewer: str
     proposal_id: str | None = None
     restored_from: str | None = None
+    regions: list[ImageRegion] | None = None
 
 
 class RestoreRequest(Contract):
     annotation_id: str
     base_revision: int = Field(ge=0)
     reviewer: str = Field(min_length=1, max_length=120)
+
+
+class VideoFrameSource(Contract):
+    """Frame addressing for a sample backed by source video and track documents."""
+
+    index: int = Field(ge=0)
+    timestamp: float = Field(ge=0)
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
 
 
 class Sample(Contract):
@@ -453,6 +465,10 @@ class Sample(Contract):
     label_source: Literal["reviewed", "model_prediction"] = "reviewed"
     proposal_id: str | None = None
     model_ids: list[str] = Field(default_factory=list)
+    annotation_id: str | None = None
+    unit_id: str | None = None
+    image_region: ImageRegion | None = None
+    video_frame: VideoFrameSource | None = None
 
 
 class TrainingSampleFilter(Contract):
@@ -484,6 +500,7 @@ class Snapshot(Record):
     model_split_id: str | None = None
     model_split_version: int | None = None
     evaluation_version_id: str | None = None
+    evaluation_requested: bool = True
     project_id: str
     protocol_version: int
     labels: list[Label]
@@ -535,7 +552,7 @@ class RecipeInfo(Contract):
 
 class StartTraining(TrainingLabelPolicy):
     sample_filter: TrainingSampleFilter = Field(default_factory=TrainingSampleFilter)
-    validation_percentage: int | None = Field(default=None, ge=1, le=50)
+    validation_percentage: int | None = Field(default=None, ge=0, le=50)
     evaluation_set_id: str | None = None
     evaluation_version_id: str | None = None
     config: dict[str, JsonValue] = Field(default_factory=dict)
@@ -619,6 +636,7 @@ class Evaluation(Record):
 
 
 class TrainingReport(Record):
+    evaluation_requested: bool = True
     model_split_id: str | None = None
     model_split_version: int | None = None
     project_id: str

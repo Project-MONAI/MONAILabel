@@ -17,7 +17,7 @@ from test_video_cvat import login_workspace
 
 from monailabel.client.client import Client
 from monailabel.core.chat import ChatMessage, ToolCall
-from monailabel.core.models import ModelRecord
+from monailabel.core.models import ModelRecord, Proposal
 from monailabel.core.ports import Prediction
 from monailabel.server.dataset_downloads import Downloads
 from monailabel.server.desktops.models import DesktopSession
@@ -79,6 +79,7 @@ QUPATH_PROBE = """
                 image_center: [bounds.minX + bounds.width / 2, bounds.minY + bounds.height / 2],
                 selected: panel.imageData.hierarchy.selectionModel.selectedObjects.size(),
                 status: panel.status.text,
+                busy: panel.busy,
             ])
         } as javafx.event.EventHandler))
         observer.play()
@@ -522,7 +523,7 @@ def test_pathology_quickstart_region_annotation_and_submission(desktop_stack):
     client.post(
         f"/api/projects/{project['id']}/models",
         {
-            "name": "GPT Sol",
+            "name": "GPT Astra",
             "provider": "openai-chat-polygons",
             "config": {"url": "http://unused.test", "model": "fixture"},
         },
@@ -590,9 +591,9 @@ def test_pathology_quickstart_region_annotation_and_submission(desktop_stack):
                 desktop.keyboard.press("Control+Enter")
 
             prompt(
-                "Segment nuclei in the selected region using GPT Sol.",
+                "Segment nuclei in the selected region using GPT Astra.",
                 "annotate",
-                {"targets": ["nuclei"], "scope": "selected_region", "model_name": "GPT Sol"},
+                {"targets": ["nuclei"], "scope": "selected_region", "model_name": "GPT Astra"},
             )
             observed(
                 report,
@@ -609,6 +610,60 @@ def test_pathology_quickstart_region_annotation_and_submission(desktop_stack):
             saved = client.get(f"/api/assets/{asset['id']}")
             assert any(
                 client.http.get(f"/api/annotations/{saved['annotation_id']}/mask.bin").content
+            )
+            prefix = f"/api/projects/{project['id']}"
+            units = client.get(prefix + "/review-units")
+            assert len(units) == 1 and units[0]["scope"]["kind"] == "region"
+            region = units[0]["scope"]["region"]
+            assert (region["height"], region["width"]) == predictions[0][:2]
+            client.post(
+                f"/api/review-units/{units[0]['id']}/decision",
+                {
+                    "base_revision": 1,
+                    "verdict": "accepted",
+                },
+            )
+            labels = client.get(prefix)["labels"]
+            target = next(label["id"] for label in labels if label["name"].casefold() == "nuclei")
+            learner = client.post(
+                prefix + "/learners",
+                {
+                    "name": "Nuclei U-Net",
+                    "recipe": "monai-unet",
+                    "label_ids": [0, target],
+                    "config": {
+                        "epochs": 1,
+                        "steps_per_epoch": 2,
+                        "patch_size": 16,
+                        "channels": [4, 8, 16, 32],
+                        "device": "cpu",
+                    },
+                },
+            )
+            trained = client.wait(
+                client.post(prefix + f"/learners/{learner['id']}/train", {})["id"]
+            )
+            prompt(
+                "Segment nuclei in the selected region using Nuclei U-Net.",
+                "annotate",
+                {"targets": ["nuclei"], "scope": "selected_region", "model_name": "Nuclei U-Net"},
+            )
+            proposals = service.store.list(Proposal, project["id"])
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline and not any(
+                p.model_ids == [trained["model_id"]] for p in proposals
+            ):
+                desktop.wait_for_timeout(100)
+                proposals = service.store.list(Proposal, project["id"])
+            assert any(p.model_ids == [trained["model_id"]] for p in proposals)
+            observed(
+                report,
+                lambda value: (
+                    not value["busy"]
+                    and value["status"].startswith("Applied nuclei/structure labels")
+                ),
+                desktop,
+                timeout=60,
             )
         finally:
             for index, window in enumerate(context.pages):

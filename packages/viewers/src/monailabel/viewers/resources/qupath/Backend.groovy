@@ -29,8 +29,9 @@ class Backend {
         extraHeaders.each { name, value -> builder.header(name, value) }
         if (body != null) {
             byte[] bytes = body instanceof byte[] ? (byte[])body : json.toJson(body).getBytes('UTF-8')
-            builder.header('Content-Type', body instanceof byte[] ? 'application/octet-stream' : 'application/json')
-                .POST(HttpRequest.BodyPublishers.ofByteArray(bytes))
+            if (!extraHeaders.containsKey('Content-Type'))
+                builder.header('Content-Type', body instanceof byte[] ? 'application/octet-stream' : 'application/json')
+            builder.POST(HttpRequest.BodyPublishers.ofByteArray(bytes))
         } else builder.GET()
         def response = http.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray())
         if (response.statusCode() >= 400) {
@@ -39,5 +40,16 @@ class Backend {
             throw new IOException(text)
         }
         return binary ? response.body() : json.fromJson(new String(response.body(), 'UTF-8'), Object)
+    }
+    Object submitRegions(String assetId, Map metadata, byte[] mask) {
+        String boundary = 'monailabel-' + UUID.randomUUID().toString()
+        def body = new ByteArrayOutputStream()
+        body.write(('--' + boundary + '\r\nContent-Disposition: form-data; name="metadata"\r\n\r\n' +
+            json.toJson(metadata) + '\r\n--' + boundary +
+            '\r\nContent-Disposition: form-data; name="mask"; filename="mask.bin"\r\nContent-Type: application/octet-stream\r\n\r\n').getBytes('UTF-8'))
+        body.write(mask)
+        body.write(('\r\n--' + boundary + '--\r\n').getBytes('UTF-8'))
+        return request('/api/assets/' + assetId + '/region-submissions', body.toByteArray(), false,
+            ['Content-Type': 'multipart/form-data; boundary=' + boundary])
     }
 }

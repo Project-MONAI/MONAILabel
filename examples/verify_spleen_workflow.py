@@ -40,10 +40,10 @@ class RecordingCoordinator:
         self.provider = provider
         self.trace = []
 
-    def complete(self, messages, tools):
+    def complete(self, messages, tools, *, require_tool=False):
         item = {"available_tools": [tool.name for tool in tools]}
         self.trace.append(item)
-        response = self.provider.complete(messages, tools)
+        response = self.provider.complete(messages, tools, require_tool=require_tool)
         item["calls"] = [call.model_dump(exclude={"id"}) for call in response.tool_calls]
         return response
 
@@ -53,7 +53,7 @@ class FixtureCoordinator:
 
     response = None
 
-    def complete(self, messages, tools):
+    def complete(self, messages, tools, *, require_tool=False):
         assert self.response is not None
         if self.response.tool_calls[0].name not in {tool.name for tool in tools}:
             name = next(

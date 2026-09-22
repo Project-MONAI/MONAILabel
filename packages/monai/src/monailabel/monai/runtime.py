@@ -6,7 +6,7 @@ recipe, weights, optimizer state, and dependency versions. No model hub is execu
 
 import io
 import threading
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, cast
 
@@ -23,11 +23,12 @@ from pydantic import JsonValue
 from monailabel.core.errors import DomainError
 from monailabel.core.models import Label, ModelRecord, TrainingMode
 from monailabel.core.ports import (
+    IGNORE_LABEL,
     BinaryArtifacts,
     Image,
-    Mask,
     Prediction,
     Progress,
+    TrainingMask,
     TrainingVolume,
     Volume,
     training_message,
@@ -108,18 +109,24 @@ class ImageUNetTrainer:
 
     def train(
         self,
-        samples: Iterable[tuple[Image, Mask]],
+        samples: Iterable[tuple[Image, TrainingMask]],
         label_ids: list[int],
         mode: TrainingMode,
         parent_state: dict[str, JsonValue] | None,
         progress: Progress,
     ) -> dict[str, JsonValue]:
         with execution(progress):
-            return self._train(list(samples), label_ids, mode, parent_state, progress)
+            return self._train(
+                samples if isinstance(samples, Sequence) else list(samples),
+                label_ids,
+                mode,
+                parent_state,
+                progress,
+            )
 
     def _train(
         self,
-        samples: list[tuple[Image, Mask]],
+        samples: Sequence[tuple[Image, TrainingMask]],
         label_ids: list[int],
         mode: TrainingMode,
         parent_state: dict[str, JsonValue] | None,
@@ -168,6 +175,7 @@ class ImageUNetTrainer:
             lookup[label] = index
         locations = []
         scales = []
+        coverage_locations = []
         seen: set[int] = set()
         for image, mask in samples:
             progress(0.01)
@@ -175,13 +183,26 @@ class ImageUNetTrainer:
             if image.shape[:-1] != mask.shape:
                 raise DomainError("Training mask geometry does not match its image.")
             scales.append(statistics(image))
+            valid = np.flatnonzero(mask != IGNORE_LABEL) if np.any(mask == IGNORE_LABEL) else None
+            if valid is not None and not len(valid):
+                raise DomainError("A training region has no reviewed pixels.")
+            coverage_locations.append(
+                rng.choice(
+                    valid,
+                    min(len(valid), max(16, min(10000, 1_000_000 // len(samples)))),
+                    replace=False,
+                )
+                if valid is not None
+                else None
+            )
             targets = []
             for label in label_ids[1:]:
                 positions = np.flatnonzero(mask == label)
                 if len(positions):
                     seen.add(label)
                     # Keep only a bounded set of candidate patch centers per class/case.
-                    positions = rng.choice(positions, min(len(positions), 10000), replace=False)
+                    limit = max(16, min(10000, 1_000_000 // len(samples)))
+                    positions = rng.choice(positions, min(len(positions), limit), replace=False)
                     targets.append(positions)
             locations.append(targets)
         if set(label_ids[1:]) - seen:
@@ -206,7 +227,12 @@ class ImageUNetTrainer:
                         int(c) for c in np.unravel_index(int(rng.choice(candidates)), shape)
                     )
                 else:
-                    center = tuple(int(rng.integers(n)) for n in shape)
+                    valid = coverage_locations[case]
+                    center = (
+                        tuple(int(c) for c in np.unravel_index(int(rng.choice(valid)), shape))
+                        if valid is not None
+                        else tuple(int(rng.integers(n)) for n in shape)
+                    )
                 starts = [
                     max(0, min(int(c) - size // 2, n - size))
                     for c, n in zip(center, shape, strict=True)
@@ -214,6 +240,7 @@ class ImageUNetTrainer:
                 region = tuple(slice(start, start + size) for start in starts)
                 patch = normalize(image[region], scales[case])
                 target = lookup[mask[region]]
+                target[mask[region] == IGNORE_LABEL] = IGNORE_LABEL
                 padding = [(0, max(0, size - n)) for n in target.shape]
                 patch = np.pad(patch, padding + [(0, 0)], mode="edge")
                 target = np.pad(target, padding, mode="edge")
@@ -226,7 +253,14 @@ class ImageUNetTrainer:
             x = torch.from_numpy(np.stack(patches)).to(device)
             y = torch.from_numpy(np.stack(targets)).unsqueeze(1).to(device)
             optimizer.zero_grad(set_to_none=True)
-            loss = loss_function(net(x), y)
+            logits = net(x)
+            if torch.any(y == IGNORE_LABEL):
+                # Compute Dice and cross-entropy only on reviewed pixels.
+                valid_pixels = y[:, 0] != IGNORE_LABEL
+                selected = logits.movedim(1, -1)[valid_pixels].T.unsqueeze(0)
+                loss = loss_function(selected, y[:, 0][valid_pixels].reshape(1, 1, -1))
+            else:
+                loss = loss_function(logits, y)
             if not torch.isfinite(loss):
                 raise DomainError("U-Net training diverged; lower the learning rate and retry.")
             loss.backward()

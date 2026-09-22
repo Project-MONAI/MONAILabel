@@ -1,9 +1,42 @@
+import httpx
 import pytest
 from chat_fixture import ScriptedChat
 from fastapi.testclient import TestClient
 
 from monailabel.client.client import Client
+from monailabel.providers.catalog import discovery
+from monailabel.providers.catalog.presets import HOSTED_PRESETS, resolve_presets
 from monailabel.server.app import create_app
+
+
+@pytest.fixture
+def catalog_http(monkeypatch):
+    """Exercise the real catalog adapter without contacting paid model services."""
+
+    def install(handler):
+        transport = httpx.MockTransport(handler)
+        monkeypatch.setattr(
+            discovery, "Client", lambda **kwargs: httpx.Client(transport=transport, **kwargs)
+        )
+
+    return install
+
+
+@pytest.fixture
+def hosted_presets(http, catalog_http, monkeypatch):
+    monkeypatch.setenv("NV_INFERENCE_API_KEY", "test-key-never-sent")
+    catalog_http(
+        lambda request: httpx.Response(
+            200,
+            json={
+                "data": [{"id": ("gateway/provider/" + s.direct_model)} for s in HOSTED_PRESETS],
+            },
+        )
+    )
+    presets = http.app.state.services.presets
+    presets.enabled = True
+    presets.hosted = resolve_presets()
+    return presets
 
 
 def pytest_addoption(parser):

@@ -27,6 +27,7 @@ from test_video_cvat import (
 )
 
 from monailabel.core.chat import ChatMessage, ToolCall
+from monailabel.core.models import ModelRecord, Project
 
 pytestmark = pytest.mark.video_e2e
 
@@ -49,6 +50,7 @@ def video_stack(tmp_path_factory):
     ):
         environment.pop(key, None)
     environment["MONAILABEL_PRELOAD_MODELS"] = "0"
+    environment["MONAILABEL_ALLOWED_HOSTS"] = "127.0.0.1,cvat.test"
     with patch.dict(os.environ, environment, clear=True):
         try:
             stack.start_workspace()
@@ -66,13 +68,20 @@ def video_stack(tmp_path_factory):
             shutil.rmtree(root)
 
 
-def test_managed_install_launch_and_track(video_stack, browser_session, video_http, synthetic_clip):
+@pytest.mark.parametrize("hostname", ["127.0.0.1", "cvat.test"])
+def test_managed_install_launch_and_track(
+    video_stack, browser_session, video_http, synthetic_clip, hostname, request
+):
     stack = video_stack
+    # Restart chooses a new port; restore only the hostname at teardown.
+    request.addfinalizer(lambda: setattr(stack, "url", stack.url.replace("cvat.test", "127.0.0.1")))
+    stack.url = stack.url.replace("127.0.0.1", hostname)
     context, errors = browser_session
     page = context.new_page()
     failures = []
     page.on("response", lambda r: failures.append((r.status, r.url)) if r.status >= 400 else None)
     login_workspace(page, stack)
+    assert page.evaluate("isSecureContext") == (hostname == "127.0.0.1")
     project_id = create_project(page, "Managed CVAT tool tracking")
     video = import_video(page, stack, project_id, synthetic_clip)
     launched, page = open_editor(page, video_http, video["id"], keep_page=True)
@@ -149,6 +158,7 @@ def test_managed_install_launch_and_track(video_stack, browser_session, video_ht
     )
     stack.stop_workspace()
     stack.start_workspace()
+    stack.url = stack.url.replace("127.0.0.1", hostname)
     page.goto(stack.url + launched["url"])
     expect(page.frame_locator("#editor").locator("#cvat_canvas_background")).to_be_visible(
         timeout=30000
@@ -156,7 +166,9 @@ def test_managed_install_launch_and_track(video_stack, browser_session, video_ht
     expect(page.frame_locator("#editor").locator(".cvat-objects-sidebar-state-item")).to_have_count(
         2
     )
-    after = page.request.get(stack.url + f"/api/videos/{video['id']}/tracks").json()
+    after = page.evaluate(
+        "async (id) => (await fetch('/api/videos/' + id + '/tracks')).json()", video["id"]
+    )
     assert after == document
     log_step(stack, "managed restart preserves credentials, CVAT task and submitted tracks")
     assert not errors
@@ -261,10 +273,6 @@ def test_managed_real_tool_tracking_sample(
     expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
     expect(page.locator("#options, #tracking-options, #track")).to_have_count(0)
     expect(page.locator("#selection")).to_contain_text("No tool selected")
-    guidance = ask_to_track(page, stack)
-    assert guidance["job_id"] is None
-    expect(page.locator("#messages")).to_contain_text("choose Track")
-    expect(page.locator("#messages")).to_contain_text("Tracking has not started")
     assert {job["kind"] for job in video_http.get(f"/api/projects/{project_id}/jobs").json()} == {
         "dataset_import",
         "video_editor",
@@ -278,6 +286,9 @@ def test_managed_real_tool_tracking_sample(
             "config": {"url": detection_endpoint.url, "model": "astra-fixture"},
         },
     ).json()
+    with stack.app.state.services.store.transaction() as session:
+        astra = session.get(ModelRecord, model["id"])
+        session.update(astra.model_copy(update={"preset": "nvidia-astra"}))
     other_model = video_http.post(
         f"/api/projects/{project_id}/models",
         json={
@@ -289,7 +300,7 @@ def test_managed_real_tool_tracking_sample(
     page.reload()
     expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
     cvat_frame = page.frames[1]
-    page.locator("#detection-model").select_option(model["id"])
+    expect(page.locator("#detection-model")).to_have_value("")
     expect(page.locator("#options, #tracking-options, #track")).to_have_count(0)
     expect(page.locator("#send")).to_be_enabled()
     detection_endpoint.polygon = [(420, 390), (445, 390), (600, 555), (580, 570)]
@@ -303,6 +314,7 @@ def test_managed_real_tool_tracking_sample(
                 provider="compatible",
                 base_url=endpoint,
                 model=os.environ["MONAILABEL_E2E_COORDINATOR_MODEL"],
+                key_env=os.environ.get("MONAILABEL_E2E_COORDINATOR_KEY_ENV"),
                 thinking=True,
                 temperature=0,
                 max_tokens=8192,
@@ -356,7 +368,7 @@ def test_managed_real_tool_tracking_sample(
     expect(page.locator("#detection-model")).to_have_value(other_model["id"])
     native.locator(".cvat-annotation-header-undo-button").click()
     expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(0)
-    page.locator("#detection-model").select_option(model["id"])
+    page.locator("#detection-model").select_option("")
     located = annotate(
         "Locate the snare and track for 16 frames",
         {
@@ -370,7 +382,7 @@ def test_managed_real_tool_tracking_sample(
     native.locator(".cvat-annotation-header-undo-button").click()
     expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(0)
     proposal = annotate(
-        "Segment the snare and track for 16 frames",
+        "Segment tool and track for 16 frames",
         {
             "output": "polygon",
             "frame_count": 16,
@@ -401,6 +413,183 @@ def test_managed_real_tool_tracking_sample(
         "tracking chat opens CVAT, segments the snare through vision HTTP fixture, "
         "tracks 16 frames with real SAM and adds a new native track",
     )
+
+
+@pytest.mark.parametrize("shape", ["rectangle", "polygon"])
+def test_chat_clear_frames_preserves_tracks_and_supports_undo(
+    video_stack, browser_session, video_http, synthetic_clip, shape
+):
+    stack = video_stack
+    context, errors = browser_session
+    page = context.new_page()
+    login_workspace(page, stack)
+    project = create_project(page, "Clear annotations through chat")
+    video = import_video(page, stack, project, synthetic_clip)
+    opened, page = open_editor(page, video_http, video["id"], keep_page=True)
+    native = page.frame_locator("#editor")
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
+    cvat_frame = page.frames[1]
+    editor = video_http.get(f"/api/cvat/editors/{opened['editor_id']}").json()["editor"]
+    if shape == "rectangle":
+        draw_rectangle(cvat_frame, "Grasper", [30, 40, 100, 150])
+    else:
+        # Seed native polygon interpolation with different vertex counts.
+        # Clearing itself still travels through chat and the real native editor.
+        cvat_frame.evaluate(
+            """async label => {
+          const bridge = window.monaiVideo;
+          await bridge.apply({
+            request: {draft_signature: await bridge.snapshot(), client_id: null,
+                      seed: {frame: 0}, output: 'polygon'},
+            keyframes: [
+              {frame: 0, points: [30,40,100,40,70,150], outside: false, occluded: false},
+              {frame: 5, points: [40,50,110,50,110,160,40,160], outside: false, occluded: false}
+            ]
+          }, label);
+        }""",
+            editor["label_map"]["1"],
+        )
+    draw_rectangle(cvat_frame, "Scissors", [180, 50, 250, 130])
+    page.locator("#save").click()
+    expect(page.locator("#status")).to_have_text("CVAT draft saved.")
+    task_path = f"/cvat-api/jobs/{editor['job_id']}/annotations"
+    original = video_http.get(task_path).json()
+    assert len(original["tracks"]) == 2
+    original_polygons = {}
+    if shape == "polygon":
+        for index in (0, 1, 4, 5):
+            frame(cvat_frame, index)
+            expect(page.locator("#selection")).to_contain_text(f"Frame {index} of")
+            original_polygons[index] = native.locator(
+                "polygon.cvat_canvas_shape:visible"
+            ).get_attribute("points")
+    frame(cvat_frame, 2)
+    expect(page.locator("#selection")).to_contain_text("Frame 2 of")
+    send_action(
+        page,
+        stack,
+        "Clear the grasper annotations for 2 frames.",
+        "clear_video_annotations",
+        {"targets": ["Grasper"], "scope": "frames", "frame_count": 2},
+    )
+    expect(page.locator("#status")).to_have_text("Draft updated. Submit when ready.")
+    expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(1)
+    for value, count in [(1, 2), (2, 1), (3, 1), (4, 2), (5, 2)]:
+        frame(cvat_frame, value)
+        expect(page.locator("#selection")).to_contain_text(f"Frame {value} of")
+        expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(count)
+        if shape == "polygon" and value in original_polygons:
+            expect(native.locator("polygon.cvat_canvas_shape:visible")).to_have_attribute(
+                "points", original_polygons[value]
+            )
+    page.locator("#save").click()
+    expect(page.locator("#status")).to_have_text("CVAT draft saved.")
+    cleared = video_http.get(task_path).json()
+    assert {t["id"] for t in cleared["tracks"]} == {t["id"] for t in original["tracks"]}
+    send_action(page, stack, "Undo that.", "viewer_edit", {"operation": "undo"})
+    expect(page.locator("#status")).to_have_text("Undid the last edit.")
+    frame(cvat_frame, 2)
+    expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(2)
+    send_action(page, stack, "Redo that.", "viewer_edit", {"operation": "redo"})
+    expect(page.locator("#status")).to_have_text("Redid the last edit.")
+    expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(1)
+    send_action(page, stack, "Save my draft.", "viewer_edit", {"operation": "save_draft"})
+    expect(page.locator("#status")).to_have_text("CVAT draft saved.")
+    saved = video_http.get(task_path).json()
+    assert len(saved["tracks"]) == 2
+    scissors = original["tracks"][1]
+    assert next(t for t in saved["tracks"] if t["id"] == scissors["id"]) == scissors
+    page.reload()
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
+    cvat_frame = page.frames[1]
+    frame(cvat_frame, 2)
+    expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(1)
+    frame(cvat_frame, 4)
+    expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(2)
+    send_action(
+        page,
+        stack,
+        "Clear all annotations in the whole video.",
+        "clear_video_annotations",
+        {"all_targets": True, "scope": "whole_video"},
+    )
+    expect(page.locator("#status")).to_have_text("Draft updated. Submit when ready.")
+    expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(0)
+    native.locator(".cvat-annotation-header-undo-button").click()
+    expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(2)
+    send_action(
+        page, stack, "Submit this annotation for review.", "viewer_edit", {"operation": "submit"}
+    )
+    expect(page.locator("#status")).to_contain_text("Tracks submitted", timeout=20000)
+    assert video_http.get(f"/api/videos/{video['id']}/tracks").json()["base_revision"] == 1
+    assert not errors
+    log_step(
+        stack,
+        "CVAT chat scoped clear, preserved saved track IDs, native and chat undo, "
+        "saved reload, submission",
+    )
+    if shape == "polygon":
+        prefix = f"/api/projects/{project}"
+        for unit in video_http.get(prefix + "/review-units").json():
+            response = video_http.post(
+                f"/api/review-units/{unit['id']}/decision",
+                json={
+                    "base_revision": unit["revision"],
+                    "verdict": "accepted",
+                },
+            )
+            assert response.status_code == 201, response.text
+        response = video_http.post(
+            prefix + "/learners",
+            json={
+                "name": "Grasper U-Net",
+                "recipe": "monai-unet",
+                "label_ids": [0, 1],
+                "config": {
+                    "epochs": 1,
+                    "steps_per_epoch": 16,
+                    "patch_size": 16,
+                    "channels": [4, 8, 16, 32],
+                    "device": "cpu",
+                },
+            },
+        )
+        assert response.status_code == 201, response.text
+        learner = response.json()
+        response = video_http.post(prefix + f"/learners/{learner['id']}/train", json={})
+        assert response.status_code == 202, response.text
+        trained = wait_job(video_http, response.json()["id"])
+        # Reopen the submitted source and use the actual trained checkpoint in CVAT.
+        page.goto(stack.url + f"/datasets?project={project}")
+        _, page = open_editor(page, video_http, video["id"], keep_page=True)
+        expect(page.frame_locator("#editor").locator("#cvat_canvas_background")).to_be_visible(
+            timeout=30000
+        )
+        reply = send_action(
+            page,
+            stack,
+            "Segment the grasper on this frame using Grasper U-Net.",
+            "find_and_track_video_tool",
+            {
+                "output": "polygon",
+                "scope": "current_frame",
+                "label_name": "Grasper",
+                "model_name": "Grasper U-Net",
+            },
+        )
+        result = wait_job(video_http, reply["job_id"])
+        assert result.get("video_proposal_id"), result
+        proposal = video_http.get(
+            f"/api/videos/{video['id']}/tracking-proposals/{result['video_proposal_id']}"
+        ).json()
+        assert proposal["detection"]["model_id"] == trained["model_id"]
+        expect(page.locator("#status")).to_have_text(
+            "Annotation added to draft. Use CVAT Undo to revert.", timeout=30000
+        )
+        assert not errors
+        log_step(
+            stack, "Accepted video polygons → actual U-Net training → native CVAT segmentation"
+        )
 
 
 def test_mixed_dataset_list(video_stack, browser_session, video_http, synthetic_clip):
@@ -692,11 +881,26 @@ def test_polygon_annotation_and_whole_video_tracking(
     model = video_http.post(
         f"/api/projects/{project}/models",
         json={
-            "name": "Polygon vision fixture",
+            "name": "GPT-6 Astra",
             "provider": "openai-chat-polygons",
             "config": {"url": detection_endpoint.url, "model": "polygon-fixture"},
         },
     ).json()
+    service = stack.app.state.services
+    with service.store.transaction() as session:
+        astra = session.get(ModelRecord, model["id"])
+        session.update(astra.model_copy(update={"preset": "nvidia-astra"}))
+        vista = ModelRecord(
+            project_id=project, name="VISTA3D", provider="vista3d", label_ids=[0], read_only=True
+        )
+        session.insert(vista)
+        session.insert(
+            astra.model_copy(
+                update={"id": "other-vision", "name": "Other vision model", "preset": None}
+            )
+        )
+        current = session.get(Project, project)
+        session.update(current.model_copy(update={"annotation_model_id": vista.id}))
     _, page = open_editor(page, video_http, video["id"], keep_page=True)
     native = page.frame_locator("#editor")
     expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
@@ -709,8 +913,7 @@ def test_polygon_annotation_and_whole_video_tracking(
         page.set_viewport_size({"width": width, "height": height})
         composer = page.locator("#chat").bounding_box()
         assert composer and composer["y"] + composer["height"] <= height
-    page.locator("#detection-model").select_option(model["id"])
-    draw_rectangle(cvat_frame, "Scissors", [180, 50, 250, 130])
+    expect(page.locator("#detection-model")).to_have_value("")
     frame(cvat_frame, 3)
     expect(page.locator("#selection")).to_contain_text("Frame 3 of")
 
@@ -736,6 +939,25 @@ def test_polygon_annotation_and_whole_video_tracking(
         expect(page.locator("#apply, #discard, #proposal")).to_have_count(0)
         return proposal
 
+    detection_endpoint.polygon = [(x + 1, y) for x, y in polygon]
+    automatic = ask(
+        "Segment tool and track for 16 frames",
+        "find_and_track_video_tool",
+        {"output": "polygon", "frame_count": 16, "label_name": "Grasper"},
+    )
+    assert automatic["provider"] == "sam2"
+    assert automatic["detection"]["model_id"] == model["id"]
+    assert [key["frame"] for key in automatic["keyframes"]] == list(range(3, 19))
+    assert all(len(key["points"]) >= 6 for key in automatic["keyframes"])
+    expect(page.locator("#messages")).to_contain_text("using GPT-6 Astra")
+    expect(page.locator("#detection-model")).to_have_value("")
+    expect(native.locator("polygon.cvat_canvas_shape")).to_have_count(1)
+    native.locator(".cvat-annotation-header-undo-button").click()
+    expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(0)
+    assert video_http.get(f"/api/videos/{video['id']}/tracks").json()["base_revision"] == 0
+    frame(cvat_frame, 0)
+    draw_rectangle(cvat_frame, "Scissors", [180, 50, 250, 130])
+    frame(cvat_frame, 3)
     detection_endpoint.box = [41, 70, 121, 160]
     single_box = ask(
         "Put a bounding box around the grasper on this frame",
@@ -760,7 +982,7 @@ def test_polygon_annotation_and_whole_video_tracking(
     cvat_frame = page.frames[1]
     draw_rectangle(cvat_frame, "Scissors", [180, 50, 250, 130])
     frame(cvat_frame, 3)
-    page.locator("#detection-model").select_option(model["id"])
+    expect(page.locator("#detection-model")).to_have_value("")
     detection_endpoint.polygon = [(x + 1, y) for x, y in polygon]
     single = ask(
         "Segment the grasper on this frame",
@@ -845,7 +1067,7 @@ def test_polygon_annotation_and_whole_video_tracking(
     assert reviewed["document"] == saved["document"]
     page.locator("#accept").click()
     expect(page.locator("#status")).to_contain_text("revision accepted")
-    assert len(detection_endpoint.calls) == 3
+    assert len(detection_endpoint.calls) == 4
     assert errors == []
     log_step(
         stack,

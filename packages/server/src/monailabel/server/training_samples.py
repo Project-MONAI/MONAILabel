@@ -4,7 +4,6 @@ import hashlib
 
 from monailabel.core.errors import DomainError
 from monailabel.core.models import (
-    Asset,
     DicomSeries,
     Job,
     Sample,
@@ -13,13 +12,14 @@ from monailabel.core.models import (
     TrainingSource,
 )
 from monailabel.server.evaluation_sets import components
+from monailabel.server.learning_data.cases import cases
 from monailabel.server.storage import Session
 
 
 def training_sources(session: Session, project_id: str) -> list[TrainingSource]:
     from monailabel.server.dataset_downloads import sources
 
-    assets = session.list(Asset, project_id)
+    assets = cases(session, project_id)
     origins = {a.id: ("uploads", "Uploaded files") for a in assets}
     catalog = {source.id: source.name for source in sources()}
     for series in session.list(DicomSeries, project_id):
@@ -56,7 +56,7 @@ def training_sources(session: Session, project_id: str) -> list[TrainingSource]:
 def filter_samples(
     session: Session, project_id: str, samples: list[Sample], request: TrainingSampleFilter
 ) -> list[Sample]:
-    assets = session.list(Asset, project_id)
+    assets = cases(session, project_id)
     allowed = {a.id for a in assets}
     if request.asset_ids is not None:
         if not set(request.asset_ids) <= allowed:
@@ -71,9 +71,11 @@ def filter_samples(
         allowed &= {asset for key in request.source_ids for asset in catalog[key].asset_ids}
     training = [s for s in samples if s.split == Split.TRAIN and s.asset_id in allowed]
     if request.limit is not None:
-        by_asset = {s.asset_id: s for s in training}
+        by_asset: dict[str, list[Sample]] = {}
+        for sample in training:
+            by_asset.setdefault(sample.asset_id, []).append(sample)
         groups = [
-            [by_asset[a.id] for a in group if a.id in by_asset]
+            [sample for a in group for sample in by_asset.get(a.id, [])]
             for group in components(assets).values()
         ]
         groups = [group for group in groups if group]
@@ -82,7 +84,7 @@ def filter_samples(
         )
         training = []
         for group in groups:
-            if len(training) + len(group) <= request.limit:
+            if len({s.asset_id for s in [*training, *group]}) <= request.limit:
                 training.extend(group)
     if not training:
         raise DomainError(

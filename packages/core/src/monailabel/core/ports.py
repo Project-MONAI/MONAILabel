@@ -22,6 +22,9 @@ from monailabel.core.video import ToolDetection, VideoKeyframe
 
 Image = NDArray[np.float32]
 Mask = NDArray[np.uint8]
+# Signed training masks reserve -1 for pixels outside accepted coverage.
+TrainingMask = Mask | NDArray[np.int16]
+IGNORE_LABEL = -1
 Progress = Callable[[float], None]
 
 
@@ -68,7 +71,7 @@ class PromptedSegmenter(Protocol):
 class Trainer(Protocol):
     def train(
         self,
-        samples: Iterable[tuple[Image, Mask]],
+        samples: Iterable[tuple[Image, TrainingMask]],
         label_ids: list[int],
         mode: TrainingMode,
         parent_state: dict[str, JsonValue] | None,

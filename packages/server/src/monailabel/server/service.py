@@ -24,9 +24,11 @@ from monailabel.server.evaluation_sets import EvaluationSets
 from monailabel.server.jobs import Jobs
 from monailabel.server.learning import Learning
 from monailabel.server.models import Models
-from monailabel.server.presets import Presets
+from monailabel.server.models.catalog import ModelCatalogs
+from monailabel.server.models.presets import Presets
 from monailabel.server.reference_imports import ReferenceImports
 from monailabel.server.regions import Regions
+from monailabel.server.review_units.service import ReviewUnits
 from monailabel.server.reviews import Reviews
 from monailabel.server.scoring import ValidationScorer
 from monailabel.server.secrets import Secrets
@@ -59,13 +61,15 @@ class Services:
             self.reviews = Reviews(self.store)
             self.artifacts = Artifacts(data_dir / "artifacts")
             cleanup_storage(self.store, self.artifacts)
+            ReviewUnits(self.store, self.artifacts).migrate_videos()
             self.deletion = Deletion(self.store)
             # Registered before workers so their clients close after jobs have finished.
             editor_cleanup = cleanup.enter_context(ExitStack())
             self.jobs = Jobs(self.store)
             cleanup.callback(self.jobs.close)
             self.models = Models(self.store, self.artifacts, self.secrets.resolve)
-            self.presets = Presets(self.store)
+            self.presets = Presets(self.store, self.secrets.resolve)
+            self.model_catalogs = ModelCatalogs(self.models, self.secrets.resolve, self.presets)
             from monailabel.core.models import Project
 
             for project in self.store.list(Project):

@@ -61,6 +61,10 @@ async function currentContext() {
     (label) => label.id && info.editor.label_map[label.id],
   );
   return {
+    viewer_actions:
+      canEdit() && !info.editor.submitted_annotation_id
+        ? ["clear_video_annotations", "undo", "redo", "save_draft", "submit"]
+        : [],
     video: {
       video_id: info.video.id,
       editor_id: editorId,
@@ -180,6 +184,57 @@ async function save(submit) {
     iframe.inert = false;
   }
 }
+async function editDraft(action) {
+  if (writing)
+    throw new Error("Wait for the current draft operation to finish.");
+  writing = true;
+  iframe.inert = true;
+  try {
+    info = await api(`/cvat/editors/${editorId}`);
+    if (
+      !canEdit() ||
+      info.editor.submitted_annotation_id ||
+      action.project_id !== info.project.id ||
+      action.video_id !== info.video.id ||
+      action.editor_id !== editorId ||
+      action.base_revision !== info.video.revision ||
+      action.base_revision !== info.editor.base_revision
+    )
+      throw new Error(
+        "This video session changed. Reopen it; your draft is preserved.",
+      );
+    if ((await bridge().snapshot()) !== action.draft_signature)
+      throw new Error(
+        "Your CVAT draft changed. Retry the request to keep your edits.",
+      );
+    if (action.client_action === "clear_video_annotations") {
+      const count = await bridge().clear(
+        action,
+        action.label_ids.map((id) => info.editor.label_map[id]),
+      );
+      message(
+        count
+          ? "Cleared the requested annotations. Say ‘undo’ to restore them."
+          : "No matching annotations on the requested frames.",
+      );
+      status(count ? "Draft updated. Submit when ready." : "Draft unchanged.");
+    } else if (["undo", "redo"].includes(action.operation)) {
+      await bridge().history(action.operation, action.draft_signature);
+      status(
+        action.operation === "undo"
+          ? "Undid the last edit."
+          : "Redid the last edit.",
+      );
+    } else if (["save_draft", "submit"].includes(action.operation)) {
+      // save() owns the same write lock and rechecks submission on the server.
+      writing = false;
+      await save(action.operation === "submit");
+    } else throw new Error("Unsupported CVAT draft operation.");
+  } finally {
+    writing = false;
+    iframe.inert = false;
+  }
+}
 $("#save").onclick = safely(() => save(false));
 $("#submit").onclick = safely(() => save(true));
 for (const [id, verdict] of [
@@ -225,6 +280,12 @@ $("#chat").onsubmit = safely(async () => {
     });
     conversation = reply.conversation_id;
     message(reply.message);
+    if (
+      ["clear_video_annotations", "video_edit"].includes(
+        reply.data?.client_action,
+      )
+    )
+      await editDraft(reply.data);
     if (reply.job_id) await watch(reply.job_id);
   } finally {
     chatting = false;

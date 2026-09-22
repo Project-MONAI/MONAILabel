@@ -1,5 +1,7 @@
 # Architecture
 
+Start with the [visual design guide](design.md) for the building blocks and workflows.
+
 ## Packages
 
 | Package | Responsibility |
@@ -15,7 +17,7 @@
 
 Core has no HTTP, persistence or vendor dependencies. Providers and clients do not import server code. The server includes the MONAI and SAM runtimes as dependencies. These separate packages implement the interfaces in `core/ports.py`; model loading happens when a job needs it.
 
-Within the server, `desktops/`, `dicom/` and `video/` group their routes and workflow services. Persistent desktop/CVAT identities live in feature-local `models.py` modules so other services can refer to them without importing runtime orchestration. `assistant_tools/` adapts typed chat actions to the same services. Keep Docker provisioning in `viewers` and DICOM decoding in the separate `dicom` package; feature routes handle authentication and transport, while services own lifecycle and revision rules.
+Within the server, `desktops/`, `dicom/`, `models/`, `review_units/`, `learning_data/` and `video/` group related services. Persistent desktop/CVAT identities live in feature-local `models.py` modules so other services can refer to them without importing runtime orchestration. `assistant_tools/` adapts typed chat actions to the same services. Keep Docker provisioning in `viewers`, hosted catalog discovery in `providers/catalog/` and DICOM decoding in the separate `dicom` package; feature routes handle authentication and transport, while services own lifecycle and revision rules. Model discovery resolves project-scoped credentials on the server and filters provider catalogs before import; provider adapters never access workspace storage.
 
 Python imports use the `monailabel` namespace, such as `monailabel.core` and `monailabel.server`. Each distribution contributes its own subpackage without a shared `monailabel/__init__.py`. Installable names remain `monailabel-core`, `monailabel-server`, etc.; CLI commands remain `monailabel` and `monailabel-server`.
 
@@ -31,7 +33,7 @@ flowchart LR
 
 ## Data and learning
 
-- Images use feature-last arrays: `H×W×C` or `I×J×K×1`. Masks use integer project class IDs on the source grid. Binary masks are uint8 in C-order.
+- Images use feature-last arrays: `H×W×C` or `I×J×K×1`. Masks use integer project class IDs on the source grid. Saved masks use uint8 class IDs in C-order. Training masks use signed integers so -1 can exclude unreviewed pixels without colliding with class 255.
 - Proposals record geometry, model and base revision. Applying or submitting checks that revision; viewers also protect intervening local edits.
 - Submission and reviewer acceptance are separate. Corrected acceptance saves a new annotation revision and its decision atomically.
 - Shared data stays available to each model's persistent patient-group split. Every training run freezes image/mask revisions. Evaluation-only reservations exclude cases from all training. See [split rules](workflows.md#train-a-model).
@@ -39,7 +41,9 @@ flowchart LR
 
 Source-plane inference applies lossless orientation changes and restores the source layout afterwards. A slice updates only its requested plane. Selected pathology regions run as one crop; whole-image inference can use tiles. Failed or cancelled multi-part inference publishes no partial proposal.
 
-Video clips use separate `VideoAsset` and `TrackAnnotation` records. Original source files and presentation timestamps are immutable; rectangle and polygon tracks refer to zero-based source frames and source pixel edge coordinates. CVAT transport/conversion lives in `viewers/cvat.py`; server editor bindings retain label/track mappings and the base revision. Reopening resumes saved drafts, review uses a separate task, and submission publishes the track revision and consumed editor receipt atomically. A managed, workspace-specific CVAT runtime serves the native editor through authenticated project-scoped routes. Vision providers implement the independent `ToolDetector` port for localization; compatible 2D `Segmenter` providers produce masks from the chosen annotation model. Single-frame requests skip temporal tracking. SAM 2.1 implements the independent `VideoTracker` port with bounded overlapping chunks, returning box/polygon keyframes, lossless source masks and contour warnings. Proposals retain these masks separately from editable polygon approximations, record model provenance and require unchanged native drafts and submitted revisions before application. Video is excluded from image learning; evaluation-only procedure groups also exclude related images from training. See [video annotation](video.md).
+Video clips use separate `VideoAsset` and `TrackAnnotation` records. Original source files and presentation timestamps are immutable; rectangle and polygon tracks refer to zero-based source frames and source pixel edge coordinates. CVAT transport/conversion lives in `viewers/cvat.py`; server editor bindings retain label/track mappings and the base revision. Reopening resumes saved drafts, review uses a separate task, and submission publishes the track revision and consumed editor receipt atomically. A managed, workspace-specific CVAT runtime serves the native editor through authenticated project-scoped routes. Vision providers implement the independent `ToolDetector` port for localization; compatible 2D `Segmenter` providers produce masks from the chosen annotation model. Single-frame requests skip temporal tracking. SAM 2.1 implements the independent `VideoTracker` port with bounded overlapping chunks, returning box/polygon keyframes, lossless source masks and contour warnings. Proposals retain these masks separately from editable polygon approximations, record model provenance and require unchanged native drafts and submitted revisions before application. Accepted polygon frame ranges enter segmentation training as source-frame samples. All frames and related images from a procedure share one model split; evaluation-only procedure groups exclude both from training. See [video annotation](video.md).
+
+Scoped review uses `ReviewUnit` identities and immutable `UnitAnnotation` revisions. Regions retain source pixel footprints; frame ranges retain their track revision. Changing one scope creates a new pending revision while untouched scopes keep their decisions. Learning snapshots freeze accepted scope revisions and reviewer decisions. `learning_data` prepares cropped images and original video frames through a bounded array reader; unreviewed region pixels are excluded from loss. New models can train without evaluation; an explicit percentage reserves independent source groups without inventing a score for runs that have no held-out data.
 
 ## Services and storage
 

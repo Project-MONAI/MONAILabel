@@ -18,7 +18,8 @@ from monailabel.core.ports import Prediction
 pytestmark = pytest.mark.browser_e2e
 
 
-def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch):
+@pytest.mark.parametrize("hostname", ["127.0.0.1", "ohif.test"])
+def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch, hostname):
     from playwright.sync_api import expect, sync_playwright
 
     artifacts = ROOT / "test-results" / ("ohif-quickstart-" + secrets.token_hex(6))
@@ -26,6 +27,7 @@ def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch):
     print(f"OHIF Quickstart artifacts: {artifacts}", flush=True)
     # A configured build can be reused; otherwise provisioning stays in this test's cache.
     monkeypatch.setenv("MONAILABEL_TOOLS_DIR", str(tmp_path / "tools"))
+    monkeypatch.setenv("MONAILABEL_ALLOWED_HOSTS", "127.0.0.1,ohif.test")
     stack = VideoStack(tmp_path, artifacts)
     stack.start_workspace()
     try:
@@ -79,7 +81,9 @@ def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch):
                     )
 
             with sync_playwright() as playwright:
-                browser = playwright.chromium.launch()
+                browser = playwright.chromium.launch(
+                    args=["--host-resolver-rules=MAP ohif.test 127.0.0.1", "--no-proxy-server"]
+                )
                 context = browser.new_context(viewport={"width": 1600, "height": 1000})
                 errors = []
                 context.on(
@@ -87,8 +91,10 @@ def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch):
                     lambda page: page.on("pageerror", lambda error: errors.append(str(error))),
                 )
                 try:
+                    stack.url = stack.url.replace("127.0.0.1", hostname)
                     page = context.new_page()
                     login_workspace(page, stack)
+                    assert page.evaluate("isSecureContext") == (hostname == "127.0.0.1")
                     page.goto(f"{stack.url}/datasets?project={project['id']}")
                     with page.expect_popup() as opened:
                         page.get_by_role("button", name="OHIF", exact=True).click()
@@ -96,6 +102,11 @@ def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch):
                     viewer.wait_for_url("**/ohif/**", timeout=1800000)
                     send = viewer.get_by_role("button", name="Send prompt", exact=True)
                     expect(send).to_be_enabled(timeout=120000)
+                    canvas = viewer.locator("canvas").first
+                    canvas.hover()
+                    for _ in range(5):
+                        viewer.mouse.wheel(0, 120)
+                        viewer.wait_for_timeout(100)
 
                     def prompt(message, tool, arguments):
                         service.assistants.provider.queue.append(
@@ -119,13 +130,32 @@ def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch):
                                 "VISTA3D",
                             ),
                             (
-                                "Fix the current slice using GPT Asta.",
+                                "Annotate the spleen on the current slice using GPT Astra.",
                                 "current_slice",
                                 "GPT-6 Astra",
                             ),
                         ],
                         start=1,
                     ):
+                        if count == 2:
+                            prompt(
+                                "Clear the spleen annotation on the current slice.",
+                                "clear_segments",
+                                {"targets": ["spleen"], "scope": "current_slice"},
+                            )
+                            expect(viewer.get_by_role("log")).to_contain_text(
+                                "Cleared the requested annotation", timeout=30000
+                            )
+                            prompt("Undo that.", "viewer_edit", {"operation": "undo"})
+                            expect(viewer.get_by_role("log")).to_contain_text(
+                                "Restored the previous mask.", timeout=30000
+                            )
+                            prompt("Redo that.", "viewer_edit", {"operation": "redo"})
+                            expect(
+                                viewer.get_by_role("log").get_by_text(
+                                    "Restored the previous mask.", exact=True
+                                )
+                            ).to_have_count(2, timeout=30000)
                         prompt(
                             message,
                             "annotate",

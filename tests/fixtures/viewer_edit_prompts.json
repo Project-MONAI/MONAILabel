@@ -1,0 +1,66 @@
+[
+  {
+    "context": "slicer",
+    "prompt": "Clear the current slice for spleen.",
+    "tool": "clear_segments",
+    "arguments": { "targets": ["spleen"], "scope": "current_slice" }
+  },
+  {
+    "context": "ohif",
+    "prompt": "Clear the spleen annotation on the current slice.",
+    "tool": "clear_segments",
+    "arguments": { "targets": ["spleen"], "scope": "current_slice" }
+  },
+  {
+    "context": "ohif",
+    "prompt": "Annotate the spleen on the current slice using GPT Astra.",
+    "tool": "annotate",
+    "arguments": {
+      "targets": ["spleen"],
+      "scope": "current_slice",
+      "model_id": "astra"
+    }
+  },
+  {
+    "context": "qupath",
+    "prompt": "Clear all annotations in the selected region.",
+    "tool": "clear_segments",
+    "arguments": { "all_targets": true, "scope": "selected_region" }
+  },
+  {
+    "context": "qupath",
+    "prompt": "Clear the nuclei in this region.",
+    "tool": "clear_segments",
+    "arguments": { "targets": ["nuclei"], "scope": "selected_region" }
+  },
+  {
+    "context": "qupath",
+    "prompt": "Undo that.",
+    "tool": "viewer_edit",
+    "arguments": { "operation": "undo" }
+  },
+  {
+    "context": "cvat",
+    "prompt": "Clear the snare annotations for 16 frames.",
+    "tool": "clear_video_annotations",
+    "arguments": { "targets": ["snare"], "scope": "frames", "frame_count": 16 }
+  },
+  {
+    "context": "cvat",
+    "prompt": "Clear all annotations on this frame.",
+    "tool": "clear_video_annotations",
+    "arguments": { "all_targets": true, "scope": "current_frame" }
+  },
+  {
+    "context": "cvat",
+    "prompt": "Clear all annotations in the whole video.",
+    "tool": "clear_video_annotations",
+    "arguments": { "all_targets": true, "scope": "whole_video" }
+  },
+  {
+    "context": "cvat",
+    "prompt": "Undo that.",
+    "tool": "viewer_edit",
+    "arguments": { "operation": "undo" }
+  }
+]

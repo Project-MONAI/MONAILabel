@@ -11,7 +11,7 @@ class ModelSplit(Record):
     project_id: str
     learner_id: str
     validation_percentage: int = 20
-    validation_mode: Literal["percentage", "fixed"] = "percentage"
+    validation_mode: Literal["percentage", "fixed", "none"] = "percentage"
     label_ids: list[int] = Field(default_factory=list)
     version: int = 0
     training_groups: list[str] = Field(default_factory=list)

@@ -6,6 +6,11 @@ from numpy.typing import NDArray
 from monailabel.core.models import ImageRegion, PlaneOrientation
 
 
+def region_slice(region: ImageRegion) -> tuple[slice, slice]:
+    """Select a region's bounding rectangle on an H×W source grid."""
+    return slice(region.y, region.y + region.height), slice(region.x, region.x + region.width)
+
+
 def region_pixels(region: ImageRegion) -> NDArray[np.bool_]:
     """Rasterize a validated selection footprint in crop coordinates."""
     shape = (region.height, region.width)

@@ -26,6 +26,7 @@ from monailabel.core.models import (
     new_id,
 )
 from monailabel.core.ports import TrainingProgress, TrainingVolume, Volume, VolumeTrainer
+from monailabel.core.video import VideoAsset
 from monailabel.providers.vista3d import mapping as vista_mapping
 from monailabel.server.data import Datasets
 from monailabel.server.deletion import Deletion
@@ -86,6 +87,8 @@ class Learning:
                     (len(a.spatial_shape), self.artifacts.array(a.image_key).shape[-1])
                     for a in self.store.list(Asset, project_id)
                 }
+                if self.store.list(VideoAsset, project_id):
+                    layouts.add((2, 3))
                 if len(layouts) > 1:
                     raise DomainError(
                         "Use a separate project for each image dimension/channel layout."
@@ -328,6 +331,9 @@ class Learning:
                 raise DomainError("Choose an evaluation set for this training run.")
             if active:
                 evaluation_set_id = active[0].id
+            elif not any(a.split == Split.VALIDATION for a in self.store.list(Asset, project_id)):
+                # Imported training cases need no separate evaluation dataset.
+                model_split = True
         if evaluation_set_id:
             evaluation_version_id = (
                 EvaluationSets(self.store)
@@ -363,7 +369,8 @@ class Learning:
                 learner_id=learner.id if model_split or reference else None,
                 external_validation=reference is not None,
                 validation_percentage=request.validation_percentage
-                or (saved_split.validation_percentage if saved_split else 20),
+                if request.validation_percentage is not None
+                else (saved_split.validation_percentage if saved_split else 0),
                 parent_model_id=request.parent_model_id,
             )
         )
@@ -380,7 +387,9 @@ class Learning:
             )
             with self.store.transaction() as session:
                 session.insert(snapshot)
-        if not any(s.split == Split.VALIDATION for s in snapshot.samples):
+        if snapshot.evaluation_requested and not any(
+            s.split == Split.VALIDATION for s in snapshot.samples
+        ):
             raise DomainError(
                 "Accept at least one complete held-out validation case before starting this model."
             )
@@ -485,7 +494,8 @@ class Learning:
         def work(context: JobContext) -> Outcome:
             context.log(
                 f"{request.name} · {request.recipe} · {request.mode.value} · "
-                f"{len(samples)} training cases."
+                f"{len(samples)} training samples from "
+                f"{len({s.asset_id for s in samples})} source files."
             )
             filters = snapshot.sample_filter
             if filters.source_ids or filters.asset_ids or filters.limit:
@@ -494,7 +504,7 @@ class Learning:
                     + (f"{len(filters.source_ids)} sources · " if filters.source_ids else "")
                     + (f"{len(filters.asset_ids)} selected images · " if filters.asset_ids else "")
                     + (f"limit {filters.limit} images · " if filters.limit else "")
-                    + f"{len(samples)} eligible training images; evaluation unchanged."
+                    + f"{len(samples)} eligible training samples; evaluation unchanged."
                 )
             if config:
                 context.log(
@@ -511,6 +521,8 @@ class Learning:
             if isinstance(trainer, VolumeTrainer):
                 volumes = []
                 for sample in samples:
+                    if sample.video_frame or sample.image_region:
+                        raise DomainError("This training recipe requires complete 3D volumes.")
                     affine = sample.affine or self.store.get(Asset, sample.asset_id).affine
                     if affine is None:
                         raise DomainError("This training recipe requires source volume geometry.")
@@ -522,11 +534,12 @@ class Learning:
                     )
                 state = trainer.train_volumes(volumes, label_ids, request.mode, state, progress)
             else:
-                examples = (
-                    (self.artifacts.array(s.image_key), self.artifacts.array(s.mask_key))
-                    for s in samples
-                )
-                state = trainer.train(examples, label_ids, request.mode, state, progress)
+                from monailabel.server.learning_data.arrays import SampleArrays
+
+                with SampleArrays(
+                    self.artifacts, samples, label_ids, context.check_cancelled
+                ) as examples:
+                    state = trainer.train(examples, label_ids, request.mode, state, progress)
             model = ModelRecord(
                 project_id=project.id,
                 name=request.name,
@@ -554,7 +567,11 @@ class Learning:
                 unreviewed_training=bool(parent and parent.unreviewed_training)
                 or any(s.label_source == "model_prediction" for s in samples),
             )
-            context.log("Training finished. Evaluating the saved checkpoint on held-out cases.")
+            context.log(
+                "Training finished. Evaluating the saved checkpoint on held-out cases."
+                if snapshot.evaluation_requested
+                else "Training finished. No evaluation was requested for this run."
+            )
             report = self.reports.build(
                 project, model, snapshot, context.job_id, context, start=0.8
             )
@@ -665,6 +682,7 @@ class Learning:
                     validation,
                     label_ids,
                     progress,
+                    context.check_cancelled,
                 )
                 scores.append(score)
                 context.log(f"{model.name}: mean Dice {score.mean_dice:.4f}.")

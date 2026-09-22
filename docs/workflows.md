@@ -44,24 +44,31 @@ Inspect and correct annotations in [Slicer, QuPath or OHIF](viewers.md), then su
 - **VISTA3D:** local CT annotation and fine-tuning from immutable base weights.
 - **U-Net:** 2D RGB or 3D scalar training from scratch, fine-tuning or continuation.
 - **SAM 2.1 / MedSAM2:** local inference with editable boxes and points.
-- **Sol / Astra:** hosted vision annotation; explicitly choose the model to use.
+- **GPT-6 Astra:** default hosted annotation for pathology and video; radiology defaults to VISTA3D. Claude and Gemini can be named explicitly.
 
 Manage project models through **Training → Rename / Delete**. Annotation versions link to the same model setup. Deleting a setup removes its versions from both tabs while preserving completed run records. Annotation-only connections are managed in Annotation; base models cannot be deleted. Resolve active jobs and default or dependent uses before deleting.
 
 Save credentials in **Models → API keys** or use server environment references. Never put keys in chat. Back up `workspace/secrets.key` with the database. The [conversation model](coordinator.md) is configured separately from annotation. Provider contracts and configuration examples are in [providers](providers.md).
 
+## Review regions and frame ranges
+
+QuPath submissions can cover one or more selected regions of an imported image. Each region has its own revision and decision in **Reviews → Inspect**. CVAT submissions create review items for affected frame ranges; the inspection dialog lets reviewers step through source frames with or without the overlay. Accept an item or request changes independently. Correct in the native viewer, then resubmit: unaffected items keep their decisions. Overlapping pathology regions are rejected; reopen the existing region to revise it.
+
+Accepted region footprints and video polygon ranges can train a 2D RGB U-Net. Pixels outside a reviewed region are excluded from loss, rather than labeled as background. Video samples retain source frame numbers and presentation timestamps. Rectangle tracks alone do not provide segmentation masks. Interpolated polygons whose vertex counts change need explicit keyframes before segmentation training; overlapping different classes must be corrected first.
+
 ## Train a model
 
-In **Models → Training → Start training**, select structures and an evaluation set:
+In **Models → Training → Start training**, choose the structures and whether to evaluate:
 
-- **Fixed:** a named independently labeled set excluded from all training.
-- **Percentage-based:** a stable split belonging to this model. The default is 20%. New accepted cases extend it; another model may use a different ratio.
+- **Without evaluation:** the default for a new model with no evaluation choice. Train from accepted samples, including one source file, without requiring a separate reference dataset. No held-out score is reported.
+- **Fixed:** a named independently labeled image/volume set excluded from all training.
+- **Percentage-based:** a stable split belonging to this model. Choose a ratio such as 80:20 train/evaluation. New accepted cases extend it; another model may use a different ratio.
 
-Existing assignments remain fixed. Patient/slide groups and identical images stay together. Previously trained cases cannot move into evaluation. Each run freezes its exact image and annotation revisions; later edits cannot change that run.
+Existing assignments remain fixed. Patient, slide and procedure groups and identical sources stay together. Regions from one slide and frames from one video cannot be split between training and evaluation. A percentage split needs at least two independent source groups; one annotated video can train without evaluation. Previously trained cases cannot move into evaluation. Each run freezes its exact image and annotation revisions; later edits cannot change that run.
 
 **Filter samples** is collapsed by default. It contains **Annotation status**, **Images**, then **Sample limit**. The image picker is a searchable table with ten rows per page and persistent selections. Filters affect training only; they never shrink saved evaluation references. Related cases stay together, so a sample limit may yield fewer cases than requested.
 
-**Adjust training settings** overrides recommendations for this run. Epochs × training steps per epoch determines update count; patch sampling means an epoch need not visit every image. Batch size controls patches per update. VISTA3D averages accumulated gradients; U-Net batches patches together. Other settings include crop size, learning rate, device, seed and applicable spacing/window values. Structure mapping connects project labels to model classes.
+**Training settings (recommended)** overrides recommendations for this run. Epochs × training steps per epoch determines update count; patch sampling means an epoch need not visit every image. Batch size controls patches per update. VISTA3D averages accumulated gradients; U-Net batches patches together. Other settings include crop size, learning rate, device, seed and applicable spacing/window values. Structure mapping connects project labels to model classes.
 
 ## Compare and manage evaluation sets
 
@@ -75,7 +82,7 @@ Choose **Models → Evaluation → Compare models**. Both models use the same fi
 
 Open **Activity → View logs** for training, evaluation and batch annotation. The text box shows the latest 1,000 lines, with 100/500-line choices and **Follow latest**. **Download full log** exports recorded job events. Settings appear above logs.
 
-**Results** shows per-structure Dice/IoU, mean Dice, case count and reference version; training reports also include available losses. **Download report** exports JSON. A failed evaluation keeps the completed checkpoint; **Retry evaluation** retries scoring alone. Cancelled training does not publish an incomplete checkpoint.
+Runs without evaluation show training loss and the saved model, with no held-out score. **Results** for evaluated runs shows per-structure Dice/IoU, mean Dice, case count and reference version; training reports also include available losses. **Download report** exports JSON. A failed evaluation keeps the completed checkpoint; **Retry evaluation** retries scoring alone. Cancelled training does not publish an incomplete checkpoint.
 
 Dice and IoU pool voxel counts across cases for each foreground structure. Mean Dice averages structure scores and excludes background; it is not a per-patient average. Empty, unreviewed or known overlapping references produce an error rather than a fabricated score. A fine-tuned model is not assumed to outperform its base.
 

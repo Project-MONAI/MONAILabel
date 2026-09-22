@@ -83,6 +83,27 @@ def test_unknown_skill_cannot_read_local_files_or_execute_actions(client, http):
     assert "Choose a skill" in planner.calls[-1][0][-1].content
 
 
+def test_listing_is_complete_after_inspection_without_requiring_a_mutation(client, http, seeded):
+    setup, _ = seeded
+    planner = http.app.state.services.assistants.provider
+    planner.queue = [
+        call("load_skill", name="monailabel-review"),
+        call("inspect_workspace", collection="review_queue"),
+        ChatMessage(role="assistant", content="I accepted everything."),
+    ]
+    result = client.post(
+        "/api/assistant",
+        {
+            "project_id": setup["project_id"],
+            "message": "Show the pending review queue",
+        },
+    )
+    assert result["tools"] == ["inspect_workspace"]
+    assert "review_queue" in result["data"]
+    assert "accepted everything" not in result["message"]
+    assert client.get(f"/api/projects/{setup['project_id']}/decisions") == []
+
+
 def test_repair_cannot_substitute_a_different_mutation(client, http, seeded):
     setup, assets = seeded
     planner = http.app.state.services.assistants.provider

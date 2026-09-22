@@ -28,6 +28,7 @@ class TrainingReports:
         state = self.artifacts.json(model.state_key) if model.state_key else {}
         initial, final = state.get("initial_loss"), state.get("final_loss")
         report = TrainingReport(
+            evaluation_requested=snapshot.evaluation_requested,
             model_split_id=snapshot.model_split_id,
             model_split_version=snapshot.model_split_version,
             project_id=project.id,
@@ -39,18 +40,22 @@ class TrainingReports:
             initial_loss=float(initial) if isinstance(initial, (int, float)) else None,
             final_loss=float(final) if isinstance(final, (int, float)) else None,
         )
+        if not snapshot.evaluation_requested:
+            return report
         try:
             ids = [label.id for label in labels]
             validation = self.scorer.samples(project, model, snapshot, ids)
             report = report.model_copy(
-                update={"validation_assets": [s.asset_id for s in validation]}
+                update={"validation_assets": sorted({s.asset_id for s in validation})}
             )
 
             def progress(index: int, count: int) -> None:
                 context.progress(start + (0.99 - start) * index / count)
                 context.log(f"Evaluating held-out case {index + 1} of {count}.")
 
-            metrics, iou = self.scorer.score(project, model, validation, ids, progress)
+            metrics, iou = self.scorer.score(
+                project, model, validation, ids, progress, context.check_cancelled
+            )
             context.log(f"Evaluation complete. Mean Dice: {metrics.mean_dice:.4f}.")
             return report.model_copy(update={"metrics": metrics, "per_class_iou": iou})
         except Cancelled:

@@ -35,7 +35,7 @@ class FixtureCoordinator:
     def __init__(self):
         self.response = None
 
-    def complete(self, messages, tools):
+    def complete(self, messages, tools, *, require_tool=False):
         if messages[-1].role == "tool":
             return ChatMessage(role="assistant", content="Requested records are available.")
         assert self.response is not None
@@ -49,6 +49,13 @@ class FixtureAnnotation:
     def predict(self, image, labels, prompt, model):
         target = next(label.id for label in labels if label.id)
         return Prediction(np.where(image.mean(axis=-1) > 0.62, target, 0).astype(np.uint8))
+
+
+class FixtureVolume:
+    """Volume contract only; the real VISTA3D runtime is checked separately."""
+
+    def predict_volume(self, volume, labels, prompt, model):
+        return FixtureAnnotation().predict(volume.image, labels, prompt, model)
 
 
 def synthetic_case(pathology, seed):
@@ -76,7 +83,7 @@ def run_story(name, coordinator="fixture"):
     provider = (
         FixtureCoordinator()
         if coordinator == "fixture"
-        else CoordinatorRuntime(CoordinatorConfig(variant=coordinator))
+        else CoordinatorRuntime(CoordinatorConfig.from_env(variant=coordinator))
     )
     if isinstance(provider, CoordinatorRuntime):
         # Runs synchronously in this standalone verifier, reusing a healthy runtime.
@@ -103,6 +110,7 @@ def run_story(name, coordinator="fixture"):
 
         def prompt(key, extra=None):
             step = steps[key]
+            print(f"{name}: {key} · {step['prompt']}", flush=True)
             arguments = dict(step["arguments"])
             if arguments.get("model_id") in aliases:
                 arguments["model_id"] = aliases[arguments["model_id"]]
@@ -112,6 +120,9 @@ def run_story(name, coordinator="fixture"):
                     tool_calls=[ToolCall(id=uuid4().hex, name=step["tool"], arguments=arguments)],
                 )
             request_context = context | (extra or {})
+            if step["context"] in {"web", "workspace"}:
+                for field in ("viewer_actions", "slice", "image_region", "image_tiling"):
+                    request_context.pop(field, None)
             conversation_key = (pid, request_context.get("asset_id"), step["context"])
             reply = client.post(
                 "/api/assistant",
@@ -158,7 +169,7 @@ def run_story(name, coordinator="fixture"):
         model = client.post(
             prefix + "/models",
             {
-                "name": "Sol · synthetic annotation fixture (not hosted inference)",
+                "name": "GPT-6 Astra",
                 "provider": "openai-chat-polygons",
                 "label_ids": [0],
                 "config": {
@@ -167,12 +178,29 @@ def run_story(name, coordinator="fixture"):
                 },
             },
         )
-        aliases["sol"] = model["id"]
+        aliases["astra"] = model["id"]
+        initial_model = model["id"]
+        if not pathology:
+            vista = ModelRecord(
+                project_id=pid,
+                name="VISTA3D",
+                provider="vista3d",
+                read_only=True,
+                label_ids=[0],
+                inherit_targets=True,
+            )
+            with service.store.transaction() as session:
+                session.insert(vista)
+            segmenter = service.models.recipes.segmenter
+            service.models.recipes.segmenter = lambda recipe, config: (
+                FixtureVolume() if recipe == "vista3d" else segmenter(recipe, config)
+            )
+            aliases["vista"] = initial_model = vista.id
         context["model_id"] = model["id"]
         viewer = "qupath" if pathology else "slicer"
-        capabilities = ["submit", "review_annotation"]
+        capabilities = ["submit", "review_annotation", "clear_segments", "undo", "redo"]
         if pathology:
-            capabilities += ["clear_segments", "classify_objects", "undo", "redo", "save_draft"]
+            capabilities += ["classify_objects", "save_draft"]
 
         def annotate_and_review(asset, truth, model_id):
             context.update(
@@ -192,6 +220,16 @@ def run_story(name, coordinator="fixture"):
                 region = client.get("/api/proposals/" + crop["proposal_id"])
                 assert region["image_region"]["width"] == 24
                 prediction = prompt("whole")
+            elif not pathology and model_id == initial_model:
+                prediction = prompt("annotate")
+                cleared = prompt("clear_slice")
+                assert cleared["label_ids"] == [1] and cleared["slice"]["index"] == 12
+                repaired = prompt("repair_slice")
+                repair = client.get("/api/proposals/" + repaired["proposal_id"])
+                assert repair["slice"]["index"] == 12 and repair["model_ids"] == [model["id"]], (
+                    repair,
+                    model["id"],
+                )
             else:
                 prediction = prompt("annotate_v1" if pathology else "handoff")
             proposal = client.get("/api/proposals/" + prediction["proposal_id"])
@@ -236,7 +274,7 @@ def run_story(name, coordinator="fixture"):
 
         # Two training + two validation sources; hold a third training case for round two.
         for index in (0, 1, 3, 4):
-            annotate_and_review(*cases[index], model["id"])
+            annotate_and_review(*cases[index], initial_model)
         assert prompt("queue")["review_queue"] == []
         prompt("snapshot")
         setup = prompt("unet_setup")
@@ -260,7 +298,7 @@ def run_story(name, coordinator="fixture"):
         second = prompt("continue")
         version2 = service.store.get(ModelRecord, second["model_id"])
         assert version2.parent_id == version1.id and version2.mode == "continue"
-        assert len(version1.training_groups) == 1 and len(version2.training_groups) == 2
+        assert len(version1.training_groups) == 2 and len(version2.training_groups) == 3
         assert service.artifacts.read(version1.state_key) == original_state
         assert version1.state_key != version2.state_key
         snapshot = service.store.get(Snapshot, second["snapshot_id"])
@@ -298,7 +336,7 @@ def run_story(name, coordinator="fixture"):
             "story": name,
             "synthetic_only": True,
             "coordinator": coordinator,
-            "annotation_provider": "local fixture; no hosted Sol/Astra inference",
+            "annotation_provider": "local fixture; no hosted Astra inference",
             "training_recipe": "monai-unet",
             "spatial_dims": learner.config["spatial_dims"],
             "channels": learner.config["in_channels"],

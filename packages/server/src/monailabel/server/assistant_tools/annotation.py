@@ -96,7 +96,12 @@ class RemoveRegionArgs(Contract):
 
 
 class ClearArgs(Contract):
-    targets: list[str] = Field(default_factory=list, max_length=31)
+    targets: list[str] = Field(
+        default_factory=list,
+        max_length=31,
+        description="Exact foreground label names. For all annotations, omit targets and set "
+        "all_targets=true; never use 'all' as a label.",
+    )
     all_targets: bool = Field(
         default=False, description="True only for an explicit request to clear all segments."
     )
@@ -183,7 +188,8 @@ def register(registry: ToolRegistry) -> None:
         (
             "Clear segmentation labels locally in a supported viewer, with undo. "
             "Choose named targets or explicitly all_targets. Full means the whole "
-            "image/volume; current_slice requires a viewer slice. Does not delete "
+            "image/volume; current_slice requires a viewer slice; selected_region clears "
+            "only inside the actual QuPath selection. Does not delete "
             "samples, label definitions, projects, or saved revisions."
         ),
         ClearArgs,

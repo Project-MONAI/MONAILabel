@@ -1,46 +1,5 @@
 // Guided model setup. Inference connections and trainable recipes have separate forms.
-const hostedModels = {
-  "switchyard/openai/gpt-5.6-sol": "GPT-5.6 Sol",
-  "azure/openai/gpt-6-astra": "GPT-6 Astra",
-  "azure/anthropic/claude-opus-5": "Claude Opus 5",
-};
-const hostedServices = {
-  nvidia: {
-    name: "NVIDIA gateway",
-    provider: "openai-chat-polygons",
-    url: "https://inference-api.nvidia.com/v1/chat/completions",
-    env: "NV_INFERENCE_API_KEY",
-  },
-  openai: {
-    name: "OpenAI",
-    provider: "openai-polygons",
-    url: "https://api.openai.com/v1/responses",
-    env: "OPENAI_API_KEY",
-  },
-  anthropic: {
-    name: "Anthropic (Claude)",
-    provider: "anthropic-polygons",
-    url: "https://api.anthropic.com/v1/messages",
-    env: "ANTHROPIC_API_KEY",
-  },
-  gemini: {
-    name: "Google (Gemini)",
-    provider: "openai-chat-polygons",
-    url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    env: "GEMINI_API_KEY",
-    max_tokens_field: "max_tokens",
-  },
-  chat: {
-    name: "Other Chat Completions service",
-    provider: "openai-chat-polygons",
-    env: "MODEL_API_KEY",
-  },
-  responses: {
-    name: "Other Responses service",
-    provider: "openai-polygons",
-    env: "MODEL_API_KEY",
-  },
-};
+import { importHostedModel } from "./model-import.js";
 
 export function setupModel(ui, path = "") {
   const {
@@ -128,9 +87,11 @@ export function setupModel(ui, path = "") {
   async function register(f, provider, config, name) {
     const ids = labelIds(
       f,
-      ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(
-        provider,
-      ),
+      [
+        "openai-polygons",
+        "openai-chat-polygons",
+        "anthropic-polygons",
+      ].includes(provider),
     );
     await addCredentials(f, config, name);
     await api(`${prefix}/models`, "POST", {
@@ -148,7 +109,7 @@ export function setupModel(ui, path = "") {
     modal(
       "Add a model",
       `<p class="muted">What would you like to do?</p><div class="setup-paths">
-      <button type="button" data-action="model" data-id="hosted"><strong>Use a hosted vision model</strong><span>Connect Sol, Astra, Claude, or another compatible vision API for annotation.</span></button>
+      <button type="button" data-action="model" data-id="hosted"><strong>Use a hosted vision model</strong><span>Choose from compatible models available through your API key.</span></button>
       <button type="button" data-action="model" data-id="endpoint"><strong>Use an existing segmentation model</strong><span>Connect a deployed U-Net, Hugging Face segmentation endpoint, or another mask service.</span></button>
       <button type="button" data-action="model" data-id="learner"><strong>Train a project model</strong><span>Create a U-Net using your reviewed annotations. No inference endpoint or API key needed.</span></button>
       </div>`,
@@ -159,95 +120,35 @@ export function setupModel(ui, path = "") {
   }
   const back =
     '<button type="button" class="subtle" data-action="model">← Choose another model type</button>';
-  if (path === "hosted") {
+  if (path === "hosted") return importHostedModel(ui, back);
+  if (path === "custom") {
     modal(
-      "Use a hosted vision model",
+      "Connect a custom vision API",
       back +
+        field("Model name", "name", "text", "required") +
+        field("Model ID from the provider", "model", "text", "required") +
         selectField(
-          "Model service",
-          "service",
-          Object.entries(hostedServices)
-            .map(
-              ([id, service]) => `<option value="${id}">${service.name}</option>`,
-            )
-            .join(""),
+          "API format",
+          "provider",
+          '<option value="openai-chat-polygons">Chat Completions</option><option value="openai-polygons">Responses</option><option value="anthropic-polygons">Anthropic Messages</option>',
         ) +
-        '<div id="hosted-details"></div>' +
+        field("Service URL", "url", "url", "required") +
         credentials() +
-        `<details><summary>Advanced options</summary>${field("Response limit (tokens)", "max_output_tokens", "number", "required value='4096' min='64' max='16384'", "Higher limits allow more detailed outlines. Dense nuclei may need 16384 tokens; some providers also use this allowance for reasoning.")}</details>` +
-        '<p class="muted">Name structures in your annotation prompts. This vision adapter accepts new project targets without reconnecting the model.</p>',
-      async (f) => {
-        const service = hostedServices[f.get("service")];
-        const nvidia = f.get("service") === "nvidia";
-        const identifier = (f.get("custom_model") || f.get("model")).trim();
-        const name =
-          f.get("name")?.trim() ||
-          (nvidia ? hostedModels[identifier] : null) ||
-          identifier;
-        await register(
+        '<p class="muted">For services outside the hosted catalog. The model must accept images and JSON-schema output.</p>',
+      async (f) =>
+        register(
           f,
-          service.provider,
+          f.get("provider"),
           {
             url: f.get("url").trim(),
-            model: identifier,
+            model: f.get("model").trim(),
             timeout: 180,
-            max_output_tokens: Number(f.get("max_output_tokens")),
-            ...(service.max_tokens_field
-              ? { max_tokens_field: service.max_tokens_field }
-              : {}),
           },
-          name,
-        );
-      },
+          f.get("name").trim(),
+        ),
       "Connect model",
     );
-    const form = document.querySelector("#action-form");
-    function serviceChanged() {
-      const type = form.elements.service.value;
-      const service = hostedServices[type];
-      form.querySelector("#hosted-details").innerHTML =
-        type === "nvidia"
-          ? selectField(
-              "Model",
-              "model",
-              Object.entries(hostedModels)
-                .map(
-                  ([id, name]) => `<option value="${esc(id)}">${esc(name)}</option>`,
-                )
-                .join("") + '<option value="custom">Another model</option>',
-            ) +
-            '<div id="custom-model"></div>' +
-            `<details><summary>Connection details</summary>${field("Service URL", "url", "url", 'required value="https://inference-api.nvidia.com/v1/chat/completions"')}${field("Model name (optional)", "name")}</details>`
-          : field(
-              "Model ID from the provider",
-              "model",
-              "text",
-              "required",
-              "Use the vision model ID supplied by your service.",
-            ) +
-            field(
-              "Service URL",
-              "url",
-              "url",
-              `required ${service.url ? `value="${esc(service.url)}"` : `placeholder="https://your-service/v1/${type === "responses" ? "responses" : "chat/completions"}"`}`,
-            ) +
-            `<details><summary>Custom name</summary>${field("Model name (optional)", "name")}</details>`;
-      const env = form.elements.token_env;
-      if (env) env.value = service.env;
-      if (type === "nvidia") {
-        form.elements.model.addEventListener("change", () => {
-          form.querySelector("#custom-model").innerHTML =
-            form.elements.model.value === "custom"
-              ? field(
-                  "Model ID from the provider", "custom_model", "text", "required",
-                )
-              : "";
-        });
-      }
-    }
-    bindCredentials(() => hostedServices[form.elements.service.value].env);
-    form.elements.service.addEventListener("change", serviceChanged);
-    serviceChanged();
+    bindCredentials("MODEL_API_KEY");
     return;
   }
   if (path === "endpoint") {
@@ -375,7 +276,7 @@ export function setupModel(ui, path = "") {
         state.page = "models";
         state.modelsTab = "training";
         message(
-          `Created ${name}. Accept training and validation cases, then say “train this model” or use Start training.`,
+          `Created ${name}. Accept annotation reviews, then say “train this model” or use Start training.`,
         );
       },
       "Create model",

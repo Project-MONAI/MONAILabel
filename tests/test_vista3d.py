@@ -15,12 +15,13 @@ pytestmark = pytest.mark.filterwarnings(
 
 @pytest.mark.parametrize("hosted_key", [False, True])
 def test_presets_default_to_vista_without_overriding_user_choices(
-    client, http, monkeypatch, hosted_key
+    client, http, monkeypatch, hosted_key, hosted_presets
 ):
     if hosted_key:
         monkeypatch.setenv("NV_INFERENCE_API_KEY", "test-key-never-sent")
     else:
         monkeypatch.delenv("NV_INFERENCE_API_KEY", raising=False)
+        hosted_presets.hosted = {}
     service = http.app.state.services
     service.presets.enabled = True
     project = client.post(
@@ -36,15 +37,18 @@ def test_presets_default_to_vista_without_overriding_user_choices(
     )
     prefix = f"/api/projects/{project['id']}"
     first = client.get(prefix + "/models")
-    assert len(first) == 6
+    assert len(first) == (6 if hosted_key else 3)
     base = next(m for m in first if m["preset"] == "vista3d")
     assert base["read_only"] and base["state_key"] is None and base["label_ids"] == [0]
-    sol = next(m for m in first if m["preset"] == "nvidia-sol")
-    claude = next(m for m in first if m["preset"] == "nvidia-claude-opus-5")
-    assert claude["name"] == "Claude Opus 5"
-    assert claude["config"]["model"] == "azure/anthropic/claude-opus-5"
-    assert claude["config"]["token_env"] == "NV_INFERENCE_API_KEY"
-    assert "reasoning_effort" not in claude["config"]
+    selected_model = next(
+        m for m in first if m["preset"] == ("nvidia-astra" if hosted_key else "sam2")
+    )
+    if hosted_key:
+        claude = next(m for m in first if m["preset"] == "nvidia-claude-opus-5")
+        assert claude["name"] == "Claude Opus 5"
+        assert claude["config"]["model"] == "gateway/provider/claude-opus-5"
+        assert claude["config"]["token_env"] == "NV_INFERENCE_API_KEY"
+        assert "reasoning_effort" not in claude["config"]
     assert project["annotation_model_id"] == base["id"]
     assert project["defaults"] == {"1": base["id"]}
     assert "test-key-never-sent" not in str(first)
@@ -54,27 +58,26 @@ def test_presets_default_to_vista_without_overriding_user_choices(
     selected = client.request(
         "PUT",
         prefix + "/annotation-model",
-        {"model_id": sol["id"], "base_version": project["version"]},
+        {"model_id": selected_model["id"], "base_version": project["version"]},
     )
     service.presets.ensure(project["id"])
     assert client.get(prefix) == selected
 
 
-def test_preset_title_update_preserves_configuration_and_custom_names(client, http):
+def test_preset_title_update_preserves_configuration_and_custom_names(client, http, hosted_presets):
     service = http.app.state.services
     service.presets.enabled = True
     project = client.post("/api/projects", {"name": "Existing project"})
     old_names = {
         "vista3d": "VISTA3D · CT foundation · read-only",
-        "nvidia-sol": "GPT-5.6 Sol · NVIDIA gateway",
         "nvidia-astra": "GPT-6 Astra · NVIDIA gateway (paid)",
     }
     before = service.store.list(ModelRecord, project["id"])
     assert {m.name for m in before} == {
         "VISTA3D",
-        "GPT-5.6 Sol",
         "GPT-6 Astra",
         "Claude Opus 5",
+        "Gemini 3.5 Flash",
         "SAM 2.1",
         "MedSAM2",
     }
@@ -86,12 +89,12 @@ def test_preset_title_update_preserves_configuration_and_custom_names(client, ht
     service.presets.ensure(project["id"])
     assert service.store.list(ModelRecord, project["id"]) == before
     assert client.get(f"/api/projects/{project['id']}") == project
-    sol = next(m for m in before if m.preset == "nvidia-sol")
-    custom = sol.model_copy(update={"name": "Our annotation model"})
+    astra = next(m for m in before if m.preset == "nvidia-astra")
+    custom = astra.model_copy(update={"name": "Our annotation model"})
     with service.store.transaction() as session:
         session.update(custom)
     service.presets.ensure(project["id"])
-    assert service.store.get(ModelRecord, sol.id) == custom
+    assert service.store.get(ModelRecord, astra.id) == custom
 
 
 def test_vista_default_vocabulary_is_available_without_framework_imports(client):
@@ -128,7 +131,7 @@ def test_vista_default_vocabulary_is_available_without_framework_imports(client)
 
 
 @pytest.fixture
-def vista_project(client, http):
+def vista_project(client, http, hosted_presets):
     pytest.importorskip("monailabel.monai")
     http.app.state.services.presets.enabled = True
     project = client.post(
@@ -268,7 +271,7 @@ def test_training_filters_labels_preserves_geometry_and_forks_base(
             calls.extend(samples)
             assert label_ids == [0, 5, 9] and mode == "fine_tune"
             assert parent_state == {"format": "vista3d-base-v1"}
-            assert len(samples) == 1  # No held-out or unreviewed source enters optimization.
+            assert len(samples) == 2  # With no evaluation choice, use both accepted sources.
             assert samples[0].volume.affine == assets[0]["affine"]
             assert set(np.unique(samples[0].mask)) == {0, 5, 9}
             progress(1)
@@ -286,12 +289,12 @@ def test_training_filters_labels_preserves_geometry_and_forks_base(
     result = client.wait(reply["job_id"])
     child = next(m for m in client.get(prefix + "/models") if m["id"] == result["model_id"])
     assert not child["read_only"] and child["parent_id"] == base["id"]
-    assert child["training_groups"] in (["patient-a"], ["patient-b"])
+    assert set(child["training_groups"]) == {"patient-a", "patient-b"}
     snapshot = service.store.get(Snapshot, result["snapshot_id"])
     assert [label.id for label in snapshot.labels] == [0, 5, 9]
     assert {s.group_id for s in snapshot.samples} == {"patient-a", "patient-b"}
     assert snapshot.samples[0].affine == assets[0]["affine"]
-    assert len(calls) == 1
+    assert len(calls) == 2 and not snapshot.evaluation_requested
     original = np.frombuffer(
         http.get(f"/api/annotations/{annotations[0]['id']}/mask.bin").content, np.uint8
     )
@@ -338,7 +341,7 @@ def test_inherited_setup_chooses_organs_per_run_and_keeps_base_vocabulary(
 
     class Trainer:
         def train_volumes(self, samples, label_ids, mode, parent_state, progress):
-            assert len(samples) == 1
+            assert len(samples) == 2
             assert set(np.unique(samples[0].mask)) == set(label_ids)
             assert samples[0].volume.affine == assets[0]["affine"]
             progress(1)
@@ -350,7 +353,7 @@ def test_inherited_setup_chooses_organs_per_run_and_keeps_base_vocabulary(
 
     monkeypatch.setattr(service.learning.recipes, "trainer", trainer)
     # Explicit fine-tune can use the learner's base even with a hosted annotator selected.
-    sol = next(m for m in client.get(prefix + "/models") if m["preset"] == "nvidia-sol")
+    astra = next(m for m in client.get(prefix + "/models") if m["preset"] == "nvidia-astra")
     service.assistants.provider.queue = [
         ChatMessage(
             role="assistant",
@@ -367,7 +370,7 @@ def test_inherited_setup_chooses_organs_per_run_and_keeps_base_vocabulary(
         prefix + "/assistant",
         {
             "message": "Fine-tune this model for spleen",
-            "context": {"learner_id": learner["id"], "model_id": sol["id"]},
+            "context": {"learner_id": learner["id"], "model_id": astra["id"]},
         },
     )
     result = client.wait(reply["job_id"])

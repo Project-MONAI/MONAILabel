@@ -17,6 +17,7 @@ from monailabel.core.models import (
     Project,
     User,
 )
+from monailabel.core.video import VideoAsset
 from monailabel.server.labels import prompt_model
 
 if TYPE_CHECKING:
@@ -55,7 +56,12 @@ class ToolContext:
         return asset
 
     def model_id(
-        self, identifier: str | None, name: str | None = None, *, targets: list[str] | None = None
+        self,
+        identifier: str | None,
+        name: str | None = None,
+        *,
+        targets: list[str] | None = None,
+        source: Asset | VideoAsset | None = None,
     ) -> str | None:
         if name:
             matches = [
@@ -84,7 +90,9 @@ class ToolContext:
         if chosen:
             self.service.models.get(self.project.id, chosen)
         if targets is not None:
-            return self.service.models.select_for_targets(self.project, self.asset, targets, chosen)
+            return self.service.models.select_for_targets(
+                self.project, source or self.asset, targets, chosen
+            )
         return prompt_model(self.service.store, self.project, chosen)
 
     def model(self, identifier: str | None) -> ModelRecord:

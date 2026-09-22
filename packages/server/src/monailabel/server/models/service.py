@@ -24,6 +24,8 @@ from monailabel.core.ports import (
     Volume,
     VolumeSegmenter,
 )
+from monailabel.core.video import VideoAsset
+from monailabel.providers.catalog.presets import DEFAULT_HOSTED_PRESET, HOSTED_PRESETS
 from monailabel.providers.classification import RemoteClassifier
 from monailabel.providers.local import ThresholdSegmenter
 from monailabel.providers.remote import RemoteSegmenter, parse_config
@@ -59,7 +61,9 @@ class Models:
         return model
 
     @classmethod
-    def compatible(cls, model: ModelRecord, asset: Asset) -> bool:
+    def compatible(cls, model: ModelRecord, asset: Asset | VideoAsset) -> bool:
+        if asset.kind == "video" and cls.requires_spatial(model):
+            return False  # Video localization needs an automatic seed, not spatial prompts.
         return asset.kind == "volume3d" or not (
             cls.requires_3d(model) or model.provider == "medsam2"
         )
@@ -96,12 +100,14 @@ class Models:
         return True
 
     def select_for_targets(
-        self, project: Project, asset: Asset, names: list[str], selected: str | None
+        self, project: Project, asset: Asset | VideoAsset, names: list[str], selected: str | None
     ) -> str | None:
         """Honor explicit choices; otherwise match source geometry, targets and defaults."""
         if selected:
             model = self.get(project.id, selected)
             if not self.compatible(model, asset):
+                if asset.kind == "video":
+                    raise DomainError(f"{model.name} cannot automatically annotate a video frame.")
                 raise DomainError(f"{model.name} requires a volume. Choose a model for 2D images.")
             return model.id
         targets = {name.strip().casefold() for name in names}
@@ -128,7 +134,7 @@ class Models:
                 for name, model in assignments
             ):
                 return None  # Preserve separate, explicit defaults for each structure.
-        available = self.available(project.id, asset.id)
+        available = [model for model in self.available(project.id) if self.compatible(model, asset)]
         candidates = [model for model in available if supports(model, targets)]
         by_id = {model.id: model for model in candidates}
         if len(set(target_defaults.values())) == 1 and set(target_defaults) == targets:
@@ -144,18 +150,22 @@ class Models:
         specialized = [model for model in candidates if not self.promptable(model)]
         if len(specialized) == 1:
             return specialized[0].id
+        if not specialized:
+            defaults = (
+                ("vista3d", DEFAULT_HOSTED_PRESET)
+                if asset.kind == "volume3d"
+                else (DEFAULT_HOSTED_PRESET,)
+            )
+            for preset in defaults:
+                standard = next((model for model in candidates if model.preset == preset), None)
+                if standard:
+                    return standard.id
         choices = specialized or [
             model
             for model in candidates
             if model.provider in VISION_PROVIDERS
-            and model.preset not in {"nvidia-astra", "nvidia-claude-opus-5"}
+            and model.preset not in {spec.key for spec in HOSTED_PRESETS} | {"nvidia-sol"}
         ]
-        if not specialized:
-            # Sol is the standard hosted preset. Astra and Claude require an explicit
-            # model/default choice; automatic routing must not silently escalate to them.
-            standard = next((model for model in choices if model.preset == "nvidia-sol"), None)
-            if standard:
-                return standard.id
         if len(choices) == 1:
             return choices[0].id
         if choices:
@@ -315,13 +325,23 @@ class Models:
             raise DomainError("Model labels must be unique and include background 0.")
         if not set(ids) <= {label.id for label in project.labels}:
             raise DomainError("Model label IDs must exist in this project.")
-        model = ModelRecord(project_id=project_id, **request.model_dump())
+        name = request.name.strip()
+        if not name:
+            raise DomainError("Give this model a name to use in chat.")
+        model = ModelRecord(
+            project_id=project_id, **request.model_copy(update={"name": name}).model_dump()
+        )
         if not self.promptable(model) and len(ids) < 2:
             raise DomainError("Fixed-label models need their supported foreground labels.")
         config = parse_config(model)
         if config.credential_id:
             self.credentials(project_id, config.credential_id)
         with self.store.transaction() as session:
+            if any(
+                not m.archived and m.name.strip().casefold() == name.casefold()
+                for m in session.list(ModelRecord, project_id)
+            ):
+                raise DomainError("Another model has this name. Choose a different name.")
             session.insert(model)
         return model
 

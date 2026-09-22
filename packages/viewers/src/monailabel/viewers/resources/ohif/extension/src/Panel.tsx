@@ -12,6 +12,7 @@ import {
   checkSpatial,
 } from "./spatial-hints";
 import { mergeMask } from "./masks";
+import { clearMask } from "./segmentation-edits";
 import { initializeAnnotation } from "./initialize";
 import SubmissionComplete from "./SubmissionComplete";
 
@@ -116,7 +117,15 @@ export default function Panel({ servicesManager }) {
         throw new Error("Project permission is required.");
       await initialize();
       const before = s.transfer.read();
-      const signature = await crypto.subtle.digest("SHA-256", before);
+      // read() returns a detached source-grid snapshot. Exact comparison also
+      // works on network HTTP origins, where Web Crypto's digest is unavailable.
+      const checkDraft = (current, message) => {
+        if (
+          before.length !== current.length ||
+          before.some((value, index) => value !== current[index])
+        )
+          throw new Error(message);
+      };
       const context = {
         asset_id: s.asset.id,
         base_revision: s.asset.revision,
@@ -124,6 +133,7 @@ export default function Panel({ servicesManager }) {
         viewer_actions: [
           "box",
           "edit_spatial_prompts",
+          "clear_segments",
           "undo",
           "redo",
           ...(!reviewMode && permission ? ["submit"] : []),
@@ -167,18 +177,10 @@ export default function Panel({ servicesManager }) {
           throw new Error(
             "Viewer action belongs to another sample or revision.",
           );
-        const currentSignature = await crypto.subtle.digest(
-          "SHA-256",
+        checkDraft(
           s.transfer.read(),
+          "Your mask changed while interpreting the prompt. Retry it.",
         );
-        if (
-          new Uint8Array(signature).some(
-            (v, i) => v !== new Uint8Array(currentSignature)[i],
-          )
-        )
-          throw new Error(
-            "Your mask changed while interpreting the prompt. Retry it.",
-          );
         if (edit.operation === "submit") {
           await submitAnnotation();
           return;
@@ -194,6 +196,41 @@ export default function Panel({ servicesManager }) {
         log("Restored the previous mask.");
         return;
       }
+      if (reply.data?.client_action === "clear_segments") {
+        const action = reply.data;
+        if (
+          action.project_id !== s.project.id ||
+          action.asset_id !== s.asset.id ||
+          action.base_revision !== s.asset.revision ||
+          action.label_ids.some(
+            (id) => !s.project.labels.some((label) => label.id === id),
+          )
+        )
+          throw new Error(
+            "Clear request belongs to another sample, revision or label.",
+          );
+        if (
+          action.slice &&
+          (action.slice.axis !== context.slice.axis ||
+            action.slice.index !== context.slice.index)
+        )
+          throw new Error(
+            "Clear request differs from the requested source slice.",
+          );
+        checkDraft(
+          s.transfer.read(),
+          "Your mask changed while requesting the edit. Retry it.",
+        );
+        const cleared = clearMask(before, action, s.asset.spatial_shape);
+        if (cleared.every((value, index) => value === before[index])) {
+          log("No matching annotations to clear.");
+          return;
+        }
+        remember(before);
+        s.transfer.write(cleared);
+        log("Cleared the requested annotation. Say ‘undo’ to restore it.");
+        return;
+      }
       if (reply.data?.project?.id === s.project.id) {
         s.project = reply.data.project;
         s.transfer.syncProject(s.project);
@@ -207,18 +244,10 @@ export default function Panel({ servicesManager }) {
           throw new Error(
             "Review action belongs to another sample or revision.",
           );
-        const currentSignature = await crypto.subtle.digest(
-          "SHA-256",
+        checkDraft(
           s.transfer.read(),
+          "Your mask changed while interpreting the review. Retry it.",
         );
-        if (
-          new Uint8Array(signature).some(
-            (v, i) => v !== new Uint8Array(currentSignature)[i],
-          )
-        )
-          throw new Error(
-            "Your mask changed while interpreting the review. Retry it.",
-          );
         await reviewDecision(action.verdict, action.comment || "");
         return;
       }
@@ -275,13 +304,10 @@ export default function Panel({ servicesManager }) {
           s.transfer.scope(),
         );
       const current = s.transfer.read();
-      const after = await crypto.subtle.digest("SHA-256", current);
-      if (
-        new Uint8Array(signature).some((b, i) => b !== new Uint8Array(after)[i])
-      )
-        throw new Error(
-          "Local edits changed during inference. The proposal was not applied.",
-        );
+      checkDraft(
+        current,
+        "Local edits changed during inference. The proposal was not applied.",
+      );
       if (
         proposal.asset_id !== s.asset.id ||
         proposal.base_revision !== s.asset.revision

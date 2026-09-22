@@ -31,6 +31,7 @@ from monailabel.server.assistant_tools.base import ToolContext
 from monailabel.server.assistant_tools.workspace import model_summary
 from monailabel.server.batch_annotation import candidates
 from monailabel.server.instructions import SkillSession, coordinator_instructions
+from monailabel.server.review_units.queue import saved_reviews
 from monailabel.server.video.models import VideoEditor
 
 if TYPE_CHECKING:
@@ -203,7 +204,14 @@ class Assistants:
                     raise DomainError("The classification continuation is incomplete or stale.")
                 response = ChatMessage(role="assistant", tool_calls=pending)
             else:
-                response = self.provider.complete(messages, skill_session.definitions())
+                response = self.provider.complete(
+                    messages,
+                    skill_session.definitions(),
+                    # Force discovery only. Some constrained decoders impose property
+                    # order and lose optional action arguments emitted out of that order.
+                    # Typed validation and the repair loop still guard actual actions.
+                    require_tool=not skill_session.active,
+                )
             if response.role != "assistant" or len(response.tool_calls) > 1:
                 raise DomainError(
                     (
@@ -217,6 +225,10 @@ class Assistants:
             if not response.tool_calls:
                 if routing_error:
                     raise routing_error
+                if reply and used and used[-1] in {"inspect_workspace", "list_videos"}:
+                    # A read tool can fulfill a listing request. Retain its factual reply,
+                    # rather than asking for a mutation or trusting an unexecuted action claim.
+                    break
                 if skill_session.needs_action:
                     if repairs >= 2:
                         raise DomainError(
@@ -255,14 +267,25 @@ class Assistants:
                     f"Could not repair {repair_tool}. No replacement action was executed."
                 )
             if call.name == "load_skill":
+                loaded = False
                 try:
                     content = skill_session.load(call)
                     routing_error = None
+                    loaded = True
                 except DomainError as error:
                     content = json.dumps({"error": str(error)})
                 output = ChatMessage(role="tool", tool_call_id=call.id, content=content)
                 current.append(output)
                 messages.append(output)
+                if loaded and skill_session.needs_action:
+                    # Re-anchor the existing task after skill instructions and history.
+                    reminder = ChatMessage(
+                        role="user",
+                        content="Continue with my current request: " + request.message,
+                        metadata={"internal": True},
+                    )
+                    current.append(reminder)
+                    messages.append(reminder)
                 continue
             if call.name not in registry.tools:
                 routing_error = DomainError(
@@ -317,7 +340,7 @@ class Assistants:
                             "guidance": (
                                 "Resolve the annotation model using exact names and IDs from "
                                 "current workspace data. When the user did not name a model, "
-                                "omit model_name and model_id to use context.model_id. "
+                                "omit model_name and model_id to use the selection or default. "
                                 "When the user named a model, preserve that choice; do not "
                                 "substitute the selected model or the tracker. If that model "
                                 "is unavailable or ambiguous, call clarify_request. Otherwise "
@@ -398,9 +421,9 @@ class Assistants:
                     d.annotation_id: d.verdict for d in session.list(ReviewDecision, project.id)
                 }
                 pending = [
-                    a
-                    for a in assets
-                    if a.annotation_id and decisions.get(a.annotation_id, "pending") == "pending"
+                    item
+                    for item in saved_reviews(session, project.id)
+                    if decisions.get(item.annotation_id, "pending") == "pending"
                 ]
                 result["pending_reviews"] = {
                     "all": len(pending),

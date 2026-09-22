@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import Field, JsonValue
 
 from monailabel.core.errors import DomainError
-from monailabel.core.evaluation import EvaluationSet, ModelSplit
+from monailabel.core.evaluation import EvaluationSet
 from monailabel.core.models import (
     AssistantReply,
     Contract,
@@ -36,6 +36,13 @@ class LearnerArgs(Contract):
         description="Omit for the recipe default: fine_tune for VISTA3D, scratch for U-Net.",
     )
     start_now: bool = False
+    validation_percentage: int | None = Field(
+        default=None,
+        ge=0,
+        le=50,
+        description="Only for start_now. Set 20 for an explicit 80:20 train/evaluation request. "
+        "Omit to train accepted samples without creating an evaluation split.",
+    )
 
 
 class NextCasesArgs(SelectionRequest):
@@ -43,35 +50,6 @@ class NextCasesArgs(SelectionRequest):
 
 
 class TrainArgs(Contract):
-    evaluation_set_name: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=120,
-        description="Exact fixed evaluation set name from workspace data. Prefer this to its ID.",
-    )
-    sample_filter: TrainingSampleFilter = Field(
-        default_factory=TrainingSampleFilter,
-        description="Optional training-only source/image selection and sample limit. "
-        "Discover source IDs with inspect_workspace(training_sources). Evaluation is unchanged.",
-    )
-    validation_percentage: int | None = Field(
-        default=None,
-        ge=1,
-        le=50,
-        description="This model's validation percentage (80:20 means 20). "
-        "Omit to retain its evaluation choice. Percentage sets belong to this model and grow "
-        "as annotations are accepted.",
-    )
-    evaluation_set_id: str | None = Field(
-        default=None,
-        description="Named evaluation set to use. References are prepared automatically.",
-    )
-    evaluation_version_id: str | None = None
-    config: dict[str, JsonValue] = Field(
-        default_factory=dict,
-        description="Explicit user-requested settings for this run only; "
-        "omitted values use recommended defaults.",
-    )
     learner_id: str | None = None
     learner_name: str | None = Field(
         default=None,
@@ -93,6 +71,38 @@ class TrainArgs(Contract):
         default=None,
         description="The id of the checkpoint to continue/fine-tune, NOT its parent_id field. "
         "Omit to use the selected model from context.",
+    )
+
+    evaluation_set_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=120,
+        description="Exact fixed evaluation set name from workspace data. Prefer this to its ID.",
+    )
+    sample_filter: TrainingSampleFilter = Field(
+        default_factory=TrainingSampleFilter,
+        description="Optional training-only source/image selection and sample limit. "
+        "Discover source IDs with inspect_workspace(training_sources). Evaluation is unchanged.",
+    )
+    validation_percentage: int | None = Field(
+        default=None,
+        ge=0,
+        le=50,
+        description="This model's validation percentage (80:20 means 20). "
+        "Use 0 to train without evaluation. Omit to retain a saved evaluation choice, "
+        "or train without evaluation when none is configured. "
+        "Percentage sets belong to this model and grow "
+        "as annotations are accepted.",
+    )
+    evaluation_set_id: str | None = Field(
+        default=None,
+        description="Named evaluation set to use. References are prepared automatically.",
+    )
+    evaluation_version_id: str | None = None
+    config: dict[str, JsonValue] = Field(
+        default_factory=dict,
+        description="Explicit user-requested settings for this run only; "
+        "omitted values use recommended defaults.",
     )
 
 
@@ -142,7 +152,7 @@ def register(registry: ToolRegistry) -> None:
         "create_learner",
         (
             "Create a separate trainable segmentation model. U-Net uses "
-            "monai-unet from scratch for 2D RGB pathology or 3D radiology. "
+            "monai-unet from scratch for 2D RGB pathology/video or 3D radiology. "
             "VISTA3D fine_tune uses the read-only CT base; never overwrite it. "
             "VISTA3D targets are optional: omit them to inherit the base vocabulary "
             "and choose organs at training time. U-Net requires targets. Set start_now "
@@ -156,7 +166,9 @@ def register(registry: ToolRegistry) -> None:
         "start_training",
         (
             "Train the named (learner_name) or selected project learner, "
-            "freezing a NEW immutable snapshot "
+            "using validation_percentage=20 for an 80:20 train/evaluation request. "
+            "A requested percentage creates this model's split; "
+            "no existing evaluation set is needed. Freeze a NEW immutable snapshot "
             "of all currently eligible accepted cases, including newly reviewed data. "
             "Infers scratch vs fine-tune from learner "
             "initialization. To continue a trained version, set mode=continue and "
@@ -172,7 +184,8 @@ def register(registry: ToolRegistry) -> None:
     )
     registry.add(
         "create_snapshot",
-        "Create an immutable snapshot of fully reviewed cases and separate held-out source groups.",
+        "Freeze accepted image, region or video-frame coverage "
+        "and separate held-out source groups.",
         Empty,
         lambda a: snapshot(ctx),
         action="manage",
@@ -180,7 +193,9 @@ def register(registry: ToolRegistry) -> None:
     registry.add(
         "evaluate_candidate",
         (
-            "Evaluate a trained candidate against a baseline on the held-out "
+            "Start a NEW evaluation job only when requested. To show existing results, use "
+            "inspect_workspace(collection=evaluations). Evaluate a trained candidate "
+            "against a baseline on the held-out "
             "snapshot or fixed evaluation set; does not promote it. candidate_name and "
             "baseline_name resolve exact model names; a project model name selects its "
             "latest active trained version."
@@ -211,7 +226,13 @@ def register(registry: ToolRegistry) -> None:
 def create_learner(ctx: ToolContext, args: LearnerArgs) -> AssistantReply:
     service, project = ctx.service, ctx.project
     if not args.targets and args.recipe != "vista3d":
-        raise DomainError("Choose at least one target for a U-Net training setup.")
+        foreground = [label for label in project.labels if label.id]
+        if len(foreground) != 1:
+            raise DomainError(
+                "Choose at least one target for a U-Net training setup.",
+                code="invalid_tool_arguments",
+            )
+        args = args.model_copy(update={"targets": [foreground[0].name]})
     parent = args.parent_model_id
     initialization = args.initialization or ("fine_tune" if args.recipe == "vista3d" else "scratch")
     if initialization == "fine_tune" and not parent and args.recipe == "vista3d":
@@ -265,8 +286,8 @@ def create_learner(ctx: ToolContext, args: LearnerArgs) -> AssistantReply:
                 else "Fine-tuning will copy its initial model. "
             )
             + (
-                "Review training and held-out validation cases, then ask to "
-                "train this model. Annotation defaults stay unchanged."
+                "Accept annotation reviews, then ask to train this model. "
+                "You can request a train/evaluation ratio or a fixed evaluation set."
             ),
             data=data,
         )
@@ -277,7 +298,7 @@ def create_learner(ctx: ToolContext, args: LearnerArgs) -> AssistantReply:
             StartTraining(
                 mode=TrainingMode.FINE_TUNE if parent else TrainingMode.SCRATCH,
                 parent_model_id=parent,
-                validation_percentage=20,
+                validation_percentage=args.validation_percentage,
             ),
         )
     except DomainError as error:
@@ -401,21 +422,6 @@ def train(ctx: ToolContext, args: TrainArgs) -> AssistantReply:
             if missing:
                 raise DomainError("Annotate these targets before training: " + ", ".join(missing))
             label_ids = [0] + [labels[name.casefold()] for name in args.targets]
-        saved_split = next(
-            (
-                s
-                for s in ctx.service.store.list(ModelSplit, ctx.project.id)
-                if s.learner_id == learner.id
-            ),
-            None,
-        )
-        validation_percentage = args.validation_percentage or (
-            None
-            if learner.evaluation_set_id
-            else saved_split.validation_percentage
-            if saved_split
-            else 20
-        )
         job = ctx.service.learning.start(
             ctx.project.id,
             learner.id,
@@ -426,7 +432,7 @@ def train(ctx: ToolContext, args: TrainArgs) -> AssistantReply:
                 config=args.config,
                 evaluation_set_id=set_id,
                 evaluation_version_id=args.evaluation_version_id,
-                validation_percentage=validation_percentage
+                validation_percentage=args.validation_percentage
                 if not (set_id or args.evaluation_version_id)
                 else None,
                 parent_model_id=(parent_id or learner.initial_model_id)

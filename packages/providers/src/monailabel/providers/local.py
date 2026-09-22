@@ -8,7 +8,7 @@ from pydantic import JsonValue
 
 from monailabel.core.errors import DomainError
 from monailabel.core.models import Label, ModelRecord, TrainingMode
-from monailabel.core.ports import Image, Mask, Prediction, Progress
+from monailabel.core.ports import Image, Prediction, Progress, TrainingMask
 
 
 class ThresholdSegmenter:
@@ -36,7 +36,7 @@ class GaussianTrainer:
 
     def train(
         self,
-        samples: Iterable[tuple[Image, Mask]],
+        samples: Iterable[tuple[Image, TrainingMask]],
         label_ids: list[int],
         mode: TrainingMode,
         parent_state: dict[str, JsonValue] | None,

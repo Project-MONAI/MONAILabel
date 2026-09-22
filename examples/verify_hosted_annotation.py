@@ -123,7 +123,7 @@ def main() -> None:
     parser.add_argument("--index", type=int, required=True)
     parser.add_argument("--window", nargs=2, type=float, default=[-160, 240])
     parser.add_argument(
-        "--config", type=Path, default=Path(__file__).parent / "models/nvidia-sol.json"
+        "--config", type=Path, default=Path(__file__).parent / "models/nvidia-astra.json"
     )
     parser.add_argument("--model-id", help="Reuse an already registered model")
     parser.add_argument(

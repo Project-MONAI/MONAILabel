@@ -2,6 +2,7 @@
 
 import hashlib
 import math
+from typing import Protocol
 
 from monailabel.core.errors import Conflict, DomainError
 from monailabel.core.evaluation import (
@@ -30,7 +31,15 @@ from monailabel.core.video import VideoAsset
 from monailabel.server.storage import Session, Store
 
 
-def components(assets: list[Asset]) -> dict[str, list[Asset]]:
+class GroupedCase(Protocol):
+    @property
+    def group_id(self) -> str: ...
+
+    @property
+    def image_key(self) -> str: ...
+
+
+def components[T: GroupedCase](assets: list[T]) -> dict[str, list[T]]:
     """Keep declared patient groups and exact decoded-image duplicates together."""
     parents = {a.group_id: a.group_id for a in assets}
 
@@ -45,7 +54,7 @@ def components(assets: list[Asset]) -> dict[str, list[Asset]]:
         other = images.setdefault(asset.image_key, asset.group_id)
         a, b = root(asset.group_id), root(other)
         parents[max(a, b)] = min(a, b)
-    result: dict[str, list[Asset]] = {}
+    result: dict[str, list[T]] = {}
     for asset in assets:
         result.setdefault(root(asset.group_id), []).append(asset)
     return result
@@ -384,6 +393,7 @@ class EvaluationSets:
                 if (
                     decision is None
                     or decision.verdict != "accepted"
+                    or annotation.regions is not None
                     or not required <= set(annotation.covered_labels)
                 ):
                     raise DomainError(f"Accept complete reference labels for {asset.name} first.")

@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1100" viewBox="0 0 1400 1100" role="img" aria-labelledby="title description">
+  <title id="title">MONAI Label: describe the task, inspect the result, improve a model</title>
+  <desc id="description">A person types or speaks to MONAI Label in a tablet browser. The workspace connects radiology, pathology and endoscopy viewers with an assistant. On the server, Nemotron understands the request and coordinates validated tools. GPT Astra or another vision model creates initial annotations, SAM2 tracks video objects, and local models perform segmentation and learning. Users inspect, correct, submit and review annotations. Remote clients need only a browser.</desc>
+  <defs>
+    <linearGradient id="background" x2="0" y2="1">
+      <stop stop-color="#f1f6fc"/>
+      <stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <linearGradient id="screen" x2="1" y2="1">
+      <stop stop-color="#f5f8fd"/>
+      <stop offset="1" stop-color="#e6eef9"/>
+    </linearGradient>
+    <linearGradient id="tissue" x2="1" y2="1">
+      <stop stop-color="#fbe5ec"/>
+      <stop offset="1" stop-color="#e9bfd8"/>
+    </linearGradient>
+    <radialGradient id="endoscopy">
+      <stop stop-color="#522034"/>
+      <stop offset="0.55" stop-color="#b96472"/>
+      <stop offset="1" stop-color="#ef9a93"/>
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#102744" flood-opacity="0.10"/>
+    </filter>
+    <g id="nucleus">
+      <ellipse rx="7" ry="11" fill="#88548e" stroke="#572d72" stroke-width="2"/>
+    </g>
+    <g id="microphone" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <rect x="-4" y="-10" width="8" height="15" rx="4"/>
+      <path d="M-8 0v2a8 8 0 0 0 16 0V0M0 10v5m-5 0h10"/>
+    </g>
+  </defs>
+  <style>
+    text { font-family: Arial, sans-serif; fill: #17314d; }
+    .title { font-size: 34px; font-weight: 750; }
+    .heading { font-size: 24px; font-weight: 700; }
+    .label { font-size: 21px; font-weight: 650; }
+    .body { font-size: 19px; }
+    .small { font-size: 17px; }
+    .muted { fill: #53677e; }
+    .white { fill: #fff; }
+  </style>
+  <rect width="1400" height="1100" rx="24" fill="url(#background)"/>
+  <text x="44" y="57" class="title">MONAI Label</text>
+  <text x="44" y="91" class="label muted">Describe the task. Inspect the result. Improve your model.</text>
+
+  <!-- The user and a spoken or typed request. -->
+  <text x="44" y="153" class="heading">You</text>
+  <text x="44" y="182" class="body muted">A browser on your computer</text>
+  <text x="44" y="210" class="body muted">or tablet, such as an iPad</text>
+  <g transform="translate(32 64) scale(0.8)">
+  <ellipse cx="161" cy="361" rx="85" ry="12" fill="#d8e4f2"/>
+  <path d="M92 350c3-57 24-84 67-84s66 30 69 84" fill="#447bc1"/>
+  <path d="M142 263v21q18 18 36 0v-21" fill="#c98665"/>
+  <ellipse cx="160" cy="247" rx="35" ry="43" fill="#e9b28c"/>
+  <path d="M125 248c-13-37 14-58 39-56 33 1 45 23 32 59l-7-27c-18 8-40 0-49-4l-8 29" fill="#293c57"/>
+  <path d="M145 249h3m25 0h3" stroke="#293c57" stroke-width="4" stroke-linecap="round"/>
+  <path d="M149 264q11 8 22-1" fill="none" stroke="#8b4d40" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M207 317l42 15 40-21" fill="none" stroke="#e9b28c" stroke-width="17" stroke-linecap="round"/>
+  <rect x="277" y="281" width="37" height="52" rx="5" fill="#253b58" transform="rotate(12 277 281)"/>
+  <rect x="282" y="287" width="27" height="38" rx="2" fill="#b9d9ef" transform="rotate(12 282 287)"/>
+
+  </g>
+  <path d="M60 390h238a16 16 0 0 1 16 16v112a16 16 0 0 1-16 16H60a16 16 0 0 1-16-16V406a16 16 0 0 1 16-16Zm31 0 19-21 22 21" fill="#e0ecff"/>
+  <text x="64" y="424" class="label">“Segment the tool</text>
+  <text x="64" y="456" class="label">and track it for</text>
+  <text x="64" y="488" class="label">16 frames.”</text>
+  <use href="#microphone" x="62" y="568" color="#306ac0"/>
+  <text x="85" y="573" class="body">Type or use voice*</text>
+  <text x="44" y="606" class="body muted">No client installation</text>
+
+  <!-- Tablet: a workspace, three recognizable image types, and chat. -->
+  <g filter="url(#shadow)">
+    <rect x="353" y="132" width="1003" height="466" rx="29" fill="#233951"/>
+    <rect x="372" y="151" width="965" height="428" rx="12" fill="url(#screen)"/>
+  </g>
+  <rect x="387" y="166" width="935" height="33" rx="8" fill="#fff"/>
+  <circle cx="403" cy="182" r="4" fill="#bac8d8"/>
+  <circle cx="417" cy="182" r="4" fill="#bac8d8"/>
+  <circle cx="431" cy="182" r="4" fill="#bac8d8"/>
+  <text x="660" y="188" class="small muted">Your MONAI Label server</text>
+  <text x="396" y="233" class="heading">One workspace</text>
+  <text x="396" y="263" class="small muted">Projects · Datasets · Models · Reviews · Learning</text>
+  <path d="M982 216v339" stroke="#ced9e7"/>
+
+  <rect x="392" y="285" width="180" height="178" rx="10" fill="#fff"/>
+  <rect x="403" y="296" width="158" height="122" rx="8" fill="#172632"/>
+  <ellipse cx="482" cy="357" rx="65" ry="48" fill="#67717a"/>
+  <ellipse cx="482" cy="357" rx="57" ry="42" fill="#aeb5b9"/>
+  <ellipse cx="460" cy="354" rx="21" ry="25" fill="#788389"/>
+  <ellipse cx="500" cy="354" rx="23" ry="27" fill="#788389"/>
+  <circle cx="482" cy="382" r="9" fill="#e2e6e8"/>
+  <path d="M520 333c22 7 22 35 0 42l-9-17Z" fill="#59d4a0" fill-opacity="0.7" stroke="#a5fbd2" stroke-width="2"/>
+  <text x="416" y="447" class="label">Radiology</text>
+
+  <rect x="587" y="285" width="180" height="178" rx="10" fill="#fff"/>
+  <rect x="598" y="296" width="158" height="122" rx="8" fill="url(#tissue)"/>
+  <g>
+    <use href="#nucleus" transform="translate(620 318) rotate(25)"/>
+    <use href="#nucleus" transform="translate(650 332) rotate(-35)"/>
+    <use href="#nucleus" transform="translate(692 321) rotate(60)"/>
+    <use href="#nucleus" transform="translate(734 335) rotate(-15)"/>
+    <use href="#nucleus" transform="translate(618 373) rotate(-35)"/>
+    <use href="#nucleus" transform="translate(669 367) rotate(10)"/>
+    <use href="#nucleus" transform="translate(709 372) rotate(45)"/>
+    <use href="#nucleus" transform="translate(687 399) rotate(-25)"/>
+    <use href="#nucleus" transform="translate(740 401) rotate(-40)"/>
+  </g>
+  <g fill="none" stroke="#2f9b74" stroke-width="2">
+    <ellipse cx="650" cy="332" rx="13" ry="15" transform="rotate(-35 650 332)"/>
+    <ellipse cx="669" cy="367" rx="12" ry="17" transform="rotate(10 669 367)"/>
+    <ellipse cx="709" cy="372" rx="13" ry="15" transform="rotate(45 709 372)"/>
+  </g>
+  <text x="608" y="447" class="label">Pathology</text>
+
+  <rect x="782" y="285" width="180" height="178" rx="10" fill="#fff"/>
+  <rect x="793" y="296" width="158" height="122" rx="8" fill="url(#endoscopy)"/>
+  <path d="M805 412l54-44 37-43 7 4-35 49-53 40" fill="#e1dad0" stroke="#a4a8a9" stroke-width="2"/>
+  <path d="M805 412l54-44 37-43 7 4-35 49-53 40Z" fill="#7ee3b4" fill-opacity="0.3" stroke="#6bf5ac" stroke-width="2.5"/>
+  <g fill="#b8ffd6"><circle cx="805" cy="412" r="3"/><circle cx="859" cy="368" r="3"/><circle cx="896" cy="325" r="3"/><circle cx="903" cy="329" r="3"/><circle cx="868" cy="378" r="3"/></g>
+  <text x="798" y="447" class="label">Endoscopy</text>
+  <text x="397" y="497" class="body">OHIF · 3D Slicer · QuPath · CVAT</text>
+  <rect x="392" y="515" width="570" height="39" rx="8" fill="#d8eee6"/>
+  <text x="411" y="541" class="body">Inspect · Correct · Submit · Review</text>
+
+  <text x="1001" y="233" class="label">MONAI Label</text>
+  <text x="1001" y="260" class="label">Assistant</text>
+  <rect x="1000" y="282" width="319" height="128" rx="12" fill="#fff"/>
+  <text x="1016" y="312" class="body">I’ll use Astra to segment</text>
+  <text x="1016" y="342" class="body">the tool and SAM2 to track</text>
+  <text x="1016" y="372" class="body">it across 16 frames.</text>
+  <rect x="1000" y="427" width="319" height="76" rx="12" fill="#deede7"/>
+  <text x="1016" y="457" class="body">The result is ready</text>
+  <text x="1016" y="485" class="body">to inspect in CVAT.</text>
+  <rect x="1000" y="518" width="319" height="36" rx="8" fill="#fff" stroke="#ccd9e7"/>
+  <text x="1013" y="542" class="small muted">Ask the assistant…</text>
+  <use href="#microphone" x="1297" y="534" color="#59738f" transform="translate(259 107) scale(0.8)"/>
+
+  <!-- A physical server cabinet and its capabilities, not a process flow. -->
+  <path d="M853 599v39q0 13-13 13H716q-13 0-13 13v15" fill="none" stroke="#afc4dc" stroke-width="4"/>
+  <rect x="44" y="681" width="1312" height="329" rx="20" fill="#edf2f8" stroke="#c9d6e7" stroke-width="2"/>
+  <rect x="67" y="700" width="85" height="283" rx="10" fill="#344d6b"/>
+  <g fill="#516d8c" stroke="#7189a5">
+    <rect x="79" y="721" width="61" height="51" rx="5"/>
+    <rect x="79" y="785" width="61" height="51" rx="5"/>
+    <rect x="79" y="849" width="61" height="51" rx="5"/>
+  </g>
+  <g fill="#81dab5"><circle cx="89" cy="757" r="3"/><circle cx="89" cy="821" r="3"/><circle cx="89" cy="885" r="3"/></g>
+  <path d="M84 945h51m-51 8h51m-51 8h51" stroke="#7991ab" stroke-width="2"/>
+  <text x="175" y="722" class="heading">Your server and connected models do the work</text>
+  <text x="175" y="750" class="body muted">The client displays the workspace; computation stays on the server or model provider.</text>
+
+  <rect x="174" y="775" width="312" height="158" rx="12" fill="#d4e6fc"/>
+  <text x="195" y="807" class="heading">Nemotron</text>
+  <text x="195" y="838" class="body">Understands your request</text>
+  <text x="195" y="867" class="body">and viewer context.</text>
+  <text x="195" y="906" class="body">Coordinates validated tools.</text>
+
+  <rect x="502" y="775" width="275" height="158" rx="12" fill="#fff"/>
+  <text x="520" y="807" class="label">Annotate</text>
+  <text x="520" y="838" class="body">GPT Astra · Claude</text>
+  <text x="520" y="867" class="body">Gemini · Local models</text>
+  <text x="520" y="906" class="small muted">Image understanding + masks</text>
+
+  <rect x="793" y="775" width="227" height="158" rx="12" fill="#fff"/>
+  <text x="811" y="807" class="label">Track</text>
+  <text x="811" y="838" class="body">SAM2</text>
+  <text x="811" y="877" class="small muted">Carry a box or mask</text>
+  <text x="811" y="904" class="small muted">across video frames</text>
+
+  <rect x="1036" y="775" width="296" height="158" rx="12" fill="#fff"/>
+  <text x="1054" y="807" class="label">Learn</text>
+  <text x="1054" y="838" class="body">VISTA3D · U-Net</text>
+  <text x="1054" y="877" class="small muted">Train from accepted labels.</text>
+  <text x="1054" y="904" class="small muted">Keep the original weights.</text>
+  <text x="175" y="973" class="body muted">Shared project data · Permissions · Annotation history · Background jobs</text>
+  <text x="44" y="1047" class="small muted">System illustration, not a screenshot. Local models and remote Slicer/QuPath desktops run on the server.</text>
+  <text x="44" y="1076" class="small muted">*Voice requires a supported browser, microphone permission and HTTPS for remote access; availability varies by viewer.</text>
+</svg>

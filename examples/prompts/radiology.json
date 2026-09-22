@@ -33,7 +33,7 @@
       "arguments": {
         "form": "credential"
       },
-      "action": "Optional: configure the server environment reference NV_INFERENCE_API_KEY to enable Sol. Never paste a secret into chat. VISTA3D needs no hosted key.",
+      "action": "Optional: configure the server environment reference NV_INFERENCE_API_KEY to enable Astra. Never paste a secret into chat. VISTA3D needs no hosted key.",
       "stage": "configure"
     },
     {
@@ -44,7 +44,7 @@
       "arguments": {
         "form": "model"
       },
-      "action": "Inspect the ready model presets or register a deployed model. Keep VISTA3D base read-only; use Sol as the hosted alternative.",
+      "action": "Inspect the ready model presets or register a deployed model. Keep VISTA3D base read-only; use Astra as the hosted alternative.",
       "stage": "configure"
     },
     {
@@ -85,8 +85,37 @@
       "stage": "annotate"
     },
     {
+      "id": "clear_slice",
+      "prompt": "Clear the spleen annotation on the current slice.",
+      "context": "ohif",
+      "tool": "clear_segments",
+      "arguments": {
+        "targets": [
+          "spleen"
+        ],
+        "scope": "current_slice"
+      },
+      "action": "Clear only spleen on the displayed source slice; preserve every other slice and structure. Undo remains available.",
+      "stage": "annotate"
+    },
+    {
+      "id": "repair_slice",
+      "prompt": "Annotate the spleen on the current slice using GPT Astra.",
+      "context": "ohif",
+      "tool": "annotate",
+      "arguments": {
+        "targets": [
+          "spleen"
+        ],
+        "scope": "current_slice",
+        "model_id": "astra"
+      },
+      "action": "Inspect and apply the new slice proposal. Other slices retain their VISTA3D segmentation.",
+      "stage": "annotate"
+    },
+    {
       "id": "slice",
-      "prompt": "Annotate liver on this slice using Sol",
+      "prompt": "Annotate liver on this slice using Astra",
       "context": "slicer",
       "tool": "annotate",
       "arguments": {
@@ -94,9 +123,9 @@
           "liver"
         ],
         "scope": "current_slice",
-        "model_id": "sol"
+        "model_id": "astra"
       },
-      "action": "Optional multiclass branch: configure Sol first. The new label is added without removing spleen. Liver training requires complete reviewed liver masks.",
+      "action": "Optional multiclass branch: configure Astra first. The new label is added without removing spleen. Liver training requires complete reviewed liver masks.",
       "stage": "optional"
     },
     {
@@ -189,7 +218,7 @@
     },
     {
       "id": "unet_setup",
-      "prompt": "Create a U-Net segmentation model named Spleen U-Net for spleen from scratch; do not start training yet",
+      "prompt": "Create a U-Net model named \"Spleen U-Net\" for spleen.",
       "context": "web",
       "tool": "create_learner",
       "arguments": {

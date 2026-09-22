@@ -146,8 +146,11 @@ def test_setup_rejects_corrupted_node_download_before_extraction(tmp_path):
     assert not (tmp_path / "staging").exists()
 
 
-def test_setup_reuses_cached_node_and_exposes_it_to_uv_without_shell_profile_edits(tmp_path):
-    cached = tmp_path / "workspace/.cache/tools/node/node-v22.23.2-linux-x64/bin"
+@pytest.mark.parametrize("architecture", ["x64", "arm64"])
+def test_setup_reuses_cached_node_and_exposes_it_to_uv_without_shell_profile_edits(
+    tmp_path, architecture
+):
+    cached = tmp_path / f"workspace/.cache/tools/node/node-v22.23.2-linux-{architecture}/bin"
     cached.mkdir(parents=True)
     for name in ("node", "npm", "npx", "corepack"):
         executable = cached / name
@@ -161,7 +164,8 @@ def test_setup_reuses_cached_node_and_exposes_it_to_uv_without_shell_profile_edi
     (old_bin / "node").chmod(0o755)
     result = run_setup(
         tmp_path,
-        """
+        f"SETUP_NODE_ARCH={architecture}\n"
+        + """
 export PATH="$SETUP_ENV/bin:$SETUP_TEST_ROOT/old-node/bin:$PATH"
 node --version || true
 ensure_node

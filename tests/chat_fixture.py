@@ -16,7 +16,7 @@ class ScriptedChat:
         self.queue = []
         self.calls = []
 
-    def complete(self, messages, tools):
+    def complete(self, messages, tools, *, require_tool=False):
         self.calls.append((list(messages), list(tools)))
         if self.queue:
             return self.queue.pop(0)

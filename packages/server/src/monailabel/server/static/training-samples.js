@@ -1,8 +1,9 @@
+import { reviewItems } from "./review-items.js";
 import { paginationButton } from "./icons.js";
 import { escapeHTML as esc } from "./ui.js";
 
 export function trainingSamples() {
-  return `<details data-sample-filters><summary>Filter samples</summary><p class="muted" data-sample-filter-summary>All reviewed and accepted samples.</p><label>Annotation status<select name="training_labels"><option value="reviewed">Reviewed and accepted</option><option value="predictions">Include unreviewed predictions (experimental)</option></select></label><div id="training-note" hidden><p class="muted">Predictions may contain mistakes. Evaluation still requires accepted annotations.</p><label>Training note (optional)<input name="training_note" maxlength="1000"></label></div><label>Images<select name="training_scope"><option value="all">All matching images</option><option value="selected">Selected images</option></select></label><div data-training-selection hidden><label>Find images<input type="search" data-training-search placeholder="Search image names"></label><div class="training-sample-picker" data-training-images></div></div><label>Sample limit<input name="training_limit" type="number" min="1" max="10000" step="1" placeholder="All matching images"></label><small>Filters apply to training only. Evaluation images stay separate; limits keep related images together.</small><div hidden data-training-values></div></details>`;
+  return `<details data-sample-filters><summary>Filter samples</summary><p class="muted" data-sample-filter-summary>All reviewed and accepted samples.</p><label>Annotation status<select name="training_labels"><option value="reviewed">Reviewed and accepted</option><option value="predictions">Include unreviewed predictions (experimental)</option></select></label><div id="training-note" hidden><p class="muted">Predictions may contain mistakes. Evaluation still requires accepted annotations.</p><label>Training note (optional)<input name="training_note" maxlength="1000"></label></div><label>Samples<select name="training_scope"><option value="all">All matching samples</option><option value="selected">Selected samples</option></select></label><div data-training-selection hidden><label>Find samples<input type="search" data-training-search placeholder="Search sample names"></label><div class="training-sample-picker" data-training-images></div></div><label>Sample limit<input name="training_limit" type="number" min="1" max="10000" step="1" placeholder="All matching samples"></label><small>Filters apply to training only. Evaluation samples stay separate; limits keep related samples together.</small><div hidden data-training-values></div></details>`;
 }
 
 export function bindTrainingSamples(form, { state, learner, latestDecision }) {
@@ -10,7 +11,14 @@ export function bindTrainingSamples(form, { state, learner, latestDecision }) {
   const record = state.modelSplits.find((s) => s.learner_id === learner.id);
   const selected = new Set(state.selectedFiles);
   const imageList = host.querySelector("[data-training-images]");
-  const annotated = state.assets.filter((a) => a.annotation_id);
+  const annotated = [...state.assets, ...(state.videos || [])].filter(
+    (a) => a.annotation_id,
+  );
+  const accepted = new Set(
+    reviewItems(state)
+      .filter((item) => latestDecision(item)?.verdict === "accepted")
+      .map((item) => item.source_id || item.id),
+  );
   const pageSize = 10;
   let page = 0;
   let visible = [];
@@ -20,9 +28,13 @@ export function bindTrainingSamples(form, { state, learner, latestDecision }) {
       return (
         asset.split !== "validation" &&
         !record?.validation_groups.includes(asset.group_id) &&
-        !record?.validation_image_keys.includes(asset.image_key) &&
-        (verdict === "accepted" ||
-          (form.elements.training_labels.value === "predictions" &&
+        !record?.validation_image_keys.includes(
+          asset.image_key || asset.source_key,
+        ) &&
+        (accepted.has(asset.id) ||
+          (asset.kind !== "video" &&
+            !(state.reviewUnits || []).some((u) => u.asset_id === asset.id) &&
+            form.elements.training_labels.value === "predictions" &&
             verdict === "pending"))
       );
     });
@@ -47,8 +59,8 @@ export function bindTrainingSamples(form, { state, learner, latestDecision }) {
       selected.has(asset.id),
     ).length;
     imageList.innerHTML = `<div class="training-selection-heading"><span role="status">${chosen.length} selected</span><button type="button" class="model-text-action" data-training-clear ${chosen.length ? "" : "disabled"}>Clear selection</button></div>
-      <div class="table-wrap"><table class="training-image-table" aria-label="Training images"><thead><tr><th scope="col" class="check-cell"><input type="checkbox" data-training-all aria-label="Select all images on this page" ${visible.length ? "" : "disabled"} ${visible.length && pageSelected === visible.length ? "checked" : ""}></th><th scope="col">Image</th><th scope="col">Status</th></tr></thead><tbody>${visible.map((asset) => `<tr class="${selected.has(asset.id) ? "row-selected" : ""}"><td class="check-cell"><input type="checkbox" data-training-image="${esc(asset.id)}" aria-label="${esc(asset.name)}" ${selected.has(asset.id) ? "checked" : ""}></td><td class="sample-cell">${esc(asset.name)}</td><td>${latestDecision(asset)?.verdict === "accepted" ? "Accepted" : "Unreviewed"}</td></tr>`).join("") || '<tr><td colspan="3">No matching images</td></tr>'}</tbody></table></div>
-      <div class="pagination"><span>${matches.length ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, matches.length)} of ${matches.length}` : "0 images"}</span><div>${paginationButton("left", `data-training-page="-1" ${page === 0 ? "disabled" : ""}`)}<span>Page ${page + 1} of ${pages}</span>${paginationButton("right", `data-training-page="1" ${page + 1 === pages ? "disabled" : ""}`)}</div></div>`;
+      <div class="table-wrap"><table class="training-image-table" aria-label="Training samples"><thead><tr><th scope="col" class="check-cell"><input type="checkbox" data-training-all aria-label="Select all samples on this page" ${visible.length ? "" : "disabled"} ${visible.length && pageSelected === visible.length ? "checked" : ""}></th><th scope="col">Image</th><th scope="col">Status</th></tr></thead><tbody>${visible.map((asset) => `<tr class="${selected.has(asset.id) ? "row-selected" : ""}"><td class="check-cell"><input type="checkbox" data-training-image="${esc(asset.id)}" aria-label="${esc(asset.name)}" ${selected.has(asset.id) ? "checked" : ""}></td><td class="sample-cell">${esc(asset.name)}</td><td>${accepted.has(asset.id) ? "Accepted coverage" : "Unreviewed"}</td></tr>`).join("") || '<tr><td colspan="3">No matching samples</td></tr>'}</tbody></table></div>
+      <div class="pagination"><span>${matches.length ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, matches.length)} of ${matches.length}` : "0 samples"}</span><div>${paginationButton("left", `data-training-page="-1" ${page === 0 ? "disabled" : ""}`)}<span>Page ${page + 1} of ${pages}</span>${paginationButton("right", `data-training-page="1" ${page + 1 === pages ? "disabled" : ""}`)}</div></div>`;
     imageList.querySelector("[data-training-all]").indeterminate =
       pageSelected > 0 && pageSelected < visible.length;
     // Only eligible selections enter the request, including choices on other pages.
@@ -63,9 +75,9 @@ export function bindTrainingSamples(form, { state, learner, latestDecision }) {
     const summary = [
       predictions ? "Includes unreviewed predictions" : "Reviewed and accepted",
     ];
-    if (picking) summary.push(`${chosen.length} selected images`);
+    if (picking) summary.push(`${chosen.length} selected samples`);
     if (form.elements.training_limit.value)
-      summary.push(`up to ${form.elements.training_limit.value} images`);
+      summary.push(`up to ${form.elements.training_limit.value} samples`);
     host.querySelector("[data-sample-filter-summary]").textContent =
       summary.join(" · ");
   };

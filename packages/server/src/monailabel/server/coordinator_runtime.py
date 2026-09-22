@@ -65,10 +65,16 @@ class CoordinatorRuntime:
             "message": self.detail,
         }
 
-    def complete(self, messages: list[ChatMessage], tools: list[ToolDefinition]) -> ChatMessage:
+    def complete(
+        self,
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition],
+        *,
+        require_tool: bool = False,
+    ) -> ChatMessage:
         if self.config.provider == "local" and self.state != "ready":
             raise DomainError(self.detail, code="coordinator_unavailable", status=503)
-        return self.http.complete(messages, tools)
+        return self.http.complete(messages, tools, require_tool=require_tool)
 
     def local_key(self) -> str:
         return (self.cache / "runtime.key").read_text().strip()

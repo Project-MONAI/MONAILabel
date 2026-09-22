@@ -87,7 +87,7 @@ export async function importDatasetTemplate(ui) {
         `<p>${esc(template.description)}</p><p><a href="${esc(template.source_url)}" target="_blank" rel="noopener">Dataset website ↗</a> · ${esc(template.license)}</p>` +
         `<p class="muted">${template.cached ? "Already downloaded." : `Downloads ${size}.`}</p>` +
         '<p id="dataset-import-summary" role="status">Imports one clip into Datasets. Open CVAT to draw and save instrument tracks, then submit them for review.</p>' +
-        '<p class="muted">No reference tracks are included. Video training and evaluation are not available. Repeating the import preserves your annotations and CVAT drafts.</p>';
+        '<p class="muted">No reference tracks are included. Accepted polygon annotations can train a segmentation model; boxes alone cannot. Repeating the import preserves your annotations and CVAT drafts.</p>';
       form.querySelector('[type="submit"]').disabled = !template.importable;
       return;
     }

@@ -1045,6 +1045,16 @@ dialog:has(.dataset-import-choices) {
   display: grid;
   gap: 10px;
 }
+#hosted-import select[name="model"] {
+  width: 100%;
+  min-height: 80px;
+}
+#hosted-import select[name="model"] option {
+  padding: 6px;
+}
+#catalog-selection {
+  overflow-wrap: anywhere;
+}
 .setup-paths button {
   text-align: left;
   padding: 16px;
@@ -1693,4 +1703,12 @@ textarea.training-log {
 }
 .training-image-table .sample-cell {
   overflow-wrap: anywhere;
+}
+.review-preview {
+  display: block;
+  width: 100%;
+  max-height: 55vh;
+  object-fit: contain;
+  background: #172632;
+  border-radius: 8px;
 }

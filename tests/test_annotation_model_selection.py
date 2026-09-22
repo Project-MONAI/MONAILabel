@@ -35,7 +35,6 @@ def pathology(client, http, monkeypatch):
     with service.store.transaction() as session:
         for key, name, provider in [
             ("vista3d", "VISTA3D", "vista3d"),
-            ("nvidia-sol", "GPT-5.6 Sol", "openai-chat-polygons"),
             ("nvidia-astra", "GPT-6 Astra", "openai-chat-polygons"),
             ("nvidia-claude-opus-5", "Claude Opus 5", "openai-chat-polygons"),
             ("custom-claude", "My Claude", "anthropic-polygons"),
@@ -97,7 +96,7 @@ def test_nuclei_region_uses_compatible_model_and_preserves_saved_mask(
             },
         },
     )
-    chosen = models[selected or "nvidia-sol"]
+    chosen = models[selected or "nvidia-astra"]
     assert chosen.name in reply["message"]
     result = client.wait(reply["job_id"])
     assert calls == [((6, 8, 3), chosen.id, ["Background", "Nuclei"])]
@@ -127,6 +126,23 @@ def test_nuclei_prefers_dedicated_model_and_respects_explicit_choice(client, htt
     )
 
 
+@pytest.mark.parametrize("project_default", [True, False])
+def test_radiology_uses_vista_while_hosted_default_is_astra(http, pathology, project_default):
+    project_id, asset_id, models = pathology
+    service = http.app.state.services
+    project = service.store.get(Project, project_id)
+    if not project_default:
+        project = project.model_copy(update={"annotation_model_id": None})
+    volume = service.store.get(Asset, asset_id).model_copy(update={"kind": "volume3d"})
+    assert (
+        service.models.select_for_targets(project, volume, ["Spleen"], None) == models["vista3d"].id
+    )
+    assert (
+        service.models.select_for_targets(project, volume, ["Spleen"], models["nvidia-astra"].id)
+        == models["nvidia-astra"].id
+    )
+
+
 def test_unconfigured_automatic_model_does_not_start_a_job(client, http, pathology, monkeypatch):
     project_id, asset_id, _ = pathology
     monkeypatch.delenv("TEST_ANNOTATION_KEY")
@@ -150,9 +166,9 @@ def test_automatic_does_not_escalate_to_other_presets_and_explicit_volume_choice
 ):
     project_id, asset_id, models = pathology
     service = http.app.state.services
-    sol = models["nvidia-sol"]
+    astra = models["nvidia-astra"]
     with service.store.transaction() as session:
-        session.update(sol.model_copy(update={"archived": True}))
+        session.update(astra.model_copy(update={"archived": True}))
         session.update(models["custom-claude"].model_copy(update={"archived": True}))
     project = service.store.get(Project, project_id)
     asset = service.store.get(Asset, asset_id)
@@ -209,7 +225,6 @@ def test_image_model_catalog_excludes_volume_models_and_other_projects(client, h
             )
     available = client.get(f"/api/projects/{project_id}/models?asset_id={asset_id}")
     assert {m["name"] for m in available} == {
-        "GPT-5.6 Sol",
         "GPT-6 Astra",
         "Claude Opus 5",
         "My Claude",
@@ -250,7 +265,7 @@ def test_automatic_skips_incomplete_models_but_keeps_explicit_defaults(http, pat
     assert not service.models.configured(model)
     assert (
         service.models.select_for_targets(project, asset, ["Nuclei"], None)
-        == models["nvidia-sol"].id
+        == models["nvidia-astra"].id
     )
     assert service.models.select_for_targets(project, asset, ["Nuclei"], model.id) == model.id
     assert (

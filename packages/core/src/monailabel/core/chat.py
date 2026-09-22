@@ -29,7 +29,13 @@ class ChatMessage(Contract):
 
 
 class ChatProvider(Protocol):
-    def complete(self, messages: list[ChatMessage], tools: list[ToolDefinition]) -> ChatMessage: ...
+    def complete(
+        self,
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition],
+        *,
+        require_tool: bool = False,
+    ) -> ChatMessage: ...
 
 
 class ChatTurn(Contract):

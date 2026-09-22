@@ -58,13 +58,15 @@ Restore the default anatomical color for spleen
 
 Local mask edits preserve other structures and requested-outside scope. Save a Slicer scene to retain boxes, points, ROIs and other native edits. After bridge updates, save or submit your work, end the old viewer session and open the sample again. Local launches can read authorized workspace files directly; remote launches use authenticated downloads.
 
-For model-assisted boxes, explicitly select a capable localization model. `Add ROI for spleen between slice 70 to 80 using Sol` evaluates all eleven slices. ROI slice numbers are one-based and inclusive; they are not Slicer's millimeter position. ROI creation does not automatically constrain later segmentation. See [SAM](#local-sam-annotation) for zero-based point/box editing prompts.
+For model-assisted boxes, explicitly select a capable localization model. `Add ROI for spleen between slice 70 to 80 using Astra` evaluates all eleven slices. ROI slice numbers are one-based and inclusive; they are not Slicer's millimeter position. ROI creation does not automatically constrain later segmentation. See [SAM](#local-sam-annotation) for zero-based point/box editing prompts.
 
 ## QuPath
 
 The **MONAI Label** tab provides chat and optional pop-out controls. A selected area runs as one crop without tiling; whole-image requests can specify a tile size (default 256 pixels). Results return to source coordinates and preserve outside edits.
 
-Leave the model on **Automatic** and ask, for example, `Annotate nuclei in the selected region`. The backend matches the image and targets to compatible defaults, a dedicated model, or the configured Sol preset. Volume-only models such as VISTA3D are excluded from QuPath's choices. Incomplete models are excluded from automatic selection; an explicit choice or compatible default reports its configuration error without switching models. Name a model in chat to choose it explicitly; the Astra and Claude gateway presets require an explicit choice or configured default.
+Ask `Clear all annotations in the selected region` to remove labels only inside that area, or `Clear nuclei in the selected region` to keep other classes. Selection guides and outside objects remain. Say `Undo that` to restore the edit.
+
+Leave the model on **Automatic** and ask, for example, `Annotate nuclei in the selected region`. The backend matches the image and targets to compatible defaults, a dedicated model, or the configured Astra preset. Volume-only models such as VISTA3D are excluded from QuPath's choices. Incomplete models are excluded from automatic selection; an explicit choice or compatible default reports its configuration error without switching models. Name a model in chat to choose it explicitly; the Claude and Gemini presets require an explicit choice or configured default.
 
 Classify native objects as project structures before mask submission. Selection guides are not segmentation labels. **Save QuPath draft** preserves the native project; save before closing or reopening after an adapter update.
 
@@ -74,11 +76,15 @@ Classify native objects as project structures before mask submission. Selection 
 
 Saved masks load automatically with the selected source image, including while the assistant is collapsed. Opening/closing the panel preserves local mask edits and chat. A failed mask load offers Retry and blocks submission until ready.
 
+As in Slicer, ask `Clear the spleen annotation on the current slice`, then `Annotate the spleen on the current slice using GPT Astra`. Clearing is a local, undoable edit; other slices and labels remain unchanged. Say `Undo that` or `Redo that` to step through assistant edits.
+
 Use native editing or chat, then submit. **Return to workspace** reuses the launch page when possible. NIfTI uses a cached local DICOM viewing copy while annotations stay on the original grid. See [DICOM import and viewing](#dicom-import-and-viewing).
 
 ## CVAT
 
 The [video workflow](video.md) imports clips, opens CVAT directly into a rectangle/polygon annotation job and submits saved tracks for workspace review. It requires FFmpeg and Docker Compose. The workspace prepares CVAT on first launch and opens an integrated viewer using the workspace sign-in, with an assistant-focused panel. Configured annotation models locate or segment tools on a source frame; local SAM 2.1 tracks them over a requested range or whole clip. Describe the tool, shape and frame range in chat. `uv run monailabel viewer cvat` can download the images in advance. Saved drafts and submitted revisions are distinct; review tasks start from the submitted revision.
+
+CVAT also supports `Clear all annotations on this frame`, `Clear the snare annotations for 16 frames`, and `Clear all annotations in the whole video`. A frame range includes the displayed frame. Other labels and frames remain unchanged; clearing creates one native undo step. Say `Undo that`, `Redo that`, `Save my draft`, or `Submit this annotation for review`. Saved annotation revisions remain immutable.
 
 ## Colors
 
@@ -95,6 +101,8 @@ export MONAILABEL_SLICER_EXECUTABLE=/path/to/Slicer
 ```
 
 Linux desktop flows are supported. QuPath has a Windows portable installer recipe; Slicer on Windows and viewers on macOS can use explicit existing executables. Native Windows/macOS QA and automatic Slicer Windows installation remain pending.
+
+OHIF annotation and submission also work over a network HTTP address. Microphone input requires HTTPS or localhost; it is disabled when the browser cannot provide it.
 
 OHIF's first source build needs Node.js 22, Corepack and Git. Set `MONAILABEL_OHIF_DIST` to use an existing distribution. Pinned installer recipes live in `viewers/resources/installers/`.
 
@@ -148,7 +156,7 @@ Coordinates are **zero-based source voxels**, not screen pixels. Two coordinates
 For model-assisted localization instead of explicit coordinates, name a compatible vision model:
 
 ```text
-Create an initial box for spleen on this slice using GPT Sol
+Create an initial box for spleen on this slice using GPT Astra
 ```
 
 This is a separate localization job and may use a hosted API. SAM does not locate organs from names alone. Choose SAM for the subsequent segmentation request. No automatic paid-model fallback is used.

@@ -1,7 +1,7 @@
 {
-  "name": "Claude Opus 5",
+  "name": "Project Claude",
   "provider": "openai-chat-polygons",
-  "label_ids": [0, 1],
+  "label_ids": [0],
   "config": {
     "url": "https://inference-api.nvidia.com/v1/chat/completions",
     "model": "azure/anthropic/claude-opus-5",
