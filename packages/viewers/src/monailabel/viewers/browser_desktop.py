@@ -55,11 +55,11 @@ class BrowserDesktop:
     def prepare(self, progress: Callable[[str], None]) -> str:
         if (
             platform.system() != "Linux"
-            or platform.machine() != "x86_64"
+            or platform.machine().casefold() not in {"x86_64", "aarch64", "arm64"}
             or not shutil.which("docker")
         ):
             raise DomainError(
-                "Browser desktop requires Docker on a Linux x86_64 server.", status=503
+                "Browser desktop requires Docker on a Linux x86_64 or ARM64 server.", status=503
             )
         context = RESOURCES / "desktop"
         digest = hashlib.sha256(

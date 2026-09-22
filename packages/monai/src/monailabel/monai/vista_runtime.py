@@ -256,12 +256,26 @@ class VistaTrainer:
                     )
             progress(0.98)
             training_message(progress, "Saving checkpoint.")
+            # GB10 shares host and device memory. Release training-only buffers
+            # before allocating CPU checkpoint copies, and move state in place
+            # so GPU and CPU copies do not coexist for the whole model.
+            optimizer.zero_grad(set_to_none=True)
+            del x, y, logits, loss, classes
+            cache.clear()
+            if device.type == "cuda":
+                torch.cuda.empty_cache()
+            net.cpu()
+            optimizer_state = optimizer.state_dict()
+            for values in optimizer_state["state"].values():
+                for key, value in values.items():
+                    if isinstance(value, torch.Tensor):
+                        values[key] = value.detach().cpu()
             total_steps = int(saved["steps"]) + steps if saved else steps
             output = io.BytesIO()
             torch.save(
                 {
-                    "weights": {k: v.cpu() for k, v in net.state_dict().items()},
-                    "optimizer": optimizer.state_dict(),
+                    "weights": net.state_dict(),
+                    "optimizer": optimizer_state,
                     "steps": total_steps,
                 },
                 output,

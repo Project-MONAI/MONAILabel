@@ -5,6 +5,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglu1-mesa libopengl0 libgl1-mesa-dri libpulse-mainloop-glib0 libnss3 \
     libsm6 libxcb-cursor0 libxkbcommon-x11-0 libxi6 libxrender1 libxtst6 \
     libasound2t64 libgtk-3-0t64 fonts-dejavu-core qt5dxcb-plugin \
+    && if [ "$(dpkg --print-architecture)" = arm64 ]; then \
+       apt-get install -y --no-install-recommends \
+       libqt5xml5 libqt5xmlpatterns5 libqt5multimediawidgets5 libqt5svg5 \
+       libqt5opengl5 libqt5sql5-sqlite libqt5webengine5 libqt5webenginewidgets5 \
+       libqt5designer5; fi \
     && rm -rf /var/lib/apt/lists/*
 COPY entrypoint.py /opt/desktop.py
 COPY rc.xml /etc/monailabel-openbox.xml

@@ -31,9 +31,15 @@ uv run --group e2e pytest --desktop-e2e tests/e2e/test_browser_desktop.py
 
 These opt-in tests require Linux and Docker. They launch real Slicer and QuPath in disposable containers through an HTTP network hostname, verify the full-tab layout, selected sample and submitted annotation, and exchange Unicode clipboard text with a separate browser page. They check that the remote resolution and native application follow browser resizing and tablet orientation changes while preserving draft text. They also refresh without losing the draft and close the last tab to end the session without changing the submitted revision. QuPath exercises tablet-sized touch and keyboard controls and excludes volume-only models. Native probes observe application state; image loading and browser input use the production adapters. No paid models are called. Artifacts are written under `test-results/` and test containers are removed afterward.
 
+To exercise the actual network interface rather than a synthetic hostname, set `MONAILABEL_E2E_HOST` to a local IPv4 address before running the desktop, OHIF Quickstart or managed CVAT tests. Their disposable servers bind both loopback (for initial administrator setup) and that explicitly requested address. Chromium then connects using the network address, exercising insecure-context handling and automatic browser-desktop selection. This does not replace a separate physical-device/browser check. Do not point the variable at another machine or a production workspace.
+
+For desktop tests, also set `MONAILABEL_E2E_LAN_ONLY=1` to restart the disposable server on only that interface after local administrator setup. This checks Slicer/QuPath bridge connections when no loopback listener is available, matching an explicit `--host` interface address. The original server is stopped before restarting the workspace.
+
 The standard suite checks loopback/native versus remote/browser selection, explicit browser override, owner and role enforcement, cross-origin WebSocket rejection, streaming, logout revocation, session limits, reconnect renewal and failed-start cleanup. It also checks status requests during slow setup, continued access to existing desktops, cancellation and account changes during launch, and cleanup when log collection fails. Physical iPad/Safari interaction and GPU rendering performance require separate device checks.
 
 The Slicer exit test submits through the native viewer, chooses **Exit Slicer**, and verifies that its browser tab closes only after the submission is saved. A second tab with closing disabled returns to the project workspace. Lifecycle checks distinguish a confirmed native exit from network failures, unavailable Docker, lost access and obsolete disconnect notifications.
+
+The Slicer radiology Quickstart check uses an asymmetric synthetic CT with reversed source orientation and deterministic annotation providers. Browser keyboard input requests whole-volume annotation, current-slice clearing, undo/redo, slice repair and submission. A read-only native probe verifies the complete source-grid mask after each step; the submitted immutable mask must match it exactly. Real VISTA3D execution is covered separately by the GPU runners.
 
 The pathology Quickstart test imports the public OpenSlide sample, draws a native QuPath region through the browser, sends the documented segmentation and submission prompts, and checks that only the selected crop reaches the annotation fixture. QuPath applies the returned objects and publishes the submitted mask through its production adapter.
 
@@ -69,7 +75,10 @@ uv run python examples/verify_golden_stories.py --coordinator 4b --story both --
 uv run python examples/evaluate_coordinators.py --variant lightning --output /tmp/lightning-prompts.json
 uv run python examples/evaluate_coordinators.py --variant 4b --story endoscopy --output /tmp/4b-endoscopy.json
 uv run python examples/evaluate_coordinators.py --variant 4b --suite viewer-edits --output /tmp/4b-edits.json
-node --test tests/web/*.mjs
+# Focused regression; still calls the real model, but executes no operational tool:
+uv run python examples/evaluate_coordinators.py --variant 4b --story radiology \
+  --case compare_versions --output /tmp/4b-comparison-prompt.json
+uv run node --test tests/web/*.mjs
 ```
 
 ## Native viewers
@@ -77,6 +86,8 @@ node --test tests/web/*.mjs
 Check Slicer, QuPath and OHIF on disposable images with asymmetric geometry. Verify source orientation, selected-slice scope, class colors, editable hints, stale-revision rejection, submission and corrected review. Preserve user drafts. Headless browser checks do not establish native desktop or physical mobile-device compatibility.
 
 Use `uv run python examples/vista3d_smoke.py --help` for the VISTA3D GPU smoke check. SAM contracts and viewer transfers are exercised in `tests/test_sam.py` and the spatial-hint tests. These exercise runtime and transfer behavior; they are not clinical benchmarks. Remaining capabilities and platform gaps are listed in the [roadmap](roadmap.md).
+
+`uv run python examples/sam2_smoke.py --frames 70` runs real SAM 2.1 image segmentation and video propagation on CUDA in a disposable workspace. It verifies source-size masks, seed preservation and tracking across the 64-frame chunk boundary. It downloads cached weights but makes no hosted inference calls. The VISTA smoke runner likewise disables conversation provisioning: neither GPU smoke check needs a second coordinator runtime.
 
 ## Video and CVAT browser tests
 
@@ -95,6 +106,8 @@ Each run creates a random Compose project, separate ports, generated credentials
 The suite imports a synthetic variable-rate clip through the workspace UI, draws two instrument tracks with the native CVAT mouse controls, and saves occluded/outside keyframes. It checks source timing and geometry, draft resume, immutable submission, separate review tasks, requested changes, stale submission rejection, corrected acceptance, track identity and revision lineage, persistence after server restart, and clip deletion that retains external drafts. A delayed refresh verifies that a submitted correction cannot immediately be reviewed using the previous revision. Additional cases draw an unsupported standalone shape and verify rejection without draft loss, reserve a video procedure from related image training, and exercise annotator access through browser controls and authenticated requests. Annotation writes use CVAT's UI; API reads verify persisted results. These synthetic checks verify software behavior, not annotation quality.
 
 To include the real local coordinator in the 16-frame snare polygon case, set `MONAILABEL_E2E_COORDINATOR_URL` to its OpenAI-compatible API base URL and `MONAILABEL_E2E_COORDINATOR_MODEL` to its served model name. If authentication is needed, `MONAILABEL_E2E_COORDINATOR_KEY_ENV` names the environment variable containing its key. The annotation endpoint remains a deterministic fixture; no hosted annotation calls are made. Without those variables, routing is scripted for reproducibility.
+
+The live-coordinator case allows 240 seconds per model request and 8,192 output tokens by default. `MONAILABEL_E2E_COORDINATOR_TIMEOUT` and `MONAILABEL_E2E_COORDINATOR_MAX_TOKENS` override those limits; use 4,096 tokens when checking Nano 4B's managed profile. The browser wait accommodates skill selection followed by the operational tool request.
 
 The managed-viewer cases start without CVAT credentials or services, install through the **CVAT** action, and annotate through the embedded native editor using only the workspace sign-in. They run the real local SAM 2.1 tracker, check automatic draft application, reject application after an intervening manual edit, preserve unrelated tracks, exercise embedded chat with scripted coordinator routing, submit and accept revisions, and reopen saved tracks after a server restart. A real HyperKvasir snare sample exercises catalog import, opening CVAT from a workspace tracking request, guidance before a tool box is drawn, and a segmentation request outlining the tool from an empty draft and tracking 16 frames after choosing a vision model and label. A deterministic local HTTP endpoint supplies the vision response; CVAT, source-frame extraction and SAM run normally. Provider contract tests cover Responses and Chat Completions payloads, credentials, abstentions and invalid geometry. An additional case checks vision abstention, an explicitly named model overriding the panel selection, new-track undo/redo and preservation of unrelated manual tracks. These tests download the public clip and pinned model weights; they verify execution and data handling, not clinical tracking accuracy.
 

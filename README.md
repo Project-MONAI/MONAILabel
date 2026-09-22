@@ -27,7 +27,7 @@ Import datasets, review annotations, train and fine-tune models, and compare the
 ## System requirements
 
 - Linux for local GPU workflows.
-- DGX Spark: [experimental ARM64 server setup](docs/spark.md).
+- DGX Spark: [ARM64 setup and verification](docs/spark.md).
 - [Python 3.12+](https://www.python.org/downloads/), [uv](https://docs.astral.sh/uv/getting-started/installation/) and [Git](https://git-scm.com/downloads/).
 - NVIDIA GPU with a compatible driver for local inference and training.
 - [Docker](https://docs.docker.com/engine/install/) with [NVIDIA GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for [local chat](docs/coordinator.md#setup). CVAT also uses Docker Compose and [FFmpeg](https://ffmpeg.org/).
@@ -54,7 +54,7 @@ uv run monailabel-server --assistant-variant 9b
 uv run monailabel-server --assistant-variant 4b
 ```
 
-Open **http://localhost:8000**, create an administrator account, and wait for **Assistant ready**. From another device, use the server's hostname or IP instead of `localhost`. Send prompts one at a time and wait for each job to finish. Inspect and apply proposals before submitting.
+Open **http://localhost:8000**, create an administrator account, and wait for **Assistant ready**. The server binds to localhost by default. To allow another device, explicitly start it with `uv run monailabel-server --host 0.0.0.0 --port 8000` and use the server's hostname or IP instead of `localhost`; see [HTTPS and remote access](docs/viewers.md#phones-tablets-and-other-computers). Send prompts one at a time and wait for each job to finish. Inspect and apply proposals before submitting.
 
 Send each prompt below in order from the window named in the comment. Choose the specialty that matches your data.
 

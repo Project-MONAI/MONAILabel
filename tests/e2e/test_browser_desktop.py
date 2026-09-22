@@ -1,7 +1,10 @@
 """Real native viewers, input streaming and reconnects from a browser-only client."""
 
+import gzip
+import hashlib
 import io
 import json
+import os
 import re
 import secrets
 import shutil
@@ -9,6 +12,7 @@ import subprocess
 import time
 
 import httpx
+import nibabel as nib
 import numpy as np
 import pytest
 from conftest import ROOT, VideoStack
@@ -27,6 +31,7 @@ pytestmark = pytest.mark.desktop_e2e
 
 SLICER_PROBE = """
 # Test observation only; the production bridge above handles all viewer actions.
+import hashlib
 import json
 from pathlib import Path
 def observe_desktop():
@@ -47,6 +52,8 @@ def observe_desktop():
         'mode': 'review' if dock.review_mode else 'annotation',
         'shared_filesystem': dock.shared_filesystem,
         'mask_labels': [int(x) for x in np.unique(dock.current_mask())],
+        'mask_sha256': hashlib.sha256(dock.current_mask().tobytes()).hexdigest(),
+        'slice': dock.current_slice(),
         'draft': dock.prompt.toPlainText(), 'x': point.x(), 'y': point.y(),
         'window_width': slicer.util.mainWindow().width,
         'window_height': slicer.util.mainWindow().height,
@@ -104,7 +111,10 @@ def desktop_stack(tmp_path, monkeypatch):
     extension.write_text(text)
     monkeypatch.setattr(browser_desktop, "RESOURCES", bridges)
     monkeypatch.setenv("MONAILABEL_TOOLS_DIR", str(ROOT / "workspace/.cache/tools"))
-    monkeypatch.setenv("MONAILABEL_ALLOWED_HOSTS", "localhost,127.0.0.1,desktop.test")
+    monkeypatch.setenv(
+        "MONAILABEL_ALLOWED_HOSTS",
+        "localhost,127.0.0.1,desktop.test," + os.environ.get("MONAILABEL_E2E_HOST", ""),
+    )
     stack = VideoStack(tmp_path, artifacts)
     stack.start_workspace()
     try:
@@ -113,8 +123,18 @@ def desktop_stack(tmp_path, monkeypatch):
                 "/api/auth/setup", json={"username": stack.username, "password": stack.password}
             )
             response.raise_for_status()
+            if os.environ.get("MONAILABEL_E2E_LAN_ONLY") == "1":
+                stack.stop_workspace()
+                stack.start_workspace(lan_only=True)
+                http.base_url = stack.url
+                http.post(
+                    "/api/auth/login",
+                    json={"username": stack.username, "password": stack.password},
+                ).raise_for_status()
             # A non-loopback workspace hostname exercises automatic browser launch.
-            stack.url = stack.url.replace("127.0.0.1", "desktop.test")
+            stack.url = stack.url.replace(
+                "127.0.0.1", os.environ.get("MONAILABEL_E2E_HOST", "desktop.test")
+            )
             yield stack, Client(http=http)
     finally:
         service = stack.app.state.services
@@ -421,6 +441,138 @@ def test_browser_native_viewer(desktop_stack, viewer, mode, mobile):
                 window.screenshot(path=str(stack.artifacts / f"page-{i}.png"))
                 (stack.artifacts / f"page-{i}.html").write_text(window.content())
             (stack.artifacts / "browser-errors.json").write_text(json.dumps(errors))
+            context.close()
+            browser.close()
+
+
+def test_slicer_radiology_quickstart_annotate_correct_and_submit(desktop_stack, monkeypatch):
+    from playwright.sync_api import sync_playwright
+
+    stack, client = desktop_stack
+    service = stack.app.state.services
+    project = client.post(
+        "/api/projects",
+        {
+            "name": "Slicer radiology Quickstart",
+            "labels": [{"id": 0, "name": "Background"}, {"id": 1, "name": "Spleen"}],
+        },
+    )
+    values = np.zeros((24, 28, 12), dtype=np.int16)
+    values[4:13, 7:21, 2:8] = 100
+    response = client.http.post(
+        f"/api/projects/{project['id']}/assets/upload",
+        params={"name": "Slicer Quickstart.nii.gz", "group_id": "synthetic-slicer-ct"},
+        content=gzip.compress(nib.Nifti1Image(values, np.diag([-1.5, 2, 2.5, 1])).to_bytes()),
+    )
+    response.raise_for_status()
+    asset = response.json()
+    calls = []
+
+    class AnnotationFixture:
+        def predict(self, image, labels, prompt, model):
+            calls.append((model.name, image.shape))
+            return Prediction((image[..., 0] > 0.5).astype(np.uint8))
+
+    monkeypatch.setattr(service.models.recipes, "segmenter", lambda *_: AnnotationFixture())
+    service.models.providers["openai-chat-polygons"] = AnnotationFixture()
+    with service.store.transaction() as session:
+        for name, provider in [("VISTA3D", "vista3d"), ("GPT Astra", "openai-chat-polygons")]:
+            session.insert(
+                ModelRecord(
+                    project_id=project["id"],
+                    name=name,
+                    provider=provider,
+                    config={"url": "http://unused.test", "model": "fixture"}
+                    if provider == "openai-chat-polygons"
+                    else {},
+                    label_ids=[0, 1],
+                    read_only=True,
+                )
+            )
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(
+            args=["--host-resolver-rules=MAP desktop.test 127.0.0.1", "--no-proxy-server"]
+        )
+        context = browser.new_context(viewport={"width": 1600, "height": 1100})
+        try:
+            page = context.new_page()
+            login_workspace(page, stack)
+            page.goto(f"{stack.url}/datasets?project={project['id']}")
+            with page.expect_popup() as opened:
+                page.get_by_role("button", name="Slicer", exact=True).click()
+            desktop = opened.value
+            desktop.wait_for_url("**/desktop/*", timeout=240000)
+            canvas = fitted_desktop(desktop)
+            identifier = desktop.url.rsplit("/", 1)[-1]
+            report = service.desktops.runtime.root / identifier / "observed.json"
+            observed(report, lambda value: value["asset_id"] == asset["id"], desktop)
+
+            def prompt(message, tool, arguments):
+                service.assistants.provider.queue.append(
+                    ChatMessage(
+                        role="assistant",
+                        tool_calls=[
+                            ToolCall(id=secrets.token_hex(8), name=tool, arguments=arguments)
+                        ],
+                    )
+                )
+                value = settled_input(report, desktop)
+                bounds = canvas.bounding_box()
+                desktop.mouse.click(
+                    bounds["x"] + value["x"] * bounds["width"] / int(canvas.get_attribute("width")),
+                    bounds["y"]
+                    + value["y"] * bounds["height"] / int(canvas.get_attribute("height")),
+                )
+                desktop.keyboard.type(message)
+                desktop.keyboard.press("Control+Enter")
+
+            def mask_is(expected):
+                digest = hashlib.sha256(expected.tobytes()).hexdigest()
+                return observed(
+                    report, lambda value: value["mask_sha256"] == digest, desktop, timeout=60
+                )
+
+            prompt(
+                "Segment the spleen in the whole volume using VISTA3D.",
+                "annotate",
+                {"targets": ["spleen"], "scope": "full", "model_name": "VISTA3D"},
+            )
+            full = (values > 0).astype(np.uint8)
+            current = mask_is(full)["slice"]
+            assert current is not None
+            cleared = full.copy()
+            selected = [slice(None)] * 3
+            selected[current["axis"]] = current["index"]
+            cleared[tuple(selected)] = 0
+            prompt(
+                "Clear the spleen annotation on the current slice.",
+                "clear_segments",
+                {"targets": ["spleen"], "scope": "current_slice"},
+            )
+            mask_is(cleared)
+            prompt("Undo that.", "viewer_edit", {"operation": "undo"})
+            mask_is(full)
+            prompt("Redo that.", "viewer_edit", {"operation": "redo"})
+            mask_is(cleared)
+            prompt(
+                "Annotate the spleen on the current slice using GPT Astra.",
+                "annotate",
+                {"targets": ["spleen"], "scope": "current_slice", "model_name": "GPT Astra"},
+            )
+            mask_is(full)
+            assert client.get(f"/api/assets/{asset['id']}")["revision"] == 0
+            prompt("Submit this annotation for review.", "viewer_edit", {"operation": "submit"})
+            observed(report, lambda value: value["revision"] == 1, desktop, timeout=30)
+            saved = client.get(f"/api/assets/{asset['id']}")
+            content = client.http.get(f"/api/annotations/{saved['annotation_id']}/mask.bin").content
+            assert content == full.tobytes()
+            assert calls[0] == ("VISTA3D", (*values.shape, 1))
+            assert calls[1][0] == "GPT Astra" and len(calls[1][1]) == 3
+            desktop.screenshot(path=str(stack.artifacts / "slicer-quickstart-submitted.png"))
+        finally:
+            for index, window in enumerate(context.pages):
+                if not window.is_closed():
+                    window.screenshot(path=str(stack.artifacts / f"quickstart-page-{index}.png"))
             context.close()
             browser.close()
 

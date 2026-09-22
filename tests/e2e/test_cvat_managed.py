@@ -26,7 +26,7 @@ from test_video_cvat import (
     open_editor,
 )
 
-from monailabel.core.chat import ChatMessage, ToolCall
+from monailabel.core.chat import ChatMessage, Conversation, ToolCall
 from monailabel.core.models import ModelRecord, Project
 
 pytestmark = pytest.mark.video_e2e
@@ -50,7 +50,9 @@ def video_stack(tmp_path_factory):
     ):
         environment.pop(key, None)
     environment["MONAILABEL_PRELOAD_MODELS"] = "0"
-    environment["MONAILABEL_ALLOWED_HOSTS"] = "127.0.0.1,cvat.test"
+    environment["MONAILABEL_ALLOWED_HOSTS"] = "127.0.0.1,cvat.test," + environment.get(
+        "MONAILABEL_E2E_HOST", ""
+    )
     with patch.dict(os.environ, environment, clear=True):
         try:
             stack.start_workspace()
@@ -58,6 +60,8 @@ def video_stack(tmp_path_factory):
                 http.post(
                     "/api/auth/setup", json={"username": stack.username, "password": stack.password}
                 ).raise_for_status()
+            if host := os.environ.get("MONAILABEL_E2E_HOST"):
+                stack.url = stack.url.replace("127.0.0.1", host)
             yield stack
         finally:
             manager = stack.app.state.services.video_editors.manager
@@ -68,7 +72,12 @@ def video_stack(tmp_path_factory):
             shutil.rmtree(root)
 
 
-@pytest.mark.parametrize("hostname", ["127.0.0.1", "cvat.test"])
+@pytest.mark.parametrize(
+    "hostname",
+    [os.environ["MONAILABEL_E2E_HOST"]]
+    if "MONAILABEL_E2E_HOST" in os.environ
+    else ["127.0.0.1", "cvat.test"],
+)
 def test_managed_install_launch_and_track(
     video_stack, browser_session, video_http, synthetic_clip, hostname, request
 ):
@@ -317,7 +326,8 @@ def test_managed_real_tool_tracking_sample(
                 key_env=os.environ.get("MONAILABEL_E2E_COORDINATOR_KEY_ENV"),
                 thinking=True,
                 temperature=0,
-                max_tokens=8192,
+                max_tokens=int(os.environ.get("MONAILABEL_E2E_COORDINATOR_MAX_TOKENS", "8192")),
+                timeout=float(os.environ.get("MONAILABEL_E2E_COORDINATOR_TIMEOUT", "240")),
             )
         )
 
@@ -339,7 +349,7 @@ def test_managed_real_tool_tracking_sample(
             page.locator("#prompt").fill(prompt)
             with page.expect_response(
                 lambda r: r.url.endswith("/assistant") and r.request.method == "POST",
-                timeout=120000,
+                timeout=600000 if endpoint else 120000,
             ) as response:
                 page.locator("#send").click()
             assert response.value.status == 200, response.value.text()
@@ -351,7 +361,13 @@ def test_managed_real_tool_tracking_sample(
         ).json()
         expect(page.locator("#status")).to_contain_text("Annotation added to draft", timeout=10000)
         expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(1)
-        assert proposal["detection"]["model_id"] == model["id"]
+        conversation = stack.app.state.services.store.get(Conversation, reply["conversation_id"])
+        calls = [
+            (call.name, call.arguments)
+            for message in conversation.turns[-1].messages
+            for call in message.tool_calls
+        ]
+        assert proposal["detection"]["model_id"] == model["id"], calls
         return proposal
 
     page.locator("#detection-model").select_option(other_model["id"])

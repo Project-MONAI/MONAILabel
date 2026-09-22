@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import platform
 import secrets
 import shutil
 import subprocess
@@ -25,6 +26,15 @@ log = logging.getLogger(__name__)
 
 class CoordinatorRuntime:
     def __init__(self, config: CoordinatorConfig):
+        if (
+            config.provider == "local"
+            and "timeout" not in config.model_fields_set
+            and platform.system() == "Linux"
+            and platform.machine() in {"aarch64", "arm64"}
+        ):
+            # Nano's 4,096-token reasoning budget can exceed 90 seconds on
+            # GB10. Include prefill time without overriding an explicit limit.
+            config = config.model_copy(update={"timeout": 240})
         self.config = config
         self.profile = LOCAL_MODELS[config.variant]
         self.cache = (
@@ -104,7 +114,11 @@ class CoordinatorRuntime:
 
     def _reuse_lightning(self) -> bool:
         """Recognize the workstation's shared SGLang service without managing its lifecycle."""
-        if self.config.variant != "lightning":
+        if (
+            self.config.variant != "lightning"
+            or self.config.gpu != "0"
+            or self.config.gpu_memory_utilization is not None
+        ):
             return False
         try:
             with httpx.Client(timeout=2, trust_env=False) as client:
@@ -127,7 +141,10 @@ class CoordinatorRuntime:
                     timeout=self.config.timeout,
                 )
                 self.http = HttpChat(config)
-                self.detail = "Reusing the shared local Lightning service on port 8001."
+                self.detail = (
+                    "Reusing the shared local Lightning service on port 8001; "
+                    "its memory settings are unchanged."
+                )
                 return True
         except (httpx.HTTPError, ValueError, KeyError):
             return False
@@ -151,8 +168,7 @@ class CoordinatorRuntime:
                     with key_path.open("x") as stream:
                         key_path.chmod(0o600)
                         stream.write(secrets.token_urlsafe(48))
-                if not self._ready():
-                    self._provision()
+                self._provision()
                 self.state, self.detail = "ready", f"Local Nemotron {self.config.variant} is ready."
                 log.info(self.detail)
         except Exception as error:
@@ -166,14 +182,34 @@ class CoordinatorRuntime:
 
     def _hub(self) -> Path:
         global_hub = Path(os.environ.get("HF_HOME", str(Path.home() / ".cache/huggingface")))
-        snapshot = (
-            global_hub
-            / "hub"
-            / ("models--" + self.profile.repository.replace("/", "--"))
-            / "snapshots"
-            / self.profile.revision
+        repository = "models--" + self.profile.repository.replace("/", "--")
+        model_cache = global_hub / "hub" / repository
+        snapshot = model_cache / "snapshots" / self.profile.revision
+        # A shared/root-owned cache can contain a partial snapshot. Downloads still
+        # need to create locks and metadata; never change that cache's permissions.
+        writable = all(
+            not path.exists() or os.access(path, os.W_OK)
+            for path in (
+                global_hub,
+                global_hub / "hub",
+                model_cache,
+                model_cache / "blobs",
+                snapshot,
+                global_hub / "hub/.locks",
+                global_hub / "hub/.locks" / repository,
+            )
         )
-        return global_hub if snapshot.is_dir() else self.cache / "huggingface"
+        return global_hub if snapshot.is_dir() and writable else self.cache / "huggingface"
+
+    @property
+    def memory_fraction(self) -> float:
+        if self.config.gpu_memory_utilization is not None:
+            return self.config.gpu_memory_utilization
+        if platform.system() == "Linux" and platform.machine() in {"aarch64", "arm64"}:
+            # Spark shares RAM with viewers and annotation/training models. This
+            # is a serving budget, not a reservation for every GPU workload.
+            return {"4b": 0.15, "9b": 0.25, "lightning": 0.30}[self.config.variant]
+        return 0.8
 
     def _download(self, hub: Path, user_args: list[str]) -> None:
         self.detail = (
@@ -221,8 +257,14 @@ class CoordinatorRuntime:
     def _engine(self, snapshot: str, hub: Path) -> tuple[str, list[str]]:
         if self.profile.engine == "sglang":
             # Resolve the credential inside the container, so it never appears in host argv.
+            # The pinned server logs its arguments dataclass, including api_key.
+            # Redact its repr before startup without changing authentication.
             launcher = (
                 "import os,sys,runpy; "
+                "from sglang.srt.server_args import ServerArgs; "
+                "_original_repr=ServerArgs.__repr__; "
+                "ServerArgs.__repr__=lambda self:_original_repr(self).replace("
+                "repr(os.environ['VLLM_API_KEY']),repr('<redacted>')); "
                 "sys.argv=['sglang.launch_server',*sys.argv[1:],'--api-key',"
                 "os.environ['VLLM_API_KEY']]; "
                 "runpy.run_module('sglang.launch_server',run_name='__main__')"
@@ -244,7 +286,11 @@ class CoordinatorRuntime:
                 "--max-total-tokens",
                 "32768",
                 "--mem-fraction-static",
-                "0.8",
+                str(self.memory_fraction),
+                "--max-running-requests",
+                "4",
+                "--cuda-graph-max-bs-decode",
+                "4",
                 "--tool-call-parser",
                 "qwen3_coder",
                 "--reasoning-parser",
@@ -265,7 +311,7 @@ class CoordinatorRuntime:
             "16384",
             "--enforce-eager",
             "--gpu-memory-utilization",
-            "0.8",
+            str(self.memory_fraction),
             "--kv-cache-memory-bytes",
             "1073741824",
             "--trust-remote-code",
@@ -297,7 +343,15 @@ class CoordinatorRuntime:
 
     def _provision(self) -> None:
         config_id = hashlib.sha256(
-            (self.profile.image + self.profile.revision + self.config.gpu).encode()
+            json.dumps(
+                [
+                    self.profile.image,
+                    self.profile.revision,
+                    self.config.gpu,
+                    self.memory_fraction,
+                    "bounded-serving-v3",
+                ]
+            ).encode()
         ).hexdigest()
         inspection = subprocess.run(
             ["docker", "inspect", self.name], capture_output=True, text=True, timeout=30
@@ -347,6 +401,8 @@ class CoordinatorRuntime:
                     "HF_HUB_OFFLINE=1",
                     "--env",
                     "VLLM_CACHE_ROOT=/cache/vllm",
+                    "--env",
+                    "VLLM_FLASHINFER_ALLREDUCE_BACKEND=trtllm",
                     "--entrypoint",
                     executable,
                     self.profile.image,
@@ -356,7 +412,9 @@ class CoordinatorRuntime:
                 env=environment,
             )
         self.detail = "Loading Nemotron on the GPU."
-        deadline = time.monotonic() + 600
+        # Fresh ARM64/GB10 kernels can take several minutes to compile after
+        # weights are loaded; keep readiness bounded without abandoning JIT.
+        deadline = time.monotonic() + 1800
         while not self._ready():
             if self.stopping.wait(2):
                 raise RuntimeError(

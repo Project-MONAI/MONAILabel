@@ -22,6 +22,7 @@ class CoordinatorConfig(Contract):
     thinking: bool | None = None
     temperature: float | None = Field(default=None, ge=0, le=2)
     gpu: str = Field(default="0", pattern=r"^(?:[0-9]+|GPU-[a-fA-F0-9-]+)$")
+    gpu_memory_utilization: float | None = Field(default=None, ge=0.05, le=0.95)
 
     @model_validator(mode="before")
     @classmethod

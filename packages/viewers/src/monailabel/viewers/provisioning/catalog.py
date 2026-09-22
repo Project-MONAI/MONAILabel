@@ -20,6 +20,7 @@ class ToolSpec:
     executable: str
     algorithm: Literal["sha256", "sha512"] = "sha512"
     archive: Literal["tar", "zip"] = "tar"
+    build: Literal["qupath"] | None = None
 
 
 @dataclass(frozen=True)

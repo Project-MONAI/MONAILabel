@@ -12,6 +12,12 @@ uv run monailabel-server --assistant local --assistant-variant lightning
 
 `--assistant-variant 9b` and `4b` select smaller, experimental alternatives. They can misinterpret review filters or choose an incomplete action in multi-step workflows; Lightning remains the default. `--assistant-gpu 1` chooses a GPU when provisioning a runtime. Setup runs in the background and the workspace footer reports readiness. Runtimes and weights are cached under `workspace/.cache/coordinator/`. Only one server may own a workspace.
 
+On Linux ARM64, managed serving uses model-specific shared-memory budgets: Lightning 30%, Nano 4B 15%, and Nano 9B 25%. Other platforms retain an 80% default. All recipes limit concurrency to four requests. Lightning uses a 32,768-token context and total token cap with decode graphs bounded to four sequences; Nano uses a 16,384-token context, eager execution and a 1 GiB KV cache. These are serving budgets, not limits on annotation/training memory. Use one coordinator at a time and leave headroom for the OS, viewers and model workloads. See [Spark validation](spark.md).
+
+Local ARM64 requests default to a 240-second timeout so the allowed reasoning output can finish on GB10. Other platforms and hosted endpoints retain 90 seconds. An explicit `MONAILABEL_ASSISTANT_TIMEOUT` takes precedence. First-start kernel compilation is separate from request timeouts; readiness can take several minutes.
+
+`--assistant-gpu-memory-utilization 0.4` (or `MONAILABEL_ASSISTANT_GPU_MEMORY_UTILIZATION=0.4`) overrides the serving fraction when necessary. A changed managed runtime configuration is rejected until its named cached container is deliberately stopped and removed; weights remain cached. With default GPU/budget settings, a recognized shared Lightning service on port 8001 is reused without changing its memory settings or lifecycle. An explicit memory override or nondefault GPU disables that reuse; stop the external runtime yourself before provisioning another model on the same GPU. Use `--assistant compatible` to select an explicit endpoint. A read-only shared Hugging Face cache is left untouched; managed downloads use the application's writable cache instead.
+
 For a hosted model, set its API key in the server environment, then use:
 
 ```bash
@@ -26,7 +32,7 @@ uv run monailabel-server --assistant compatible \
 
 Built-in credential references are `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and `GEMINI_API_KEY`. Compatible endpoints may omit `--assistant-key-env` when no authentication is required. Runtime settings also accept `MONAILABEL_ASSISTANT_PROVIDER`, `_VARIANT`, `_MODEL`, `_BASE_URL`, `_KEY_ENV` and `_THINKING` with the same prefix.
 
-Local runtime recipes are pinned in `providers/chat/local_models.py`. Windows local serving requires a suitable Linux GPU container environment; native platform QA and fresh managed Lightning startup remain incomplete. Hosted adapters have transport contract tests; actual endpoint/account compatibility needs verification.
+Local runtime recipes are pinned in `providers/chat/local_models.py`. Managed Lightning and Nano 4B startup are checked on DGX Spark. Windows local serving requires a suitable Linux GPU container environment and separate native platform QA. Hosted adapters have transport contract tests; actual endpoint/account compatibility needs verification.
 
 ## Behavior and extension points
 

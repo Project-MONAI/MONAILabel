@@ -68,6 +68,16 @@ class DesktopProvisioner:
         name = "QuPath" if viewer == "qupath" else "Slicer"
         if found := shutil.which(name) or shutil.which(name + ".exe"):
             return Path(found).resolve()
+        if (
+            viewer == "slicer"
+            and platform.system() == "Linux"
+            and platform.machine() in {"aarch64", "arm64"}
+        ):
+            # The optional source builder publishes here atomically. Do not
+            # start an hours-long compilation implicitly from a viewer click.
+            built = list((self.root / "slicer/native-install").glob("*/Slicer"))
+            if len(built) == 1 and executable_file(built[0]):
+                return built[0].resolve()
         patterns = catalog().discovery.get(viewer, {}).get(platform.system(), [])
         for pattern in patterns:
             paths = sorted(glob.glob(os.path.expandvars(os.path.expanduser(pattern))), reverse=True)
@@ -135,6 +145,10 @@ class DesktopProvisioner:
                 unpacked = staging / "unpacked"
                 unpacked.mkdir()
                 extract(archive, unpacked, spec.archive)
+                if spec.build == "qupath":
+                    from monailabel.viewers.provisioning.qupath_build import build_qupath
+
+                    unpacked = build_qupath(unpacked, self.root, progress)
                 candidates = sorted(unpacked.glob(spec.executable))
                 if len(candidates) != 1 or not executable_file(candidates[0], spec.system):
                     raise DomainError("Downloaded viewer does not contain the expected executable.")

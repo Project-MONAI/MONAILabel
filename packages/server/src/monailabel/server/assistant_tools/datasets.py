@@ -16,6 +16,12 @@ class TemplateImportArgs(DatasetTemplateImport):
 
 
 class TemplateSplitArgs(DatasetTemplateImport):
+    include_masks: bool = Field(
+        default=False,
+        description="Import reference masks for the ANNOTATION/TRAINING portion only. "
+        "Keep false for images-only annotation, even when evaluation labels are requested. "
+        "The evaluation portion ALWAYS receives its reference masks independently.",
+    )
     evaluation_percentage: float = Field(
         gt=0, lt=100, description="Percentage reserved for evaluation; 80/20 means 20."
     )

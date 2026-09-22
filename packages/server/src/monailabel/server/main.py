@@ -17,7 +17,7 @@ def main() -> None:
         help="Workspace folder (default: MONAILABEL_DATA_DIR or ./workspace).",
     )
     parser.add_argument(
-        "--host", default="0.0.0.0", help="Listen address (default: all IPv4 interfaces)."
+        "--host", default="127.0.0.1", help="Listen address (default: localhost only)."
     )
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--ssl-certfile", type=Path, help="TLS certificate for HTTPS access.")
@@ -45,6 +45,11 @@ def main() -> None:
         "--assistant-gpu", help="GPU index/UUID for the local coordinator (default 0)."
     )
     parser.add_argument(
+        "--assistant-gpu-memory-utilization",
+        type=float,
+        help="Local serving memory fraction (0.05–0.95); defaults depend on model and platform.",
+    )
+    parser.add_argument(
         "--assistant-variant",
         choices=["4b", "9b", "lightning"],
         help="Local Nemotron size; default lightning.",
@@ -60,7 +65,16 @@ def main() -> None:
         parser.error("HTTPS requires both --ssl-certfile and --ssl-keyfile.")
     try:
         values = {}
-        for field in ("provider", "variant", "model", "base_url", "key_env", "gpu", "thinking"):
+        for field in (
+            "provider",
+            "variant",
+            "model",
+            "base_url",
+            "key_env",
+            "gpu",
+            "thinking",
+            "gpu_memory_utilization",
+        ):
             value = getattr(args, "assistant" if field == "provider" else "assistant_" + field)
             if value is not None:
                 values[field] = value

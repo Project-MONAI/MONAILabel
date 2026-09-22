@@ -1,0 +1,6 @@
+# Only static browser assets are copied from AMD64; no foreign executable runs.
+FROM --platform=linux/amd64 cvat/ui@sha256:6d2b534807aa5de9ad0a6dd5ff24cbeffe699b8f65363d017ef55f26e9f61f79 AS assets
+FROM nginx@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
+COPY --from=assets /usr/share/nginx/html /usr/share/nginx/html
+COPY --from=assets /etc/nginx/conf.d /etc/nginx/conf.d
+RUN sed -i '/^server {/a\    listen 8000;' /etc/nginx/conf.d/default.conf

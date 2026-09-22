@@ -15,10 +15,24 @@ import numpy as np
 from fastapi.testclient import TestClient
 
 from monailabel.client.client import Client
+from monailabel.core.chat import ChatMessage, ToolDefinition
 from monailabel.core.models import ModelRecord, Snapshot
 from monailabel.monai.vista_runtime import load_checkpoint
 from monailabel.monai.vista_weights import pretrained_weights
 from monailabel.server.app import create_app
+
+
+class NoChat:
+    """This API-only check must never provision or call a conversation model."""
+
+    def complete(
+        self,
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition],
+        *,
+        require_tool: bool = False,
+    ) -> ChatMessage:
+        raise AssertionError("The VISTA3D smoke check must not call a chat model.")
 
 
 def main() -> None:
@@ -27,7 +41,7 @@ def main() -> None:
         checksum = hashlib.file_digest(stream, "sha256").hexdigest()
     with (
         tempfile.TemporaryDirectory(prefix="monailabel-vista-smoke-") as directory,
-        TestClient(create_app(Path(directory))) as http,
+        TestClient(create_app(Path(directory), chat_provider=NoChat())) as http,
     ):
         client = Client(http=http)
         client.post(

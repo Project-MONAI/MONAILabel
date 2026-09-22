@@ -60,8 +60,15 @@ def test_offline_startup_still_allows_local_access(addresses, monkeypatch):
     assert "127.0.0.1" in network.allowed_hosts()
 
 
-@pytest.mark.parametrize("args,host", [([], "0.0.0.0"), (["--host", "127.0.0.1"], "127.0.0.1")])
-def test_server_listen_default_and_override(tmp_path, monkeypatch, args, host):
+@pytest.mark.parametrize(
+    "args,host,port",
+    [
+        ([], "127.0.0.1", 8000),
+        (["--host", "0.0.0.0", "--port", "8443"], "0.0.0.0", 8443),
+        (["--host", "192.0.2.5", "--port", "8080"], "192.0.2.5", 8080),
+    ],
+)
+def test_server_listen_default_and_override(tmp_path, monkeypatch, args, host, port):
     calls = []
     monkeypatch.setattr("sys.argv", ["monailabel-server", "--assistant", "local", *args])
     monkeypatch.setattr(main, "configure_workspace", lambda _: tmp_path)
@@ -71,7 +78,7 @@ def test_server_listen_default_and_override(tmp_path, monkeypatch, args, host):
     monkeypatch.setattr(main.uvicorn, "run", lambda app, **kwargs: calls.append(kwargs))
     main.main()
     assert calls[0]["host"] == host
-    assert calls[0]["port"] == 8000
+    assert calls[0]["port"] == port
 
 
 def test_network_host_access_still_requires_login(http, monkeypatch):

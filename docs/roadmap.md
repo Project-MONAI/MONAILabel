@@ -17,14 +17,14 @@ Current setup and workflows are in the [README](../README.md).
 
 ## Remaining
 
-- **DGX Spark:** experimental ARM64 server/OHIF setup and CUDA 13 dependency selection are available in the [Spark guide](spark.md). Verify chat, annotation and training on GB10 hardware; add ARM64 managed CVAT images and Slicer/QuPath desktop builds. Complete Spark support is not yet validated.
+- **DGX Spark:** native QuPath/CVAT provisioning, OHIF, managed Lightning and local VISTA3D/SAM/U-Net execution are covered in the [Spark guide](spark.md). Slicer requires an explicit native source build or compatible installation. Extend device coverage and model-quality validation beyond the documented software checks.
 
 - **Video/endoscopy:** automatic rediscovery after tracking loss, native pixel-mask track editing, additional temporal trackers and external CVAT team account provisioning.
 - **Pathology:** streaming whole slides, durable instance/cell-type annotations, dedicated local nuclei providers and their review/training recipes.
 - **Editing:** volume slice-range segmentation, shared box/ROI undo, richer navigation and morphology prompts, and automatic recovery of unsaved viewer drafts.
 - **Learning:** SAM training, video tracking evaluation, arbitrary network/transform onboarding and windowed volume evaluation for slice-only vision models.
 - **Interoperability:** DICOM SEG export and XNAT integration.
-- **Deployment:** physical tablet/browser compatibility checks, GPU-accelerated browser desktop rendering, fresh managed Lightning startup verification, SSO and distributed workers.
+- **Deployment:** physical tablet/browser compatibility checks, GPU-accelerated browser desktop rendering, SSO and distributed workers.
 
 ## Deferred platforms
 

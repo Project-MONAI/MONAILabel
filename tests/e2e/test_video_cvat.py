@@ -71,13 +71,18 @@ def import_video(
 
 
 def open_editor(page, http, video_id, *, review=False, keep_page=False):
+    if review:
+        page.locator("#review-filter").select_option("all")
+        page.get_by_role("button", name="Inspect", exact=True).click()
     with (
         page.expect_popup() as opened,
         page.expect_response(
             lambda r: r.url.endswith(f"/videos/{video_id}/editor") and r.request.method == "POST"
         ) as response,
     ):
-        page.get_by_role("button", name="Inspect in CVAT" if review else "CVAT", exact=True).click()
+        page.get_by_role(
+            "button", name="Open CVAT to correct" if review else "CVAT", exact=True
+        ).click()
     viewer = opened.value
     navigation = []
     viewer.on("request", lambda r: navigation.append(r.url) if r.is_navigation_request() else None)
@@ -160,6 +165,8 @@ def save_cvat(page):
 
 
 def submit(page, video_id, editor_id, expected_status=201, *, check_refresh=False):
+    if "/reviews" in page.url:
+        page.goto(page.url.replace("/reviews", "/datasets"))
     page.get_by_role("button", name="Submit saved tracks", exact=True).click()
     page.locator("#action-form select[name=editor]").select_option(editor_id)
     pending = []
@@ -202,12 +209,16 @@ def submit(page, video_id, editor_id, expected_status=201, *, check_refresh=Fals
 
 
 def decide(page, video_id, verdict):
-    page.get_by_role("button", name="Review revision", exact=True).click()
+    if "/datasets" in page.url:
+        page.goto(page.url.replace("/datasets", "/reviews"))
+    page.get_by_role("button", name="Inspect", exact=True).click()
     page.locator("#action-form select[name=verdict]").select_option(verdict)
-    page.locator("#action-form input[name=comment]").fill("Synthetic E2E review")
-    with page.expect_response(lambda r: r.url.endswith(f"/videos/{video_id}/decision")) as response:
-        page.get_by_role("button", name="Save decision", exact=True).click()
-    assert response.value.status == 200, response.value.text()
+    page.locator("#action-form textarea[name=comment]").fill("Synthetic E2E review")
+    with page.expect_response(
+        lambda r: "/review-units/" in r.url and r.url.endswith("/decision")
+    ) as response:
+        page.get_by_role("button", name="Save review", exact=True).click()
+    assert response.value.status == 201, response.value.text()
     result = response.value.json()
     expect(page.locator("#dialog")).not_to_be_visible()
     return result
@@ -276,7 +287,7 @@ def test_video_annotation_review_and_draft_protection(
         stack, "draft resume and immutable submission preserve both track identities", revision=1
     )
     page.goto(f"{stack.url}/reviews?project={project_id}")
-    expect(page.locator(".video-list")).to_contain_text("Pending review")
+    expect(page.locator("#content table")).to_contain_text("Pending review")
     review = open_editor(page, video_http, video["id"], review=True)
     assert review["editor_id"] != editor["editor_id"]
     load_job(cvat, review)
@@ -290,6 +301,7 @@ def test_video_annotation_review_and_draft_protection(
     assert decide(page, video["id"], "changes_requested")["revision"] == 1
     log_step(stack, "separate review draft does not change the submitted revision")
     page.locator("#review-filter").select_option("changes_requested")
+    page.goto(f"{stack.url}/datasets?project={project_id}")
     # Keep a stale submission dialog open while another task publishes a revision.
     page.get_by_role("button", name="Submit saved tracks", exact=True).click()
     page.locator("#action-form select[name=editor]").select_option(review["editor_id"])
@@ -312,6 +324,7 @@ def test_video_annotation_review_and_draft_protection(
     page.locator("#close-dialog").click()
     log_step(stack, "stale browser submission rejects without overwriting the CVAT draft")
     page.goto(f"{stack.url}/reviews?project={project_id}")
+    page.locator("#review-filter").select_option("pending")
     final_editor = open_editor(page, video_http, video["id"], review=True)
     load_job(cvat, final_editor)
     frame(cvat, 2)
@@ -326,7 +339,9 @@ def test_video_annotation_review_and_draft_protection(
     assert not next(t for t in final["document"]["tracks"] if t["label_id"] == 1)["keyframes"][1][
         "occluded"
     ]
-    assert decide(page, video["id"], "accepted")["revision"] == 3
+    # The unchanged second video submission reuses its immutable review unit;
+    # this correction is unit revision 2 and source-video revision 3.
+    assert decide(page, video["id"], "accepted")["revision"] == 2
     versions = video_http.get(prefix + "/revisions").json()
     assert [v["revision"] for v in versions] == [1, 2, 3]
     assert versions[0]["id"] == annotation["id"]
@@ -339,7 +354,7 @@ def test_video_annotation_review_and_draft_protection(
     stack.start_workspace()
     page.goto(f"{stack.url}/reviews?project={project_id}")
     page.locator("#review-filter").select_option("accepted")
-    expect(page.locator(".video-list")).to_contain_text("Revision 3")
+    expect(page.locator("#content table")).to_contain_text("Revision 2")
     log_step(stack, "accepted video revision survives workspace restart")
     page.goto(f"{stack.url}/datasets?project={project_id}")
     page.get_by_role("button", name=f"Actions for {synthetic_clip.name}", exact=True).click()

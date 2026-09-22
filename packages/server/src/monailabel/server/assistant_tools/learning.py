@@ -113,16 +113,21 @@ class EvaluateArgs(Contract):
         max_length=120,
         description="Exact fixed evaluation set name from workspace data.",
     )
-    evaluation_set_id: str | None = None
-    evaluation_version_id: str | None = None
+    evaluation_set_id: str | None = Field(
+        default=None, description="Omit to use the currently selected evaluation set."
+    )
+    evaluation_version_id: str | None = Field(
+        default=None, description="Omit to use the current reference selection."
+    )
     candidate_id: str | None = Field(
         default=None,
         description="Exact checkpoint ID only when selecting a particular version. "
-        "For a named model prefer candidate_name.",
+        "Omit to use context.model_id unchanged. For a named model prefer candidate_name.",
     )
     baseline_id: str | None = Field(
         default=None,
         description="Exact baseline checkpoint ID only for a particular version. "
+        "Omit to use context.baseline_id unchanged. "
         "For a named reference model prefer baseline_name.",
     )
     candidate_name: str | None = Field(

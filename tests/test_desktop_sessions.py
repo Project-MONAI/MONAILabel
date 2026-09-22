@@ -6,6 +6,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi import Request, WebSocketDisconnect
@@ -13,7 +14,7 @@ from fastapi import Request, WebSocketDisconnect
 from monailabel.core.errors import DomainError
 from monailabel.core.models import Job, Role
 from monailabel.server.auth import LoginSession
-from monailabel.server.console_api import local_desktop
+from monailabel.server.console_api import desktop_backend_url, local_desktop
 from monailabel.server.desktops.models import DesktopSession
 
 
@@ -65,6 +66,39 @@ def test_local_launch_requires_loopback_address_and_connection(hostname, client_
         }
     )
     assert local_desktop(request) is expected
+
+
+@pytest.mark.parametrize(
+    "address,expected",
+    [
+        ("127.0.0.1", "http://127.0.0.1:8123"),
+        ("192.0.2.10", "http://192.0.2.10:8123"),
+        ("::1", "http://[::1]:8123"),
+        ("2001:db8::10", "http://[2001:db8::10]:8123"),
+        ("0.0.0.0", "http://127.0.0.1:8123"),
+        ("::", "http://[::1]:8123"),
+    ],
+)
+def test_desktop_bridge_uses_actual_interface_and_preserves_tls_override(
+    monkeypatch, address, expected
+):
+    monkeypatch.delenv("MONAILABEL_DESKTOP_BACKEND_URL", raising=False)
+    app = SimpleNamespace(state=SimpleNamespace(direct_tls=False))
+    request = Request(
+        {
+            "type": "http",
+            "scheme": "https",
+            "path": "/",
+            "headers": [(b"host", b"workspace.example")],
+            "server": (address, 8123),
+            "app": app,
+        }
+    )
+    assert desktop_backend_url(request) == expected
+    app.state.direct_tls = True
+    assert desktop_backend_url(request) == "https://workspace.example"
+    monkeypatch.setenv("MONAILABEL_DESKTOP_BACKEND_URL", "https://bridge.example/")
+    assert desktop_backend_url(request) == "https://bridge.example"
 
 
 def test_remote_launch_reuses_only_same_account_asset_and_mode(client, http, seeded, runtime):

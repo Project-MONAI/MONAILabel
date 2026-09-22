@@ -19,7 +19,7 @@ x-volumes: &volumes
   - logs:/home/django/logs
 
 x-backend: &backend
-  image: cvat/server:v2.76.0
+  image: ${MONAILABEL_CVAT_SERVER_IMAGE:-cvat/server:v2.76.0}
   restart: unless-stopped
   environment: *environment
   volumes: *volumes
@@ -62,7 +62,7 @@ services:
     command: init run server nginx
     ports: ['127.0.0.1:${MONAILABEL_CVAT_API_PORT:-8092}:8080']
   ui:
-    image: cvat/ui:v2.76.0
+    image: ${MONAILABEL_CVAT_UI_IMAGE:-cvat/ui:v2.76.0}
     restart: unless-stopped
     depends_on: [server]
   gateway:

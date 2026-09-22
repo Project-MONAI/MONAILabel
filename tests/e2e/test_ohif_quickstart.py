@@ -1,6 +1,7 @@
 """Radiology Quickstart through real OHIF with deterministic annotation providers."""
 
 import gzip
+import os
 import secrets
 
 import httpx
@@ -18,7 +19,12 @@ from monailabel.core.ports import Prediction
 pytestmark = pytest.mark.browser_e2e
 
 
-@pytest.mark.parametrize("hostname", ["127.0.0.1", "ohif.test"])
+@pytest.mark.parametrize(
+    "hostname",
+    [os.environ["MONAILABEL_E2E_HOST"]]
+    if "MONAILABEL_E2E_HOST" in os.environ
+    else ["127.0.0.1", "ohif.test"],
+)
 def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch, hostname):
     from playwright.sync_api import expect, sync_playwright
 
@@ -27,7 +33,7 @@ def test_radiology_ohif_annotate_correct_and_submit(tmp_path, monkeypatch, hostn
     print(f"OHIF Quickstart artifacts: {artifacts}", flush=True)
     # A configured build can be reused; otherwise provisioning stays in this test's cache.
     monkeypatch.setenv("MONAILABEL_TOOLS_DIR", str(tmp_path / "tools"))
-    monkeypatch.setenv("MONAILABEL_ALLOWED_HOSTS", "127.0.0.1,ohif.test")
+    monkeypatch.setenv("MONAILABEL_ALLOWED_HOSTS", f"127.0.0.1,ohif.test,{hostname}")
     stack = VideoStack(tmp_path, artifacts)
     stack.start_workspace()
     try:

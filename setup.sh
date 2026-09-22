@@ -17,8 +17,8 @@ Prepare MONAI Label on Ubuntu 22.04+ or Debian 12+.
 Installs missing system libraries, uv/Python, Node/Corepack, Docker and
 NVIDIA Container Toolkit, then prepares Slicer, QuPath, OHIF and CVAT images.
 Existing installations and cached downloads are reused.
-ARM64 setup prepares the server and OHIF experimentally; managed Slicer,
-QuPath and CVAT currently require x86_64. See docs/spark.md.
+ARM64 setup prepares the server, OHIF, native QuPath and CVAT.
+Slicer on ARM64 needs a compatible installation. See docs/spark.md.
 
   --check   Check prerequisites without installing or downloading anything.
   --cpu     Skip Docker/GPU setup; use a hosted chat model and CPU-capable models.
@@ -78,6 +78,12 @@ platform_setup() {
     SETUP_PACKAGES=(ca-certificates curl git gnupg xz-utils ffmpeg libglu1-mesa
         libopengl0 libpulse-mainloop-glib0 libnss3 libsm6 libxcb-cursor0
         libxkbcommon-x11-0 libxi6 libxrender1 libxtst6 qt5dxcb-plugin)
+    if [[ "$SETUP_NODE_ARCH" == arm64 ]]; then
+        # The native Slicer source build uses the distribution's Qt 5 runtime.
+        SETUP_PACKAGES+=(libqt5xml5 libqt5xmlpatterns5 libqt5multimediawidgets5
+            libqt5svg5 libqt5opengl5 libqt5sql5-sqlite libqt5webengine5
+            libqt5webenginewidgets5 libqt5designer5)
+    fi
     if { [[ "$ID" == ubuntu ]] && (( ${VERSION_ID%%.*} >= 24 )); } ||
        { [[ "$ID" == debian ]] && (( ${VERSION_ID%%.*} >= 13 )); }; then
         SETUP_PACKAGES+=(libasound2t64 libgtk-3-0t64)
@@ -259,8 +265,9 @@ main() {
     cd "$SETUP_ROOT"
     platform_setup
     if [[ "$SETUP_NODE_ARCH" == arm64 ]]; then
-        viewers=(ohif)
-        say "Experimental ARM64 server setup. Managed Slicer, QuPath and CVAT require x86_64; see docs/spark.md."
+        viewers=(qupath ohif)
+        if (( SETUP_CPU )); then viewers=(ohif); fi
+        say "ARM64 setup builds native QuPath and CVAT with Docker. Slicer needs a compatible installation; see docs/spark.md."
     fi
     SETUP_ENV="${UV_PROJECT_ENVIRONMENT:-$SETUP_ROOT/.venv}"
     [[ "$SETUP_ENV" == /* ]] || SETUP_ENV="$SETUP_ROOT/$SETUP_ENV"
@@ -289,7 +296,7 @@ main() {
             say "Preparing $viewer"
             env -u VIRTUAL_ENV uv run --locked --no-sync monailabel viewer "$viewer"
         done
-        if [[ "$SETUP_NODE_ARCH" == x64 ]] && docker info >/dev/null 2>&1; then
+        if docker info >/dev/null 2>&1; then
             say "Preparing CVAT images"
             env -u VIRTUAL_ENV uv run --locked --no-sync monailabel viewer cvat
         fi

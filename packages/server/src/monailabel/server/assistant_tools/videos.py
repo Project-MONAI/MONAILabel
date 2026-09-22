@@ -40,6 +40,7 @@ class FindVideoTool(TrackVideo):
     model_name: str | None = Field(
         default=None,
         description="Exact name from available models, only when the user names a model. "
+        "An explicit name overrides context.model_id, even when a different model is selected. "
         "Otherwise omit both model_name and model_id to use the selection or default. "
         "Never put a model ID or the tracker name here.",
     )

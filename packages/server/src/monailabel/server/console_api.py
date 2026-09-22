@@ -47,6 +47,26 @@ def local_desktop(request: Request) -> bool:
     )
 
 
+def desktop_backend_url(request: Request) -> str:
+    if configured := os.environ.get("MONAILABEL_DESKTOP_BACKEND_URL"):
+        return configured.rstrip("/")
+    if getattr(request.app.state, "direct_tls", False):
+        return str(request.base_url).rstrip("/")
+    server = request.scope.get("server")
+    if not server:
+        return str(request.base_url).rstrip("/")
+    # Use the accepted socket's local address, not the client-supplied Host.
+    # A server bound only to a LAN interface is not reachable on loopback.
+    try:
+        address = ip_address(server[0])
+    except ValueError:
+        address = ip_address("127.0.0.1")
+    if address.is_unspecified:
+        address = ip_address("::1" if address.version == 6 else "127.0.0.1")
+    host = f"[{address}]" if address.version == 6 else str(address)
+    return f"http://{host}:{server[1]}"
+
+
 @router.patch("/projects/{project_id}/label-colors")
 def label_colors(project_id: str, body: LabelColorsUpdate, service: Service) -> Project:
     return update_colors(service.store, project_id, body)
@@ -237,12 +257,7 @@ def viewer(
             {"asset_id": asset_id, "viewer": selected, "mode": mode, "target": "native"},
             launch_native,
         )
-    # Native viewers run on this server, including behind an HTTPS reverse proxy.
-    server = request.scope.get("server")
-    default_url = f"http://127.0.0.1:{server[1]}" if server else str(request.base_url).rstrip("/")
-    if getattr(request.app.state, "direct_tls", False):
-        default_url = str(request.base_url).rstrip("/")
-    url = os.environ.get("MONAILABEL_DESKTOP_BACKEND_URL", default_url).rstrip("/")
+    url = desktop_backend_url(request)
 
     def work(context: JobContext) -> Outcome:
         desktop = service.desktops.open(asset, user, selected, mode, url, context)

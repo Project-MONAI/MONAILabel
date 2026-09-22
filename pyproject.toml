@@ -56,6 +56,9 @@ markers = [
 ]
 filterwarnings = [
   "error",
+  # Torch 2.10 reports its 12.0 build ceiling for GB10 (12.1); keep the warning
+  # visible without preventing real CUDA kernel/inference tests from running.
+  'default:\s*Found GPU\d+ NVIDIA GB10 which is of cuda capability 12\.1\.:UserWarning:torch.cuda',
   # MONAI 1.5.2 uses list indexing in its sliding-window utility; checked with Torch 2.10.
   "ignore:Using a non-tuple sequence for multidimensional indexing is deprecated.*:UserWarning:monai.inferers.utils",
   # The pinned SAM runtime uses this Torch context; real tracking is checked in video E2E.

@@ -25,9 +25,9 @@ For SSH port forwarding or a headless local server, open `/datasets?desktop=brow
 
 ### Browser desktop server setup
 
-Use a Linux x86_64 server with a local Docker daemon and the portable Slicer/QuPath distributions prepared by MONAI Label. Remote devices connect over HTTPS to the workspace; include its hostname in `MONAILABEL_ALLOWED_HOSTS`. An HTTPS reverse proxy must forward WebSocket upgrades for `/desktop/`. No VNC port is exposed: the backend relays the signed-in user's display through a private Unix socket. Session ownership and current project access are checked at connection and while connected.
+Use a Linux x86_64 or ARM64 server with a local Docker daemon and native portable Slicer/QuPath distributions. See the [Spark guide](spark.md) for ARM64 builds. Remote devices connect over HTTPS to the workspace; include its hostname in `MONAILABEL_ALLOWED_HOSTS`. An HTTPS reverse proxy must forward WebSocket upgrades for `/desktop/`. No VNC port is exposed: the backend relays the signed-in user's display through a private Unix socket. Session ownership and current project access are checked at connection and while connected.
 
-The default native bridge URL is the server's loopback HTTP address. An HTTPS reverse proxy can terminate TLS while the backend continues to listen locally. When using the server's own TLS options, the bridge uses the workspace HTTPS address, which must resolve from the container and have a certificate trusted there. For a private development CA, prefer terminating TLS at the proxy; trusting a certificate on the tablet alone does not install it in the viewer container. `MONAILABEL_DESKTOP_BACKEND_URL` overrides the bridge address for custom deployments.
+The default native bridge URL uses the HTTP connection's local server address, so binding only a specific LAN interface works too. An HTTPS reverse proxy can terminate TLS while the backend continues to listen locally. When using the server's own TLS options, the bridge uses the workspace HTTPS address, which must resolve from the container and have a certificate trusted there. For a private development CA, prefer terminating TLS at the proxy; trusting a certificate on the tablet alone does not install it in the viewer container. `MONAILABEL_DESKTOP_BACKEND_URL` overrides the bridge address for custom deployments.
 
 | Server setting | Default | Purpose |
 | --- | --- | --- |
@@ -259,7 +259,7 @@ For Safari, enable Siri and allow microphone/speech access when prompted. WebKit
 
 ### Phones, tablets and other computers
 
-The server listens on `0.0.0.0:8000` by default. Its hostname, resolved IPv4 addresses and primary network address are allowed automatically; `MONAILABEL_ALLOWED_HOSTS` replaces that list for custom DNS aliases or reverse proxies. Use `--host 127.0.0.1` to limit connections to the server machine.
+The server listens on `127.0.0.1:8000` by default, so only the server machine can connect. To enable network access explicitly, use `uv run monailabel-server --host 0.0.0.0 --port 8000`, or bind a specific interface address. Its hostname, resolved IPv4 addresses and primary network address are allowed automatically; `MONAILABEL_ALLOWED_HOSTS` replaces that list for custom DNS aliases or reverse proxies. Allowed hostnames do not change the listen address.
 
 Use **HTTPS** with a certificate trusted by the device when connecting over your network. `localhost` on a phone refers to the phone, not your workstation. Connect to the server’s network hostname or IP address. The same responsive workspace runs on touch devices; the Menu and Assistant buttons expose navigation and chat on small screens.
 

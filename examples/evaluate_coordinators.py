@@ -162,6 +162,8 @@ def metadata(client: str, story: str | None = None, step: str = "") -> dict[str,
         )
         if step in {"continue", "handoff", "annotate_v1"}:
             context["model_id"] = "unet"
+        if step == "compare_versions":
+            context.update(model_id="unet", baseline_id="previous")
         if step in {"unet_setup", "vista_setup"}:
             result["learners"] = []
             result["models"] = [m for m in result["models"] if m["id"] not in {"unet", "previous"}]
@@ -178,12 +180,29 @@ def normalize(value: Any) -> Any:
     return value
 
 
+def effective_learner_name(arguments: dict[str, Any], data: dict[str, Any]) -> str | None:
+    """Resolve the training target using the operational tool's context fallbacks."""
+    if arguments.get("learner_name") is not None:
+        return arguments["learner_name"]
+    context = data.get("context", {})
+    identifier = arguments.get("learner_id") or context.get("learner_id")
+    if not identifier and arguments.get("mode") in {"continue", "fine_tune"}:
+        parent_id = arguments.get("parent_model_id") or context.get("model_id")
+        parent = next((m for m in data.get("models", []) if m["id"] == parent_id), {})
+        identifier = parent.get("learner_id")
+    learners = [item for item in data.get("learners", []) if not item.get("archived")]
+    if identifier:
+        return next((item["name"] for item in learners if item["id"] == identifier), None)
+    return learners[0]["name"] if len(learners) == 1 else None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--variant", choices=["4b", "9b", "lightning"], required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--story", choices=["radiology", "pathology", "endoscopy"])
+    parser.add_argument("--case", help="Run only this prompt ID from the selected suite/story.")
     parser.add_argument("--thinking", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument(
         "--suite", choices=["golden", "regression", "viewer-edits"], default="golden"
@@ -212,10 +231,15 @@ def main() -> None:
         cases = json.loads((root / "tests/fixtures/viewer_edit_prompts.json").read_text())
     else:
         cases = json.loads((root / "tests/fixtures/coordinator_prompts.json").read_text())
+    if args.case:
+        cases = [case for case in cases if case.get("id") == args.case]
+        if not cases:
+            parser.error("No prompt matches --case in the selected suite/story.")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     results = []
     for case in cases[: args.limit or None]:
         data = metadata(case["context"], case.get("story"), case.get("id", ""))
+        data["context"].update(case.get("context_overrides", {}))
         context = AssistantContext.model_validate(data["context"])
         tools = catalog(
             ToolContext(
@@ -360,6 +384,8 @@ def main() -> None:
             if passed and calls:
                 for key, value in case["arguments"].items():
                     actual = actual_args.get(key)
+                    if key == "learner_name" and actual is None:
+                        actual = effective_learner_name(actual_args, data)
                     if key == "initialization" and actual is None:
                         actual = (
                             "fine_tune" if actual_args.get("recipe") == "vista3d" else "scratch"

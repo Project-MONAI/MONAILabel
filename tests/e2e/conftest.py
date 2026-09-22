@@ -50,10 +50,16 @@ class VideoStack:
         return f"http://localhost:{self.ui_port}"
 
     def compose(self, *args, input=None, timeout=180, check=True):
-        env = os.environ | {
-            "MONAILABEL_CVAT_API_PORT": str(self.api_port),
-            "MONAILABEL_CVAT_UI_PORT": str(self.ui_port),
-        }
+        from monailabel.viewers.cvat_runtime import image_environment
+
+        env = (
+            os.environ
+            | image_environment()
+            | {
+                "MONAILABEL_CVAT_API_PORT": str(self.api_port),
+                "MONAILABEL_CVAT_UI_PORT": str(self.ui_port),
+            }
+        )
         result = subprocess.run(
             ["docker", "compose", "-p", self.compose_project, "-f", str(COMPOSE), *args],
             input=input,
@@ -73,6 +79,10 @@ class VideoStack:
         return result
 
     def start_cvat(self):
+        from monailabel.viewers.cvat_runtime import CvatManager, image_environment
+
+        if image_environment():
+            CvatManager.prepare_images()
         self.compose("up", "-d", timeout=600)
         deadline = time.monotonic() + 180
         with httpx.Client(base_url=self.cvat_url, timeout=5) as http:
@@ -99,15 +109,27 @@ class VideoStack:
             response.raise_for_status()
             self.token = response.json()["key"]
 
-    def start_workspace(self):
+    def start_workspace(self, *, lan_only=False):
         assert self.server is None
         # The socket stays reserved until Uvicorn takes ownership.
+        host = os.environ.get("MONAILABEL_E2E_HOST")
+        if lan_only and not host:
+            raise ValueError("LAN-only checks require MONAILABEL_E2E_HOST.")
+        primary = host if lan_only else "127.0.0.1"
         sock = socket.socket()
-        sock.bind(("127.0.0.1", 0))
-        self.url = f"http://127.0.0.1:{sock.getsockname()[1]}"
+        sock.bind((primary, 0))
+        port = sock.getsockname()[1]
+        self.url = f"http://{primary}:{port}"
+        sockets = [sock]
+        if host and not lan_only:
+            # Bootstrap remains local; opt-in LAN checks bind only the requested
+            # interface, never every interface or a production workspace.
+            remote = socket.socket()
+            remote.bind((host, port))
+            sockets.append(remote)
         self.app = create_app(self.root / "workspace", chat_provider=ScriptedChat())
         self.server = uvicorn.Server(uvicorn.Config(self.app, access_log=False, log_level="error"))
-        self.thread = threading.Thread(target=lambda: self.server.run(sockets=[sock]), daemon=True)
+        self.thread = threading.Thread(target=lambda: self.server.run(sockets=sockets), daemon=True)
         self.thread.start()
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:

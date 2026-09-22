@@ -1213,7 +1213,7 @@ async function action(name, id) {
       openViewer: (item) =>
         safely(() =>
           item.kind === "video"
-            ? action("video-open", item.source_id)
+            ? action("video-inspect", item.source_id)
             : launchViewer(item.source_id, "qupath", "annotation"),
         ),
     });

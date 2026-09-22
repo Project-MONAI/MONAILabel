@@ -26,6 +26,18 @@
     {
       "name": "qupath",
       "version": "0.7.0",
+      "system": "Linux",
+      "machine": "arm64",
+      "url": "https://codeload.github.com/qupath/qupath/tar.gz/04ccfa4fb7d43e9b566393e08e83690b72248d44",
+      "executable": "*/bin/QuPath",
+      "checksum": "3ef9fcd5ab835ac0e0657acde8458990e39ef63c8f6e05c3881444a985f78dbd",
+      "algorithm": "sha256",
+      "archive": "tar",
+      "build": "qupath"
+    },
+    {
+      "name": "qupath",
+      "version": "0.7.0",
       "system": "Windows",
       "machine": "x86_64",
       "url": "https://github.com/qupath/qupath/releases/download/v0.7.0/QuPath-v0.7.0-Windows.zip",
