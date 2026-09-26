@@ -24,7 +24,7 @@ expiringdict==1.2.2
 expiring_dict==1.1.0
 cachetools==5.3.3
 watchdog==4.0.0
-pydicom==3.0.1
+pydicom==3.0.2
 highdicom==0.26.1
 pynetdicom==2.0.2
 pynrrd==1.1.3
