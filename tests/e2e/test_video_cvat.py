@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Real browser-to-browser video workflow. Annotation writes go through CVAT's UI."""
 
 import hashlib
@@ -33,7 +44,29 @@ def login_workspace(page, stack):
     expect(page.locator("#workspace")).to_be_visible()
 
 
-def create_project(page, name):
+def create_project(page, name, *, labels=()):
+    if labels:
+        # Native editing tests start with explicitly configured fixture labels.
+        project = page.evaluate(
+            """async (body) => {
+                const response = await fetch('/api/projects', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body)
+                });
+                if (!response.ok) throw new Error(await response.text());
+                return response.json();
+            }""",
+            {
+                "name": name,
+                "labels": [
+                    {"id": index, "name": label}
+                    for index, label in enumerate(("Background", *labels))
+                ],
+            },
+        )
+        page.reload()
+        page.locator("#project-select").select_option(project["id"])
+        return project["id"]
     page.locator("#new-project").click()
     page.locator("#action-form input[name=name]").fill(name)
     with page.expect_response(
@@ -52,7 +85,7 @@ def import_video(
     page.get_by_role("button", name="Import video", exact=True).click()
     page.locator("input[name=clip]").set_input_files(clip)
     page.locator("input[name=group_id]").fill(group)
-    page.locator("input[name=labels]").fill("Grasper, Scissors")
+    expect(page.locator("input[name=labels]")).to_have_count(0)
     page.locator("#action-form select[name=split]").select_option(split)
     with page.expect_response(
         lambda r: "/videos/upload?" in r.url and r.request.method == "POST"
@@ -231,7 +264,9 @@ def test_video_annotation_review_and_draft_protection(
     context, errors = browser_session
     page, cvat = context.new_page(), context.new_page()
     login_workspace(page, stack)
-    project_id = create_project(page, "Synthetic instrument video E2E")
+    project_id = create_project(
+        page, "Synthetic instrument video E2E", labels=("Grasper", "Scissors")
+    )
     video = import_video(page, stack, project_id, synthetic_clip)
     prefix = f"/api/videos/{video['id']}"
     meta = video_http.get(prefix + "/metadata").json()
@@ -375,7 +410,7 @@ def test_unsupported_native_shapes_preserve_the_saved_draft(
     context, errors = browser_session
     page, cvat = context.new_page(), context.new_page()
     login_workspace(page, stack)
-    project_id = create_project(page, "Unsupported video shape E2E")
+    project_id = create_project(page, "Unsupported video shape E2E", labels=("Grasper", "Scissors"))
     video = import_video(page, stack, project_id, synthetic_clip)
     editor = open_editor(page, video_http, video["id"])
     login_cvat(cvat, stack)
@@ -404,7 +439,9 @@ def test_video_evaluation_reservation_and_browser_roles(
     context, errors = browser_session
     page = context.new_page()
     login_workspace(page, stack)
-    pid = create_project(page, "Video access and held-out grouping E2E")
+    pid = create_project(
+        page, "Video access and held-out grouping E2E", labels=("Grasper", "Scissors")
+    )
     video = import_video(
         page, stack, pid, synthetic_clip, group="held-out-procedure", split="validation"
     )

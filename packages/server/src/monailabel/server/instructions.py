@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Packaged Agent Skills with model-driven activation and bounded tool discovery.
 
 Only trusted application resources are loaded, never uploads or the current directory.
@@ -18,6 +29,14 @@ from pydantic import Field, ValidationError, field_validator
 from monailabel.core.chat import ToolCall, ToolDefinition
 from monailabel.core.errors import DomainError
 from monailabel.core.models import Contract
+
+WORKFLOW_TOOL_REMINDER = (
+    "Loading a skill only reads instructions. Fulfill the original request with a tool. "
+    "To show or list existing data, use inspect_workspace; do not start a new job. "
+    "If the current workflow has no suitable tool, load the matching skill first. "
+    "Use clarify_request only for essential missing information. "
+    "Do not report completion without a tool result."
+)
 
 
 class SkillHeader(Contract):
@@ -54,12 +73,21 @@ def parse_skill(text: str, directory: str) -> Skill:
     header = SkillHeader.model_validate(yaml.safe_load(sections[1]))
     if header.name != directory:
         raise ValueError(f"Skill name must match its directory: {directory}")
-    if header.metadata.get("monailabel-context") not in {"workspace", "project", "viewer"}:
+    if header.metadata.get("monailabel-context") not in {
+        "workspace",
+        "project",
+        "project-workspace",
+        "viewer",
+    }:
         raise ValueError(
-            f"Skill needs a monailabel-context of workspace, project or viewer: {directory}"
+            "Skill needs a monailabel-context of workspace, project, project-workspace "
+            f"or viewer: {directory}"
         )
     if not header.allowed_tools.strip():
         raise ValueError(f"Skill needs registered allowed-tools: {directory}")
+    sources = set(header.metadata.get("monailabel-sources", "").split())
+    if sources - {"volume3d", "image2d", "video"}:
+        raise ValueError(f"Skill has unsupported monailabel-sources: {directory}")
     return Skill(header, sections[2].strip())
 
 
@@ -73,24 +101,46 @@ def skills() -> tuple[Skill, ...]:
     )
 
 
-@lru_cache(maxsize=4)
-def coordinator_instructions(*, viewer: bool = True, project: bool = True) -> str:
+@lru_cache(maxsize=32)
+def coordinator_instructions(
+    *,
+    viewer: bool = True,
+    project: bool = True,
+    in_workspace: bool = True,
+    source_kind: str | None = None,
+) -> str:
     text = files("monailabel.server").joinpath("resources/assistant/AGENTS.md").read_text()
     catalog = "\n".join(
         f"<skill><name>{escape(skill.header.name)}</name>"
         f"<description>{escape(skill.header.description)}</description></skill>"
-        for skill in available_skills(viewer=viewer, project=project)
+        for skill in available_skills(
+            viewer=viewer, project=project, in_workspace=in_workspace, source_kind=source_kind
+        )
     )
     return text + "\n<available_skills>\n" + catalog + "\n</available_skills>"
 
 
-def available_skills(*, viewer: bool, project: bool) -> tuple[Skill, ...]:
+def available_skills(
+    *, viewer: bool, project: bool, in_workspace: bool = True, source_kind: str | None = None
+) -> tuple[Skill, ...]:
     contexts = {"workspace"}
     if project:
         contexts.add("project")
+        if in_workspace:
+            contexts.add("project-workspace")
     if viewer:
         contexts.add("viewer")
-    return tuple(s for s in skills() if s.header.metadata["monailabel-context"] in contexts)
+    return tuple(
+        skill
+        for skill in skills()
+        if skill.header.metadata["monailabel-context"] in contexts
+        and (
+            in_workspace
+            or source_kind is None
+            or not (sources := skill.header.metadata.get("monailabel-sources"))
+            or source_kind in sources.split()
+        )
+    )
 
 
 class LoadSkillArgs(Contract):
@@ -107,10 +157,15 @@ class SkillSession:
         *,
         viewer: bool,
         project: bool,
+        in_workspace: bool = True,
+        source_kind: str | None = None,
         inspect: Callable[[str], str] | None = None,
     ):
         self.catalog = {
-            skill.header.name: skill for skill in available_skills(viewer=viewer, project=project)
+            skill.header.name: skill
+            for skill in available_skills(
+                viewer=viewer, project=project, in_workspace=in_workspace, source_kind=source_kind
+            )
         }
         self.all_tools = definitions
         self.active: set[str] = set()
@@ -127,7 +182,8 @@ class SkillSession:
                 description="Enable the action tools for a workflow and read its instructions. "
                 "Tools are loaded on demand: monailabel-workspace enables creating projects; "
                 "other skills enable importing, annotation, review, training or comparison. "
-                "Choose a name from available_skills, then use the newly available tools.",
+                "Choose a name from available_skills, then use the newly available tools. "
+                "You can load another skill if the current tools do not support the request.",
                 parameters={
                     "type": "object",
                     "properties": {

@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Desktop ownership, launch selection, lifecycle and authenticated streaming."""
 
 import socketserver
@@ -97,6 +108,8 @@ def test_desktop_bridge_uses_actual_interface_and_preserves_tls_override(
     assert desktop_backend_url(request) == expected
     app.state.direct_tls = True
     assert desktop_backend_url(request) == "https://workspace.example"
+    app.state.local_ca_certificate = "public-test-certificate"
+    assert desktop_backend_url(request) == expected.replace("http:", "https:")
     monkeypatch.setenv("MONAILABEL_DESKTOP_BACKEND_URL", "https://bridge.example/")
     assert desktop_backend_url(request) == "https://bridge.example"
 
@@ -104,12 +117,14 @@ def test_desktop_bridge_uses_actual_interface_and_preserves_tls_override(
 def test_remote_launch_reuses_only_same_account_asset_and_mode(client, http, seeded, runtime):
     _, assets = seeded
     asset = assets[0]
+    http.app.state.local_ca_certificate = "public-test-certificate"
     identifier = launch(client, asset)
     assert launch(client, asset) == identifier
     assert len(runtime.calls) == 1
     configuration = runtime.calls[0][2]
     service = http.app.state.services
     assert configuration["shared_filesystem"] is False
+    assert configuration["ca_certificate"] == "public-test-certificate"
     assert configuration["asset_id"] == asset["id"]
     assert service.auth.authenticate(configuration["token"]).username == "owner"
     response = http.get(f"/api/desktops/{identifier}")
@@ -436,3 +451,17 @@ def test_websocket_streams_bytes_and_rechecks_access(client, http, seeded, runti
             finally:
                 server.shutdown()
                 worker.join()
+
+
+def test_container_disables_native_launch(monkeypatch):
+    monkeypatch.setenv("MONAILABEL_NATIVE_VIEWERS", "0")
+    request = Request(
+        {
+            "type": "http",
+            "scheme": "http",
+            "path": "/",
+            "headers": [(b"host", b"localhost")],
+            "client": ("127.0.0.1", 1234),
+        }
+    )
+    assert local_desktop(request) is False

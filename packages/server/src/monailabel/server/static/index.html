@@ -1,3 +1,16 @@
+<!--
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -5,6 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MONAI Label · Annotation workspace</title>
     <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/chat-content.css" />
     <script src="/static/app.js" type="module"></script>
   </head>
   <body>
@@ -247,6 +261,15 @@
         class="assistant"
         aria-label="Workspace assistant"
       >
+        <div
+          id="assistant-resize"
+          role="separator"
+          tabindex="0"
+          aria-label="Resize workspace assistant"
+          aria-orientation="vertical"
+          aria-controls="assistant-panel"
+          title="Drag to resize; use left and right arrow keys when focused"
+        ></div>
         <div class="assistant-heading">
           <span class="assistant-symbol" aria-hidden="true">M</span>
           <div>
@@ -329,6 +352,7 @@
                 type="submit"
                 aria-label="Send message"
                 title="Send message"
+                disabled
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -348,7 +372,7 @@
           </div>
         </form>
         <p id="voice-status" class="voice-status" role="status"></p>
-        <p class="chat-footnote">Checking assistant status…</p>
+        <p class="chat-footnote" role="status">Checking assistant status…</p>
       </aside>
     </div>
     <dialog id="dialog">

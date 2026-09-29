@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package org.monailabel.qupath
 
 import javafx.application.Platform
@@ -28,7 +41,14 @@ class AnnotationPanel {
     boolean floating = false
     final TextArea history = new TextArea()
     final TextArea prompt = new TextArea()
-    final ComboBox<String> modelChoice = new ComboBox<>()
+    final ComboBox<Map> modelChoice = new ComboBox<>()
+    final ComboBox<String> targetChoice = new ComboBox<>()
+    final HBox inputTools = new HBox(4)
+    final Separator inputSeparator = new Separator(javafx.geometry.Orientation.VERTICAL)
+    final SplitMenuButton updateButton = new SplitMenuButton()
+    final HBox interactionToolbar = new HBox(6)
+    final InteractionHints hints = new InteractionHints(this)
+    String updateScope = 'selected_region'
     final Label status = new Label('Connecting…')
     final Button sendButton = new Button('Send prompt')
     final Button cancelButton = new Button('Cancel job')
@@ -53,7 +73,7 @@ class AnnotationPanel {
     final Button goodButton = new Button('Good')
     final Button badButton = new Button('Bad / needs changes')
     final Button correctedButton = new Button('Good with corrections')
-    final HBox reviewButtons = new HBox(8, goodButton, badButton, correctedButton)
+    final FlowPane reviewButtons = new FlowPane(8, 6, goodButton, badButton, correctedButton)
     final List<List> undo = []
     final List<List> redo = []
     List classificationCategories = ['Tumor', 'Immune', 'Stromal']
@@ -69,6 +89,33 @@ class AnnotationPanel {
         prompt.setOnKeyPressed { event ->
             if (event.controlDown && event.code == KeyCode.ENTER) { send(); event.consume() }
         }
+        targetChoice.editable = true; targetChoice.maxWidth = Double.MAX_VALUE
+        targetChoice.editor.promptText = 'Choose or type a target label'; targetChoice.setAccessibleText('Target label')
+        targetChoice.editor.textProperty().addListener { observable, previous, current -> hints.navigate(); controls() }
+        modelChoice.valueProperty().addListener { observable, previous, current ->
+            if (current?.heading) {
+                int index = modelChoice.items.indexOf(current)
+                int direction = modelChoice.items.indexOf(previous) <= index ? 1 : -1
+                int next = index + direction
+                while (next >= 0 && next < modelChoice.items.size() && modelChoice.items[next].heading) next += direction
+                if (next >= 0 && next < modelChoice.items.size()) modelChoice.selectionModel.select(next)
+                else modelChoice.selectionModel.select(previous)
+                return
+            }
+            configureModel()
+        }
+        updateButton.text = '▶ Update region'; updateButton.setAccessibleText('Update segmentation')
+        updateButton.style = '-fx-base: #116b87; -fx-text-base-color: white; -fx-mark-color: white;'
+        updateButton.setOnAction { send(null, [viewer_scope: updateScope]) }
+        [['Update region', 'selected_region'], ['Update image', 'full']].each { label, scope ->
+            def item = new MenuItem(label)
+            item.setOnAction { updateScope = scope; updateButton.text = '▶ ' + label; send(null, [viewer_scope: scope]) }
+            updateButton.items.add(item)
+        }
+        inputSeparator.prefHeight = 20
+        def spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS)
+        interactionToolbar.children.addAll(inputTools, inputSeparator, spacer, updateButton)
+        interactionToolbar.alignment = javafx.geometry.Pos.CENTER_LEFT
         sendButton.setOnAction { send() }
         cancelButton.disable = true
         cancelButton.setOnAction {
@@ -90,9 +137,12 @@ class AnnotationPanel {
         goodButton.setOnAction { reviewDecision('accepted') }
         badButton.setOnAction { reviewDecision('changes_requested') }
         correctedButton.setOnAction { reviewDecision('accepted') }
-        pane = new VBox(10, new HBox(10, new Label('Annotation assistant'), popButton), new Label('Model'), modelChoice, split,
+        pane = new VBox(10, new HBox(10, new Label('Annotation assistant'), popButton), new Label('Model'), modelChoice, targetChoice, interactionToolbar, split,
             new HBox(8, sendButton, cancelButton), draftButton, submitButton, reviewComment, reviewButtons, status)
         pane.padding = new Insets(14); VBox.setVgrow(split, Priority.ALWAYS)
+        pane.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, { event ->
+            if (event.code == KeyCode.ESCAPE) { hints.navigate(); controls() }
+        } as javafx.event.EventHandler)
         status.wrapText = true; modelChoice.maxWidth = Double.MAX_VALUE
         stage.scene = new Scene(new VBox(), 470, 760)
         stage.minWidth = 360; stage.minHeight = 480
@@ -137,7 +187,33 @@ class AnnotationPanel {
             }
         }
     }
+    void configureModel() {
+        hints.navigate(); inputTools.children.clear()
+        def model = modelChoice.value
+        def kinds = model?.interaction?.inputs ?: [:]
+        updateScope = model?.interaction ? 'full' : 'selected_region'
+        updateButton.text = model?.interaction ? '▶ Update image' : '▶ Update region'
+        [['positive', 'positive_point', '+ Point', 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M8 12h8 M12 8v8'], ['negative', 'negative_point', '− Point', 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M8 12h8'], ['box', 'box', 'Box', 'M5 3H3v2 M8 3h8 M19 3h2v2 M21 8v8 M21 19v2h-2 M16 21H8 M5 21H3v-2 M3 16V8']].each { mode, kind, title, path ->
+            if (!kinds.containsKey(kind)) return
+            def icon = new javafx.scene.shape.SVGPath(); icon.content = path
+            icon.fill = javafx.scene.paint.Color.TRANSPARENT; icon.stroke = javafx.scene.paint.Color.web('#536779'); icon.strokeWidth = 1.8
+            icon.scaleX = 0.8; icon.scaleY = 0.8
+            def button = new ToggleButton(); button.graphic = icon; button.userData = mode
+            button.tooltip = new Tooltip(title); button.setAccessibleText(title); button.prefWidth = 30; button.prefHeight = 30
+            button.setOnAction { hints.mode = hints.mode == mode ? 'navigate' : mode; controls() }
+            inputTools.children.add(button)
+        }
+        inputSeparator.visible = !inputTools.children.empty; inputSeparator.managed = inputSeparator.visible
+        String text = targetChoice.editor.text
+        targetChoice.items.setAll(model?.supported_targets != null ? model.supported_targets : (project?.labels ?: []).findAll { it.id }.collect { it.name })
+        targetChoice.editor.text = text
+        controls()
+    }
     void controls() {
+        modelChoice.disable = busy
+        targetChoice.disable = busy || !(canAnnotate || canReview)
+        updateButton.disable = busy || !imageData || !targetChoice.editor.text.trim() || !(canAnnotate || canReview)
+        inputTools.children.each { button -> button.disable = updateButton.disable; button.selected = hints.mode == button.userData }
         sendButton.disable = busy || !imageData
         submitButton.disable = busy || !canAnnotate || !imageData
         submitButton.visible = canAnnotate && !reviewMode; submitButton.managed = submitButton.visible
@@ -171,8 +247,30 @@ class AnnotationPanel {
         savedRegions = data.units.findAll { it.scope.kind == 'region' }.collect { it.scope.region }
         canAnnotate = data.permissions.roles.any { it in ['manager', 'annotator'] }
         canReview = data.permissions.roles.any { it in ['manager', 'reviewer'] }
-        modelChoice.items.setAll(['Automatic'] + models.collect { it.name })
-        modelChoice.selectionModel.select(0)
+        List choices = []
+        models.groupBy { it.catalog_group ?: 'Other models' }.each { group, members ->
+            choices.add([name: group, heading: true, divider: !choices.empty])
+            choices.addAll(members)
+        }
+        modelChoice.cellFactory = { ignored -> new ListCell<Map>() {
+            @Override
+            protected void updateItem(Map item, boolean empty) {
+                super.updateItem(item, empty)
+                text = empty || item == null ? null : item.name
+                disable = !empty && item?.heading == true
+                style = item?.heading ? ('-fx-font-weight: bold;' + (item.divider ? '-fx-border-color: #b8c5d0; -fx-border-width: 1 0 0 0;' : '')) : ''
+            }
+        } }
+        modelChoice.buttonCell = new ListCell<Map>() {
+            @Override
+            protected void updateItem(Map item, boolean empty) {
+                super.updateItem(item, empty)
+                text = empty || item == null ? null : item.name
+            }
+        }
+        modelChoice.items.setAll(choices)
+        def selected = choices.find { it.id && it.id == project.annotation_model_id } ?: choices.find { it.id }
+        modelChoice.selectionModel.select(selected)
         def projectFile = data.root.resolve('project.qpproj').toFile()
         def nativeProject
         boolean restoring = projectFile.exists()
@@ -189,6 +287,9 @@ class AnnotationPanel {
         qupath.setProject(nativeProject)
         qupath.openImageEntry(entry)
         imageData = qupath.imageData
+        hints.install()
+        if (project.labels.findAll { it.id }.size() == 1) targetChoice.editor.text = project.labels.find { it.id }.name
+        configureModel()
         submissionRegions = new ArrayList((List)(imageData.getProperty('MONAILabel.SubmissionRegions') ?: []))
         wholeImageDraft = imageData.getProperty('MONAILabel.WholeImageDraft') == true
         classificationCategories = (List)(imageData.getProperty('MONAILabel.ClassificationCategories') ?: ['Tumor', 'Immune', 'Stromal'])
@@ -239,31 +340,36 @@ class AnnotationPanel {
         if (busy) return
         try {
             checkImage()
-            String message = continuedMessage ?: prompt.text.trim(); if (!message) return
+            String message = prepared?.viewer_scope ? "Update " + targetChoice.editor.text.trim() : continuedMessage ?: prompt.text.trim(); if (!message) return
             history.appendText('You: ' + message + '\n'); prompt.clear()
             Map classificationPlan = prepared?.plan
             SelectionRegion.markSelectedGuides(imageData)
             def selectedObjects = imageData.hierarchy.selectionModel.selectedObjects
             def region = selectedObjects.size() == 1 && selectedObjects.first().isAnnotation() && selectedObjects.first().ROI?.isArea() ? SelectionRegion.capture(imageData) : null
             def signature = MaskObjects.signature(imageData.hierarchy.annotationObjects)
+            String inputSignature = backend.json.toJson(hints.objects)
             byte[] currentMask = null
             String maskError = null
             try { currentMask = MaskObjects.encode(SelectionRegion.labels(imageData), imageData.server.width, imageData.server.height, project.labels) }
             catch (IllegalArgumentException error) { maskError = error.message }
             def context = [asset_id: asset.id, base_revision: asset.revision,
-                viewer_actions: ['clear_segments', 'classify_objects', 'undo', 'redo', 'save_draft'] + (canAnnotate && !reviewMode ? ['submit'] : []) + (canReview ? ['review_annotation'] : [])]
-            if (prepared) context.classification = [base_revision: asset.revision, categories: classificationCategories, objects: classificationPlan.requests]
+                viewer_actions: ['set_interaction_mode', 'edit_spatial_prompts', 'clear_segments', 'classify_objects', 'undo', 'redo', 'save_draft'] + (canAnnotate && !reviewMode ? ['submit'] : []) + (canReview ? ['review_annotation'] : [])]
+            if (prepared?.plan) context.classification = [base_revision: asset.revision, categories: classificationCategories, objects: classificationPlan.requests]
             if (region) context.image_region = region.scope
             context.image_tiling = [tile_size: 256, overlap: 32]
-            int selection = modelChoice.selectionModel.selectedIndex
-            if (selection > 0) context.model_id = models[selection - 1].id
+            context.interaction_target = targetChoice.editor.text.trim()
+            context.interaction_mode = hints.mode
+            context.spatial_objects = new ArrayList(hints.objects)
+            if (modelChoice.value?.interaction) context.image_tiling = null
+            def selection = modelChoice.selectionModel.selectedItem
+            if (selection?.id) context.model_id = selection.id
             background({
-                def reply = backend.request('/api/projects/' + project.id + '/assistant', [message: message, context: context, conversation_id: conversationId, request_id: UUID.randomUUID().toString().replace('-', ''), continue_tool: prepared?.continue_tool])
-                conversationId = reply.conversation_id
+                def reply = prepared?.viewer_scope ? backend.request('/api/projects/' + project.id + '/viewer-inference', [context: context, scope: prepared.viewer_scope]) : backend.request('/api/projects/' + project.id + '/assistant', [message: message, context: context, conversation_id: conversationId, request_id: UUID.randomUUID().toString().replace('-', ''), continue_tool: prepared?.continue_tool])
+                if (reply.conversation_id) conversationId = reply.conversation_id
                 Platform.runLater {
                     if (reply.data?.model_id) {
-                        int index = models.findIndexOf { it.id == reply.data.model_id }
-                        if (index >= 0) modelChoice.selectionModel.select(index + 1)
+                        def model = modelChoice.items.find { it.id == reply.data.model_id }
+                        if (model) modelChoice.selectionModel.select(model)
                     }
                     if (reply.data?.project && reply.data.project.id == project.id) {
                         project = reply.data.project
@@ -291,6 +397,9 @@ class AnnotationPanel {
                 return [proposal: proposal, mask: mask]
             }, { result ->
                 checkImage()
+                if (result.reply?.data?.client_action in ['set_interaction_mode', 'edit_spatial_prompts']) {
+                    hints.apply(result.reply.data); return
+                }
                 if (result.reply?.data?.client_action == 'review_annotation') {
                     def action = result.reply.data
                     if (action.asset_id != asset.id || action.base_revision != asset.revision ||
@@ -364,6 +473,7 @@ class AnnotationPanel {
                     return
                 }
                 if (result.proposal) {
+                    if (backend.json.toJson(hints.objects) != inputSignature) throw new IllegalStateException('Input hints changed. Run Update again; your draft is preserved.')
                     if (MaskObjects.signature(imageData.hierarchy.annotationObjects) != signature)
                         throw new IllegalStateException('Your objects changed during inference. The proposal was not applied.')
                     if (result.proposal.asset_id != asset.id || result.proposal.base_revision != asset.revision)

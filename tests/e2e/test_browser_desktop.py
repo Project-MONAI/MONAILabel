@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Real native viewers, input streaming and reconnects from a browser-only client."""
 
 import gzip
@@ -21,7 +32,7 @@ from test_video_cvat import login_workspace
 
 from monailabel.client.client import Client
 from monailabel.core.chat import ChatMessage, ToolCall
-from monailabel.core.models import ModelRecord, Proposal
+from monailabel.core.models import ModelRecord, Proposal, User
 from monailabel.core.ports import Prediction
 from monailabel.server.dataset_downloads import Downloads
 from monailabel.server.desktops.models import DesktopSession
@@ -52,12 +63,56 @@ def observe_desktop():
         'mode': 'review' if dock.review_mode else 'annotation',
         'shared_filesystem': dock.shared_filesystem,
         'mask_labels': [int(x) for x in np.unique(dock.current_mask())],
+        'mask_counts': {str(int(x)): int(np.sum(dock.current_mask() == x))
+                        for x in np.unique(dock.current_mask())},
         'mask_sha256': hashlib.sha256(dock.current_mask().tobytes()).hexdigest(),
         'slice': dock.current_slice(),
         'draft': dock.prompt.toPlainText(), 'x': point.x(), 'y': point.y(),
         'window_width': slicer.util.mainWindow().width,
         'window_height': slicer.util.mainWindow().height,
         'submit': center(dock.save_button), 'dialog': buttons,
+        'interaction_visible': dock.hint_panel.visible,
+        'interaction_target': dock.interaction_target,
+        'interaction_mode': dock.interaction_mode,
+        'hint_scope': dock.hint_scope_value,
+        'model_selector': center(dock.models),
+        'selected_model': dock.models.currentText,
+        'target_selector': center(dock.hint_target.lineEdit()),
+        'model_names': [dock.models.itemText(i) for i in range(dock.models.count)
+                        if dock.models.itemData(i)],
+        'model_groups': [dock.models.itemText(i) for i in range(dock.models.count)
+                         if not dock.models.itemData(i) and dock.models.itemText(i)],
+        'group_selectable': [bool(dock.models.model().item(i).isSelectable())
+                             for i in range(dock.models.count) if not dock.models.itemData(i)],
+        'slice_view_selector': center(dock.views),
+        'slice_view': dock.slice_view,
+        'slice_view_actions': {
+            str(action.data()): [
+                dock.view_menu.mapToGlobal(dock.view_menu.actionGeometry(action).center()).x(),
+                dock.view_menu.mapToGlobal(dock.view_menu.actionGeometry(action).center()).y(),
+            ] for action in dock.view_menu.actions()
+        } if dock.view_menu.visible else {},
+        'hint_separator_visible': dock.hint_separator.visible,
+        'update_menu': [dock.update_hints.mapToGlobal(qt.QPoint(
+            dock.update_hints.width - 7, dock.update_hints.height // 2)).x(),
+            dock.update_hints.mapToGlobal(qt.QPoint(
+            dock.update_hints.width - 7, dock.update_hints.height // 2)).y()],
+        'visible_targets': [node.GetAttribute('MONAILabel.Target') for node in dock.region_nodes
+                            if node.GetScene() and node.GetDisplayNode().GetVisibility()],
+        'scope_actions': {
+            str(action.data()): [
+                dock.hint_scope_menu.mapToGlobal(dock.hint_scope_menu.actionGeometry(action).center()).x(),
+                dock.hint_scope_menu.mapToGlobal(dock.hint_scope_menu.actionGeometry(action).center()).y(),
+            ] for action in dock.hint_scope_menu.actions()
+        } if dock.hint_scope_menu.visible else {},
+        'placing': slicer.app.applicationLogic().GetInteractionNode().GetCurrentInteractionMode(),
+        'pending_points': (dock.hint_placement[0].GetNumberOfDefinedControlPoints()
+                           if getattr(dock, 'hint_placement', None) else -1),
+        'spatial_objects': spatial_hints.inventory(dock)[0],
+        'hint_buttons': {str(b.accessibleName): center(b) for b in
+                         dock.hint_panel.findChildren(qt.QToolButton) if b.visible},
+        'view_center': center(slicer.app.layoutManager().sliceWidget('Red').sliceView()),
+        'history': dock.history.toPlainText(),
     }))
 desktop_observer = qt.QTimer()
 desktop_observer.setInterval(300)
@@ -75,17 +130,43 @@ QUPATH_PROBE = """
             if (point == null) return
             def view = panel.qupath.viewer.view
             def bounds = view.localToScreen(view.boundsInLocal)
+            def center = { widget ->
+                def p = widget.localToScreen(widget.width / 2, widget.height / 2)
+                [p.x, p.y]
+            }
             new File('/session/observed.json').text = Backend.json.toJson([
                 asset_id: panel.asset.id, revision: panel.asset.revision,
                 mode: panel.reviewMode ? 'review' : 'annotation',
                 objects: panel.imageData.hierarchy.annotationObjects.size(),
                 draft: panel.prompt.text, x: point.x, y: point.y,
-                models: panel.modelChoice.items as List,
+                models: panel.modelChoice.items.findAll { it.id }.collect { it.name },
+                selected_model: panel.modelChoice.value?.name,
+                model_selector: center(panel.modelChoice),
+                model_groups: panel.modelChoice.items.findAll { it.heading }.collect { it.name },
                 window_width: panel.prompt.scene.window.width,
                 window_height: panel.prompt.scene.window.height,
                 image_center: [bounds.minX + bounds.width / 2, bounds.minY + bounds.height / 2],
                 selected: panel.imageData.hierarchy.selectionModel.selectedObjects.size(),
+                target: panel.targetChoice.editor.text,
+                input_mode: panel.hints.mode,
+                inputs: panel.hints.objects,
+                input_buttons: panel.inputTools.children.collectEntries { b ->
+                    [(b.userData): center(b)]
+                },
+                update: center(panel.updateButton),
+                update_options: { def p = panel.updateButton.localToScreen(
+                    panel.updateButton.width - 8, panel.updateButton.height / 2)
+                    [p.x, p.y]
+                }(),
+                menu_actions: javafx.stage.Window.windows.findAll { it.showing }.collectMany { w ->
+                    w.scene.root.lookupAll('.menu-item').toList()
+                }.findAll { it.visible && it.localToScreen(0, 0) != null }.collectEntries { item ->
+                    def text = item.lookup('.label')?.text
+                    text ? [(text): center(item)] : [:]
+                },
+                target_selector: center(panel.targetChoice.editor),
                 status: panel.status.text,
+                history: panel.history.text,
                 busy: panel.busy,
             ])
         } as javafx.event.EventHandler))
@@ -94,7 +175,7 @@ QUPATH_PROBE = """
 
 
 @pytest.fixture
-def desktop_stack(tmp_path, monkeypatch):
+def desktop_stack(tmp_path, monkeypatch, request):
     artifacts = ROOT / "test-results" / ("browser-desktop-" + secrets.token_hex(6))
     artifacts.mkdir(parents=True, mode=0o700)
     print(f"Browser desktop artifacts: {artifacts}", flush=True)
@@ -116,7 +197,10 @@ def desktop_stack(tmp_path, monkeypatch):
         "localhost,127.0.0.1,desktop.test," + os.environ.get("MONAILABEL_E2E_HOST", ""),
     )
     stack = VideoStack(tmp_path, artifacts)
+    stack.https = getattr(request, "param", False)
     stack.start_workspace()
+    if stack.https:
+        monkeypatch.setenv("SSL_CERT_FILE", str(stack.root / "workspace/.tls/ca.crt"))
     try:
         with httpx.Client(base_url=stack.url, timeout=30) as http:
             response = http.post(
@@ -148,12 +232,14 @@ def desktop_stack(tmp_path, monkeypatch):
                 (artifacts / f"{session.viewer}.log").write_text(log)
             except Exception:
                 pass
-            runtime.stop(session.id)
+            # Serialize teardown with a close-tab timer already removing this container.
+            service.desktops.end(session.id, service.store.get(User, session.user_id))
         stack.stop_workspace()
 
 
 def observed(path, predicate, page, timeout=120):
     deadline = time.monotonic() + timeout
+    value = None
     while time.monotonic() < deadline:
         try:
             value = json.loads(path.read_text())
@@ -162,7 +248,7 @@ def observed(path, predicate, page, timeout=120):
         except (FileNotFoundError, json.JSONDecodeError):
             pass
         page.wait_for_timeout(300)
-    raise AssertionError(f"Native viewer did not reach the expected state: {path}")
+    raise AssertionError(f"Native viewer did not reach the expected state: {path}\n{value}")
 
 
 def fitted_desktop(page):
@@ -310,7 +396,7 @@ def test_browser_native_viewer(desktop_stack, viewer, mode, mobile):
                 assert value["mask_labels"] == [0, 1, 2]
             else:
                 assert "VISTA3D" not in value["models"]
-                assert value["models"][0] == "Automatic"
+                assert value["models"] and "Automatic" not in value["models"]
             value = settled_input(report, desktop)
             bounds = canvas.bounding_box()
             x = bounds["x"] + value["x"] * bounds["width"] / width
@@ -426,7 +512,8 @@ def test_browser_native_viewer(desktop_stack, viewer, mode, mobile):
             original_tab.close()
             expect(desktop.locator("header")).not_to_be_visible()
             desktop.close()
-            deadline = time.monotonic() + 25
+            # Allow the grace period and Docker's bounded removal under I/O load.
+            deadline = time.monotonic() + 90
             while time.monotonic() < deadline:
                 session = stack.app.state.services.store.get(DesktopSession, identifier)
                 if session.ended:
@@ -507,15 +594,16 @@ def test_slicer_radiology_quickstart_annotate_correct_and_submit(desktop_stack, 
             report = service.desktops.runtime.root / identifier / "observed.json"
             observed(report, lambda value: value["asset_id"] == asset["id"], desktop)
 
-            def prompt(message, tool, arguments):
-                service.assistants.provider.queue.append(
-                    ChatMessage(
-                        role="assistant",
-                        tool_calls=[
-                            ToolCall(id=secrets.token_hex(8), name=tool, arguments=arguments)
-                        ],
+            def prompt(message, tool=None, arguments=None):
+                if tool:
+                    service.assistants.provider.queue.append(
+                        ChatMessage(
+                            role="assistant",
+                            tool_calls=[
+                                ToolCall(id=secrets.token_hex(8), name=tool, arguments=arguments)
+                            ],
+                        )
                     )
-                )
                 value = settled_input(report, desktop)
                 bounds = canvas.bounding_box()
                 desktop.mouse.click(
@@ -550,10 +638,13 @@ def test_slicer_radiology_quickstart_annotate_correct_and_submit(desktop_stack, 
                 {"targets": ["spleen"], "scope": "current_slice"},
             )
             mask_is(cleared)
-            prompt("Undo that.", "viewer_edit", {"operation": "undo"})
+            model_calls = len(service.assistants.provider.calls)
+            prompt("Undo that.")
             mask_is(full)
-            prompt("Redo that.", "viewer_edit", {"operation": "redo"})
+            prompt("Redo that.")
             mask_is(cleared)
+            assert len(service.assistants.provider.calls) == model_calls
+            assert not service.assistants.provider.queue
             prompt(
                 "Annotate the spleen on the current slice using GPT Astra.",
                 "annotate",
@@ -820,5 +911,100 @@ def test_pathology_quickstart_region_annotation_and_submission(desktop_stack):
         finally:
             for index, window in enumerate(context.pages):
                 window.screenshot(path=str(stack.artifacts / f"pathology-page-{index}.png"))
+            context.close()
+            browser.close()
+
+
+@pytest.mark.parametrize("desktop_stack", [True], indirect=True)
+@pytest.mark.parametrize("viewer,mobile", [("slicer", False), ("qupath", True)])
+def test_browser_native_voice_preserves_draft(desktop_stack, viewer, mobile):
+    from playwright.sync_api import expect, sync_playwright
+
+    stack, client = desktop_stack
+    project = client.post("/api/demo")["project_id"]
+    asset = client.get(f"/api/projects/{project}/assets")[0]
+    if viewer == "qupath":
+        image = io.BytesIO()
+        Image.new("RGB", (256, 256), (220, 170, 190)).save(image, format="PNG")
+        reply = client.http.post(
+            f"/api/projects/{project}/assets/upload",
+            params={"name": "Voice slide.png", "group_id": "voice-slide"},
+            content=image.getvalue(),
+        )
+        reply.raise_for_status()
+        asset = reply.json()
+    result = client.wait(
+        client.post(f"/api/assets/{asset['id']}/viewer?name={viewer}&target=browser")["id"],
+        timeout=240,
+    )
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(
+            channel=os.environ.get("MONAILABEL_E2E_BROWSER_CHANNEL"),
+            args=["--host-resolver-rules=MAP desktop.test 127.0.0.1", "--no-proxy-server"],
+        )
+        options = (
+            playwright.devices["iPad Pro 11"]
+            if mobile
+            else {"viewport": {"width": 1600, "height": 1000}}
+        )
+        context = browser.new_context(**options, ignore_https_errors=True)
+        context.add_init_script(path=str(ROOT / "tests/e2e/speech_fixture.js"))
+        errors = []
+        context.on("page", lambda p: p.on("pageerror", lambda e: errors.append(str(e))))
+        try:
+            page = context.new_page()
+            login_workspace(page, stack)
+            page.goto(stack.url + result["url"])
+            canvas = fitted_desktop(page)
+            identifier = result["url"].rsplit("/", 1)[-1]
+            report = stack.app.state.services.desktops.runtime.root / identifier / "observed.json"
+            observed(report, lambda v: v["asset_id"] == asset["id"], page)
+            value = settled_input(report, page)
+            bounds = canvas.bounding_box()
+            page.mouse.click(
+                bounds["x"] + value["x"] * bounds["width"] / int(canvas.get_attribute("width")),
+                bounds["y"] + value["y"] * bounds["height"] / int(canvas.get_attribute("height")),
+            )
+            page.keyboard.type("Existing draft. ")
+            frame = page.frame_locator("#display")
+            frame.locator("#noVNC_control_bar_handle").click()
+            frame.get_by_role("button", name="Dictate a prompt", exact=True).click()
+            panel = frame.get_by_role("region", name="Voice input")
+            transcript = panel.get_by_role("textbox", name="Dictated prompt")
+            record = panel.get_by_role("button", name="Use microphone", exact=True)
+            expect(record).to_be_enabled()
+            assert panel.evaluate("isSecureContext") is True
+            record.click()
+            panel.evaluate("speechFixture.result('Annotate the spleen')")
+            expect(transcript).to_have_value("Annotate the spleen")
+            observed(report, lambda v: v["draft"] == "Existing draft. ", page, timeout=10)
+            expect(panel.get_by_role("button", name="Insert into viewer")).to_be_disabled()
+            panel.evaluate("speechFixture.end()")
+            transcript.fill("Annotate the spleen on this slice.")
+            page.screenshot(path=str(stack.artifacts / f"{viewer}-voice-review.png"))
+            panel.get_by_role("button", name="Insert into viewer").click()
+            observed(
+                report,
+                lambda v: v["draft"] == "Existing draft. Annotate the spleen on this slice.",
+                page,
+                timeout=15,
+            )
+            # Inserting text never sends the prompt or saves annotations.
+            assert client.get(f"/api/assets/{asset['id']}")["revision"] == 0
+            assert not stack.app.state.services.assistants.provider.calls
+            frame.get_by_role("button", name="Dictate a prompt", exact=True).click()
+            expect(transcript).to_have_value("")
+            record.click()
+            panel.evaluate("speechFixture.error('not-allowed')")
+            expect(panel.get_by_role("status")).to_contain_text("denied")
+            record.click()
+            panel.evaluate("speechFixture.result('Keep this draft')")
+            frame.get_by_role("button", name="Dictate a prompt", exact=True).click()
+            panel.evaluate("speechFixture.result('Discard this late result')")
+            frame.get_by_role("button", name="Dictate a prompt", exact=True).click()
+            expect(transcript).to_have_value("Keep this draft")
+            page.screenshot(path=str(stack.artifacts / f"{viewer}-voice.png"))
+            assert not errors
+        finally:
             context.close()
             browser.close()

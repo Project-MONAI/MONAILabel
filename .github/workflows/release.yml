@@ -1,0 +1,86 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Release
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      registry:
+        description: Python package registry
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
+      docker:
+        description: Publish Docker images too
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      stable: ${{ steps.version.outputs.stable }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python - <<'PY'
+          import os, re, tomllib
+          from pathlib import Path
+          version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
+          if os.environ['RELEASE_TAG']:
+              assert os.environ['RELEASE_TAG'] == 'v' + version, 'Release tag must match pyproject.toml'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write(f'version={version}\n')
+              stream.write(f'stable={str(bool(re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version))).lower()}\n')
+          PY
+  checks:
+    needs: version
+    uses: ./.github/workflows/checks.yml
+  publish:
+    if: github.repository == 'Project-MONAI/MONAILabel'
+    needs: [version, checks]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'release' && 'pypi' || inputs.registry }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-dist
+          path: dist/
+      - name: Publish monailabel
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          repository-url: ${{ github.event_name == 'workflow_dispatch' && inputs.registry == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+          skip-existing: true
+  docker:
+    if: github.event_name == 'release' || inputs.docker
+    needs: [version, checks]
+    uses: ./.github/workflows/docker.yml
+    with:
+      publish: true
+      tag: ${{ needs.version.outputs.version }}
+      latest: ${{ github.event_name == 'release' && !github.event.release.prerelease && needs.version.outputs.stable == 'true' }}
+    secrets: inherit

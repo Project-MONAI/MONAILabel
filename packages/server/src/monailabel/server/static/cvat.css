@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 :root {
   font-family: system-ui, sans-serif;
   color: #172a39;
@@ -234,4 +247,101 @@ summary {
   #revision {
     font-size: 12px;
   }
+}
+
+.control-label {
+  margin: 0 0 -6px;
+  font-size: 12px;
+  color: #536779;
+}
+#target-label {
+  width: 100%;
+}
+#interaction-toolbar,
+#input-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#interaction-toolbar button {
+  min-height: 30px;
+  padding: 4px 8px;
+}
+#input-tools button {
+  width: 30px;
+  height: 30px;
+  padding: 4px;
+  background: transparent;
+  color: #536779;
+  border: 1px solid transparent;
+}
+#input-tools button:hover:enabled {
+  background: #e3edf5;
+}
+#input-tools button[aria-pressed="true"] {
+  color: #075a74;
+  background: #d9f2f6;
+  border-color: #7eb6c6;
+}
+#input-tools svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.tool-separator {
+  height: 20px;
+  border-left: 1px solid #c8d3dd;
+  margin: 0 4px;
+}
+.tool-separator[hidden] {
+  display: none;
+}
+.update-action {
+  display: flex;
+  position: relative;
+  margin-left: auto;
+}
+#update-frame {
+  border-radius: 5px 0 0 5px;
+}
+#update-options {
+  position: relative;
+}
+#update-options summary {
+  list-style: none;
+  cursor: pointer;
+  color: white;
+  background: #116b87;
+  border-left: 1px solid #6ba3b4;
+  padding: 5px 7px;
+  border-radius: 0 5px 5px 0;
+  height: 30px;
+}
+#update-options summary[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+#update-options summary::-webkit-details-marker {
+  display: none;
+}
+.update-menu {
+  position: absolute;
+  right: 0;
+  top: 34px;
+  z-index: 10;
+  width: 220px;
+  padding: 10px;
+  background: white;
+  border: 1px solid #c8d3dd;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px #16304a26;
+}
+.update-menu label {
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+.update-menu input {
+  width: 70px;
+  padding: 6px;
+  margin-right: 5px;
 }

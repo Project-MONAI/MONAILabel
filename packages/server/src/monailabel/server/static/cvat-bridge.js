@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 /* Native CVAT adapter, pinned and browser-tested with CVAT 2.76. */
 (() => {
   Object.defineProperty(window, "cvat", {
@@ -66,7 +79,32 @@
               true,
             ),
           );
+        let hints;
         window.monaiVideo = {
+          async configureHints(options, onChange, onStop) {
+            if (!hints) {
+              const { createHints } = await import("/static/cvat-hints.js");
+              hints = createHints(() => state().canvas.instance);
+            }
+            hints.configure(options, onChange, onStop);
+          },
+          clearHintOverlay() {
+            hints?.destroy();
+          },
+          objects: () =>
+            state()
+              .annotations.states.filter(
+                (s) =>
+                  s.objectType === "track" &&
+                  s.shapeType === "polygon" &&
+                  !s.outside &&
+                  !s.lock,
+              )
+              .map((s) => ({
+                id: s.clientID,
+                label: s.label.id,
+                name: s.label.name,
+              })),
           ready: () =>
             Boolean(
               state().job.instance &&
@@ -75,6 +113,9 @@
                 !state().player.frame.fetching,
             ),
           frame: () => state().player.frame.number,
+          async setFrame(frame) {
+            await dispatch(actionCreators.changeFrameAsync(frame));
+          },
           hasSelection: () => Boolean(selected()),
           selection: () => {
             const s = selected();
@@ -93,6 +134,7 @@
               frame: this.frame(),
               client_id: s?.clientID ?? null,
               label: s?.label.id ?? null,
+              labels: job().labels.map((label) => label.id),
               box: s?.shapeType === "rectangle" ? [...s.points] : null,
               points: s?.shapeType === "polygon" ? [...s.points] : null,
               occluded: s?.occluded ?? false,
@@ -135,6 +177,9 @@
                 throw new Error(
                   "The proposed tool label is unavailable in this CVAT task.",
                 );
+              const before = new Set(
+                state().annotations.states.map((s) => s.clientID),
+              );
               const keys = [...proposal.keyframes];
               if (last < job().stopFrame)
                 keys.push({ ...keys.at(-1), frame: last + 1, outside: true });
@@ -166,7 +211,9 @@
                 request.seed.frame,
               );
               await refresh();
-              return;
+              return state().annotations.states.find(
+                (s) => !before.has(s.clientID),
+              )?.clientID;
             }
             // Preserve interpolation beyond the requested range.
             const keys = [...proposal.keyframes];
@@ -190,6 +237,7 @@
               );
               if (
                 !s ||
+                s.label.id !== labelID ||
                 s.lock ||
                 s.objectType !== "track" ||
                 s.shapeType !==
@@ -214,6 +262,7 @@
         return {
           name: "MONAI Label video",
           destructor() {
+            hints?.destroy();
             unsubscribe();
             delete window.monaiVideo;
           },

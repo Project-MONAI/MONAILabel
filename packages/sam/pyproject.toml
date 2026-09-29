@@ -1,12 +1,26 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 [project]
 name = "monailabel-sam"
-version = "0.1.0"
+version = "1.0.0rc1"
 description = "Local SAM image and medical-volume annotation"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "src/monailabel/sam/resources/LICENSE-SAM"]
 requires-python = ">=3.12"
 dependencies = [
-    "monailabel-core",
-    "monailabel-providers",
-    "MedSAM2",
+    "monailabel-core==1.0.0rc1",
+    "monailabel-providers==1.0.0rc1",
+    "monailabel-sam-runtime==1.0.0rc1",
     "torch>=2.5.1",
     "torchvision>=0.20.1",
     "httpx>=0.28,<1",
@@ -15,11 +29,12 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
-
-[tool.uv.sources]
-MedSAM2 = { git = "https://github.com/bowang-lab/MedSAM2", rev = "332f30d420f1d1b08e2a79b3ae6a602458808383" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/monailabel"]
+
+[project.urls]
+Repository = "https://github.com/Project-MONAI/MONAILabel"
+Documentation = "https://github.com/Project-MONAI/MONAILabel/blob/1.0/README.md"

@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 /** Browser speech shared by the web workspace and OHIF. No provider key or audio storage. */
 export function createSpeech({
   getText,
@@ -9,7 +22,7 @@ export function createSpeech({
   const Recognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
   const unavailable = !window.isSecureContext
-    ? "Voice input needs HTTPS when connecting from another device."
+    ? "Voice input needs trusted HTTPS or localhost. You can still type a prompt."
     : !Recognition
       ? "This browser has no speech recognition. Use Safari/Chrome, or your keyboard's dictation."
       : "";
@@ -25,6 +38,7 @@ export function createSpeech({
     changeState("idle");
   }
   function start() {
+    if (disposed) return;
     if (unavailable) {
       onError(unavailable);
       return;
@@ -33,6 +47,7 @@ export function createSpeech({
     window.speechSynthesis?.cancel();
     const prefix = getText().trim();
     const current = new Recognition();
+    let receivedText = false;
     recognition = current;
     current.lang = language;
     current.continuous = false;
@@ -47,6 +62,8 @@ export function createSpeech({
         .map((result) => result[0].transcript)
         .join(" ")
         .trim();
+      if (!transcript) return;
+      receivedText = true;
       onText([prefix, transcript].filter(Boolean).join(" "));
     };
     current.onerror = (event) => {
@@ -76,6 +93,8 @@ export function createSpeech({
       if (recognition !== current || disposed) return;
       recognition = null;
       changeState("idle");
+      if (!receivedText)
+        onError("No speech was transcribed. Check your microphone or use keyboard dictation.");
     };
     try {
       current.start();

@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Local image segmentation and bidirectional medical slice propagation.
 
 The upstream runtime is isolated here. Coordinates and returned masks
@@ -67,9 +78,7 @@ class SamSegmenter:
         full_volume: bool,
         progress: Progress,
     ) -> Prediction:
-        device = os.environ.get(
-            "MONAILABEL_SAM_DEVICE", "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        device = os.environ.get("MONAILABEL_SAM_DEVICE", "cuda")
         # One inference at a time; predictors contain mutable image/video state.
         with _LOCK, torch.inference_mode():
             progress(0.02)

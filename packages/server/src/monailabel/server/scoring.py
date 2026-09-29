@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Native segmentation scores against fixed, reviewed, held-out references."""
 
 from collections.abc import Callable
@@ -20,6 +31,7 @@ from monailabel.server.learning_data.arrays import SampleArrays
 from monailabel.server.lineage import training_identity
 from monailabel.server.models import Models
 from monailabel.server.storage import Artifacts, Store
+from monailabel.totalsegmentator.catalog import MODELS as TOTAL_MODELS
 
 
 class ValidationScorer:
@@ -47,6 +59,13 @@ class ValidationScorer:
             raise DomainError("No reviewed evaluation cases were saved for this run.")
         if any(s.label_source != "reviewed" or not s.decision_id for s in validation):
             raise DomainError("Evaluation requires accepted reference annotations.")
+        if model.provider in TOTAL_MODELS and any(
+            s.group_id.startswith(("totalsegmentator:", "totalsegmentator-mr:")) for s in validation
+        ):
+            raise DomainError(
+                "TotalSegmentator sample collections include upstream development data. "
+                "Use an independent dataset to evaluate this pretrained model or its descendants."
+            )
         used_groups, used_images = training_identity(self.store, model)
         if any(s.group_id in used_groups or s.image_key in used_images for s in validation):
             raise DomainError("Evaluation source groups overlap model training lineage.")

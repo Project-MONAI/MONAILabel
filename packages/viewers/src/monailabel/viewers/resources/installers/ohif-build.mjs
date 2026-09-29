@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 /** Build a pinned OHIF checkout with the MONAI Label extension. Node 22+, Git, Corepack.
  * Called as: node ohif-build.mjs SOURCE EXTENSION_RESOURCES
  * No server imports, shell snippets, platform-specific setup scripts, or user prompt execution.
@@ -106,14 +119,22 @@ if (matches.length === 4) {
 }
 // Service workers are optional on network HTTP origins. The pinned bootstrap
 // assumes this secure-context API exists even though OHIF can run without it.
-const workerEntry = path.join(source, "platform/app/public/init-service-worker.js");
+const workerEntry = path.join(
+  source,
+  "platform/app/public/init-service-worker.js",
+);
 const workerCode = fs.readFileSync(workerEntry, "utf8");
 const workerCall = "navigator.serviceWorker.getRegistrations()";
 const guardedWorkerCall = "navigator.serviceWorker?.getRegistrations()";
 if (workerCode.startsWith(workerCall)) {
-  fs.writeFileSync(workerEntry, workerCode.replace(workerCall, guardedWorkerCall));
+  fs.writeFileSync(
+    workerEntry,
+    workerCode.replace(workerCall, guardedWorkerCall),
+  );
 } else if (!workerCode.startsWith(guardedWorkerCall)) {
-  throw new Error("Pinned OHIF service worker bootstrap changed; review its guard.");
+  throw new Error(
+    "Pinned OHIF service worker bootstrap changed; review its guard.",
+  );
 }
 const configPath = path.join(source, "platform/app/pluginConfig.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
@@ -134,6 +155,10 @@ for (const [folder, category, name] of [
   if (!config[category].some((item) => item.packageName === name))
     config[category].push({ packageName: name });
 }
+fs.copyFileSync(
+  path.join(resources, "..", "interaction-icons.json"),
+  path.join(source, "extensions/monailabel/src/interaction-icons.json"),
+);
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
 fs.copyFileSync(
   path.join(resources, "config.js"),

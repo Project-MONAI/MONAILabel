@@ -1,64 +1,53 @@
 # Architecture
 
-Start with the [visual design guide](design.md) for the building blocks and workflows.
-
 ## Packages
+
+Each `packages/` directory is a uv workspace project with its own dependencies. The root owns the shared lockfile and development tools. Releases bundle these projects into the single `monailabel` distribution.
 
 | Package | Responsibility |
 | --- | --- |
-| `core` | Typed domain records, geometry and provider/trainer interfaces |
-| `providers` | Local baselines, remote annotation and conversation adapters |
-| `monai` | U-Net and VISTA3D runtimes |
-| `sam` | SAM 2.1 and MedSAM2 inference |
-| `dicom` | DICOMweb import, decoding and NIfTI viewing conversion |
-| `viewers` | Provisioning and Slicer, QuPath, OHIF and CVAT adapters |
-| `server` | Services, SQLite/artifacts, jobs, authentication, API and web console |
-| `client` | Public HTTP client, CLI and synthetic demo |
+| `monailabel` | Launcher and public release metadata |
+| `core` | Domain records, geometry, provider/trainer interfaces |
+| `providers` | Local baselines, hosted annotation and conversation adapters |
+| `monai` | U-Net, nnU-Net v2 and VISTA3D inference/training |
+| `totalsegmentator` | CT/MRI inference and fine-tuning in isolated workers |
+| `sam` | SAM 2.1 and MedSAM2 adapters |
+| `nninteractive` | Prompted CT/MRI inference in a pinned worker environment |
+| `sam-runtime` | Pinned upstream SAM inference source |
+| `dicom` | DICOMweb import, decoding and viewing conversion |
+| `viewers` | Slicer, QuPath, OHIF and CVAT provisioning/adapters |
+| `server` | Services, storage, jobs, authentication, API and web console |
+| `client` | HTTP client, CLI and synthetic demo |
 
-Core has no HTTP, persistence or vendor dependencies. Providers and clients do not import server code. The server includes the MONAI and SAM runtimes as dependencies. These separate packages implement the interfaces in `core/ports.py`; model loading happens when a job needs it.
+`core` has no HTTP, storage or vendor dependencies. Providers and clients must not import server code. Python packages share the `monailabel` namespace without a common `__init__.py`; the SAM runtime uses upstream `sam2` and `efficient_track_anything` namespaces.
 
-Within the server, `desktops/`, `dicom/`, `models/`, `review_units/`, `learning_data/` and `video/` group related services. Persistent desktop/CVAT identities live in feature-local `models.py` modules so other services can refer to them without importing runtime orchestration. `assistant_tools/` adapts typed chat actions to the same services. Keep Docker provisioning in `viewers`, hosted catalog discovery in `providers/catalog/` and DICOM decoding in the separate `dicom` package; feature routes handle authentication and transport, while services own lifecycle and revision rules. Model discovery resolves project-scoped credentials on the server and filters provider catalogs before import; provider adapters never access workspace storage.
-
-Python imports use the `monailabel` namespace, such as `monailabel.core` and `monailabel.server`. Each distribution contributes its own subpackage without a shared `monailabel/__init__.py`. Installable names remain `monailabel-core`, `monailabel-server`, etc.; CLI commands remain `monailabel` and `monailabel-server`.
-
-```mermaid
-flowchart LR
-    Clients[Web and viewers] --> API[Authenticated API]
-    API --> Assistant[Coordinator and typed tools]
-    API --> Services[Application services]
-    Assistant --> Services
-    Services --> Storage[SQLite and immutable artifacts]
-    Services --> Providers[Inference and training providers]
-```
+Within `server`, feature services own lifecycle and revision rules; routes handle authentication and transport. `assistant_tools/` adapts typed actions to those services. Keep viewer provisioning in `viewers`, catalog discovery in `providers/catalog/`, and DICOM decoding in `dicom`. Providers never access workspace storage.
 
 ## Data and learning
 
-- Images use feature-last arrays: `H×W×C` or `I×J×K×1`. Masks use integer project class IDs on the source grid. Saved masks use uint8 class IDs in C-order. Training masks use signed integers so -1 can exclude unreviewed pixels without colliding with class 255.
-- Proposals record geometry, model and base revision. Applying or submitting checks that revision; viewers also protect intervening local edits.
-- Submission and reviewer acceptance are separate. Corrected acceptance saves a new annotation revision and its decision atomically.
-- Shared data stays available to each model's persistent patient-group split. Every training run freezes image/mask revisions. Evaluation-only reservations exclude cases from all training. See [split rules](workflows.md#train-a-model).
-- Validation requires accepted references and rejects known training lineage and duplicates. Promotion is a separate, per-class decision; training never switches annotation defaults automatically.
+- Images use `H×W×C` or `I×J×K×1` arrays. Saved masks use uint8 project class IDs on the source grid, in C-order. Training masks use signed integers; `-1` excludes unreviewed pixels.
+- Proposals record geometry, model and base revision. Applying or submitting checks that revision and any intervening viewer draft changes.
+- Slice inference restores source orientation before merging. Region inference updates only its crop. Failed or cancelled multi-part inference publishes no partial proposal.
+- Annotation revisions and review decisions are immutable. Corrected acceptance saves the revision and decision atomically. Region and video-range revisions retain independent review decisions.
+- Each model owns a stable patient/slide/procedure split over shared datasets. Snapshots freeze image, annotation and review revisions. Evaluation-only groups are excluded from every model's training.
+- Evaluation requires accepted references and rejects known training overlap. Training preserves base weights and publishes derived versions with lineage; model promotion is explicit.
 
-Source-plane inference applies lossless orientation changes and restores the source layout afterwards. A slice updates only its requested plane. Selected pathology regions run as one crop; whole-image inference can use tiles. Failed or cancelled multi-part inference publishes no partial proposal.
-
-Video clips use separate `VideoAsset` and `TrackAnnotation` records. Original source files and presentation timestamps are immutable; rectangle and polygon tracks refer to zero-based source frames and source pixel edge coordinates. CVAT transport/conversion lives in `viewers/cvat.py`; server editor bindings retain label/track mappings and the base revision. Reopening resumes saved drafts, review uses a separate task, and submission publishes the track revision and consumed editor receipt atomically. A managed, workspace-specific CVAT runtime serves the native editor through authenticated project-scoped routes. Vision providers implement the independent `ToolDetector` port for localization; compatible 2D `Segmenter` providers produce masks from the chosen annotation model. Single-frame requests skip temporal tracking. SAM 2.1 implements the independent `VideoTracker` port with bounded overlapping chunks, returning box/polygon keyframes, lossless source masks and contour warnings. Proposals retain these masks separately from editable polygon approximations, record model provenance and require unchanged native drafts and submitted revisions before application. Accepted polygon frame ranges enter segmentation training as source-frame samples. All frames and related images from a procedure share one model split; evaluation-only procedure groups exclude both from training. See [video annotation](video.md).
-
-Scoped review uses `ReviewUnit` identities and immutable `UnitAnnotation` revisions. Regions retain source pixel footprints; frame ranges retain their track revision. Changing one scope creates a new pending revision while untouched scopes keep their decisions. Learning snapshots freeze accepted scope revisions and reviewer decisions. `learning_data` prepares cropped images and original video frames through a bounded array reader; unreviewed region pixels are excluded from loss. New models can train without evaluation; an explicit percentage reserves independent source groups without inventing a score for runs that have no held-out data.
+Video records retain original files and presentation timestamps. Tracks use zero-based source frames and pixel-edge coordinates. CVAT drafts, submitted tracks and lossless proposal masks are stored separately. Accepted polygon ranges provide segmentation samples; unreviewed pixels are excluded from loss. See [video contracts](video.md#api-and-data-retention) and [learning rules](workflows.md#train-a-model).
 
 ## Services and storage
 
-One server process owns a workspace lock. SQLite transactions publish related records atomically; immutable arrays, files and checkpoints are content-addressed. Two background workers run jobs with cooperative cancellation. Restart records interrupted work instead of silently replaying it. Idempotency keys only reuse matching project, operation and payload.
+One server process owns a workspace lock. SQLite transactions publish related records atomically; arrays, files and checkpoints are content-addressed. Background jobs support cooperative cancellation. Restart marks unfinished jobs interrupted. Idempotency keys require matching project, operation and payload.
 
-The workspace defaults to `workspace/`, including `.cache/` for downloads and managed runtimes. Credentials are encrypted separately; back up `secrets.key` with the database. Passwords use salted scrypt and session tokens are stored as hashes.
+The default workspace is `workspace/`, with downloads under `.cache/`. Credentials are encrypted using `secrets.key`; back it up with the database. Passwords use salted scrypt and stored session tokens are hashed.
 
-Deletion checks active jobs and saved training/reference dependencies. Project removal affects that project's records; shared caches and external sources remain. Unreferenced artifacts are collected at startup before workers begin.
+Deletion checks active jobs and saved learning/reference dependencies. Project deletion retains shared caches and external viewer data. Unreferenced artifacts are collected before workers start.
 
 ## API and clients
 
-Run the server for interactive **/docs** and **/openapi.json**. Browser cookies and bearer tokens share the same project authorization. Buttons and chat tools invoke the same services; the coordinator has no arbitrary shell/code execution tool. Trusted assistant guidance is packaged under `server/resources/assistant/`.
+The running server exposes `/docs` and `/openapi.json`. Browser cookies and bearer tokens use the same project authorization. UI and assistant tools call the same services. The coordinator has no shell or arbitrary-code tool.
 
-The web console uses small JavaScript modules without a frontend build. Section URLs, browser history and the selected project survive navigation. Committed project changes trigger polling refreshes while preserving active forms and drafts.
+Slicer/QuPath run locally or in account-owned browser desktops. `viewers` owns provisioning and display processes; `server` owns sessions, credentials and authenticated display transport. OHIF/CVAT use browser sessions. Viewer adapters preserve native geometry and drafts; backend providers execute models.
 
-Desktop viewers use private session files. Loopback workspace access launches native Slicer/QuPath; remote access prepares account-owned Docker desktops with noVNC. Provisioning and display processes live in `viewers`; ownership, credential renewal, session limits and the authenticated WebSocket-to-Unix-socket relay live in `server`. Closing the last viewer tab ends the native process after a short grace period that permits refreshes. A network disconnect without a tab-close notification preserves the draft. OHIF uses authenticated browser sessions and workspace DICOMweb routes. Viewer adapters own native geometry and editing; model execution stays behind backend providers. See [viewer setup](viewers.md) and [provider contracts](providers.md).
+Interactive models declare supported input types and output scopes. Slicer, OHIF, QuPath and CVAT build their controls from those capabilities and retain hints per image and target; video inputs also belong to an object and frame. Typed assistant actions start, stop or edit hints. Viewer annotation skills are filtered by the source's image, volume or video kind. Update calls the inference service directly, with the same revision and draft checks as assistant-triggered inference.
 
-Run the [development checks](../AGENTS.md#development) and relevant viewer checks in disposable workspaces. Synthetic fixtures demonstrate software behavior, not clinical quality. [Remaining work](roadmap.md) is separate from these contracts.
+See [provider contracts](providers.md), [viewer setup](viewers.md), [release checks](releasing.md) and [development checks](../AGENTS.md#development).

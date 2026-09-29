@@ -1,0 +1,37 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Training settings for the fixed 3 mm CT/MRI architectures."""
+
+from typing import Literal, Self
+
+from pydantic import Field, model_validator
+
+from monailabel.core.models import Contract
+
+
+class TotalConfig(Contract):
+    device: Literal["auto", "cuda", "cpu"] = "cuda"
+    epochs: int = Field(default=5, ge=1, le=100)
+    steps_per_epoch: int = Field(default=10, ge=1, le=1000)
+    batch_size: int = Field(default=1, ge=1, le=8)
+    learning_rate: float = Field(default=0.00001, gt=0, le=0.01)
+    weight_decay: float = Field(default=0.00001, ge=0, le=1)
+    seed: int = Field(default=0, ge=0)
+    label_mapping: dict[int, int] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def valid_mapping(self) -> Self:
+        if any(not 1 <= k <= 255 or not 1 <= v <= 117 for k, v in self.label_mapping.items()):
+            raise ValueError("TotalSegmentator mappings require foreground project and model IDs.")
+        if len(set(self.label_mapping.values())) != len(self.label_mapping):
+            raise ValueError("TotalSegmentator target IDs must be unique.")
+        return self

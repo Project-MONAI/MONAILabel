@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Idempotent model presets. Registration never invokes inference or modifies weights."""
 
 import os
@@ -12,10 +23,10 @@ from monailabel.providers.catalog.presets import (
     PresetConnection,
     resolve_presets,
 )
-from monailabel.providers.sam import MODELS as SAM_MODELS
-from monailabel.providers.vista3d import targets as vista_targets
+from monailabel.providers.spatial import MODELS as SPATIAL_MODELS
 from monailabel.server.deletion import Deletion
 from monailabel.server.storage import Session, Store
+from monailabel.totalsegmentator.catalog import MODELS as TOTAL_MODELS
 
 
 class Presets:
@@ -57,12 +68,24 @@ class Presets:
                 session.insert(base)
             elif base.name == "VISTA3D · CT foundation · read-only":
                 session.update(base.model_copy(update={"name": "VISTA3D"}))
-            for provider, sam in SAM_MODELS.items():
+            for provider, (name, _) in TOTAL_MODELS.items():
                 if not any(model.preset == provider for model in models):
                     session.insert(
                         ModelRecord(
                             project_id=project_id,
-                            name=sam.name,
+                            name=name,
+                            provider=provider,
+                            label_ids=[0],
+                            preset=provider,
+                            read_only=True,
+                        )
+                    )
+            for provider, spatial_spec in SPATIAL_MODELS.items():
+                if not any(model.preset == provider for model in models):
+                    session.insert(
+                        ModelRecord(
+                            project_id=project_id,
+                            name=spatial_spec.name,
                             provider=provider,
                             label_ids=[0],
                             preset=provider,
@@ -124,16 +147,11 @@ class Presets:
                     self.retire(session, previous, standard)
             project = session.get(Project, project_id)
             if project.annotation_model_id is None and initialize_defaults:
-                defaults = project.defaults or {
-                    label.id: base.id
-                    for label in project.labels
-                    if label.id and label.name.casefold() in vista_targets()
-                }
+                default = standard or base
                 session.update(
                     project.model_copy(
                         update={
-                            "annotation_model_id": base.id,
-                            "defaults": defaults,
+                            "annotation_model_id": default.id,
                             "version": project.version + 1,
                         }
                     )

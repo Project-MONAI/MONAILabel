@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Pinned public dataset downloads and bounded archive reads; never extract archive paths."""
 
 import hashlib
@@ -12,21 +23,41 @@ from typing import Literal
 
 import httpx
 from filelock import FileLock, Timeout
-from pydantic import TypeAdapter
+from pydantic import Field, TypeAdapter
 
 from monailabel.core.dataset_templates import DatasetTemplate
 from monailabel.core.errors import DomainError
+from monailabel.core.models import Contract
 from monailabel.core.video import VideoImport
 from monailabel.server.data import MAX_FILE_BYTES
 from monailabel.server.jobs import JobContext
 from monailabel.server.workspace import workspace_dir
 
 
+class Download(Contract):
+    id: str
+    url: str
+    checksum: str
+    download_bytes: int
+
+
 class Source(DatasetTemplate):
     url: str
     checksum: str
-    format: Literal["msd", "totalsegmentator", "image", "video", "external"]
+    format: Literal[
+        "msd",
+        "totalsegmentator",
+        "totalsegmentator-mr",
+        "image",
+        "video",
+        "external",
+        "tnbc",
+        "kvasir-instrument",
+    ]
     video: VideoImport | None = None
+    mask_download: Download | None = None
+    dataset_id: str = ""
+    label_groups: dict[str, list[int]] = Field(default_factory=dict)
 
 
 def sources() -> list[Source]:
@@ -50,13 +81,16 @@ class Downloads:
             else None
         )
 
-    def path(self, source: Source) -> Path:
-        return self.root / (source.id + Path(source.url).suffix)
+    def path(self, source: Source | Download) -> Path:
+        identifier = (
+            source.dataset_id if isinstance(source, Source) and source.dataset_id else source.id
+        )
+        return self.root / (identifier + Path(source.url).suffix)
 
-    def cached(self, source: Source) -> bool:
+    def cached(self, source: Source | Download) -> bool:
         return self._cached_here(source) or bool(self.legacy and self.legacy._cached_here(source))
 
-    def _cached_here(self, source: Source) -> bool:
+    def _cached_here(self, source: Source | Download) -> bool:
         path = self.path(source)
         try:
             metadata = json.loads(path.with_suffix(".verified.json").read_text())
@@ -64,7 +98,7 @@ class Downloads:
         except (OSError, ValueError):
             return False
 
-    def _metadata(self, source: Source) -> dict[str, str | int]:
+    def _metadata(self, source: Source | Download) -> dict[str, str | int]:
         stat = self.path(source).stat()
         return {
             "checksum": source.checksum,
@@ -73,7 +107,7 @@ class Downloads:
             "ctime_ns": stat.st_ctime_ns,
         }
 
-    def _remember(self, source: Source) -> None:
+    def _remember(self, source: Source | Download) -> None:
         path = self.path(source).with_suffix(".verified.json")
         temporary = path.with_suffix(".json.tmp")
         try:
@@ -82,7 +116,7 @@ class Downloads:
         finally:
             temporary.unlink(missing_ok=True)
 
-    def _verify_saved(self, source: Source, context: JobContext) -> bool:
+    def _verify_saved(self, source: Source | Download, context: JobContext) -> bool:
         """Recover complete downloads after a missing marker or interrupted publication."""
         path = self.path(source)
         if not path.is_file():
@@ -103,7 +137,7 @@ class Downloads:
         self._remember(source)
         return True
 
-    def _reuse_legacy(self, source: Source, context: JobContext) -> bool:
+    def _reuse_legacy(self, source: Source | Download, context: JobContext) -> bool:
         legacy = self.legacy
         if legacy is None or not legacy.path(source).is_file():
             return False
@@ -141,7 +175,7 @@ class Downloads:
                 part.unlink(missing_ok=True)
         return True
 
-    def fetch(self, source: Source, context: JobContext) -> Path:
+    def fetch(self, source: Source | Download, context: JobContext) -> Path:
         self.root.mkdir(parents=True, exist_ok=True)
         path = self.path(source)
         try:

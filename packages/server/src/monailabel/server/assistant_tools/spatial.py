@@ -1,6 +1,18 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Typed local spatial edits; the coordinator supplies intent, the viewer supplies geometry."""
 
 import re
+from collections.abc import Container
 from typing import Annotated, Literal
 
 from pydantic import Field
@@ -30,7 +42,10 @@ class SpatialArgs(Contract):
     kind: Literal["point", "box", "all"] = "point"
     target: str | None = Field(default=None, min_length=1, max_length=80)
     all_targets: bool = Field(
-        default=False, description="True clears all targets. When true, OMIT target."
+        default=False,
+        description="True when clearing plural hints without a named label, e.g. clear negative "
+        "points on this slice. False when the request names an organ/target or selected hint. "
+        "Whole volume changes scope, never this flag. When true, OMIT target.",
     )
     polarity: Literal["positive", "negative", "all"] = Field(
         description="REQUIRED explicit point filter: negative for exclusion points, positive "
@@ -58,8 +73,10 @@ class SpatialArgs(Contract):
     )
 
 
-def on_slice(item: SpatialObject, scope: SliceScope) -> bool:
-    return all(abs(p[scope.axis] - scope.index) <= 0.5 for p in item.coordinates)
+def on_slice(item: SpatialObject, scope: SliceScope | None) -> bool:
+    if scope is None:
+        return all(len(p) == 2 for p in item.coordinates)
+    return all(len(p) == 3 and abs(p[scope.axis] - scope.index) <= 0.5 for p in item.coordinates)
 
 
 def choose(items: list[SpatialObject]) -> SpatialObject:
@@ -72,14 +89,29 @@ def choose(items: list[SpatialObject]) -> SpatialObject:
     return candidates[0]
 
 
-def prompt_for(items: list[SpatialObject], scope: SliceScope, target: str) -> SpatialPrompt:
+def prompt_for(
+    items: list[SpatialObject],
+    scope: SliceScope | None,
+    target: str,
+    *,
+    full_volume: bool = False,
+    inputs: Container[str] | None = None,
+) -> SpatialPrompt:
     candidates = [
         i
         for i in items
-        if on_slice(i, scope) and (not i.target or i.target.casefold() == target.casefold())
+        if (full_volume or on_slice(i, scope))
+        and (not i.target or i.target.casefold() == target.casefold())
+        and (
+            inputs is None
+            or ("box" if i.kind == "box" else "positive_point" if i.positive else "negative_point")
+            in inputs
+        )
     ]
     boxes = [i for i in candidates if i.kind == "box"]
     box = choose(boxes) if boxes else None
+    if any(v < 0 for item in candidates for point in item.coordinates for v in point):
+        raise DomainError("Move or clear hints outside the source image before running inference.")
     points = [
         PromptPoint(coordinates=i.coordinates[0], positive=i.positive)
         for i in candidates
@@ -87,7 +119,7 @@ def prompt_for(items: list[SpatialObject], scope: SliceScope, target: str) -> Sp
     ]
     if not box and not any(p.positive for p in points):
         raise DomainError(
-            "Add a box or positive point for this target on the current slice before running SAM."
+            "Add a box or positive point for this target before running the spatial model."
         )
     return SpatialPrompt(box=box.coordinates if box else None, points=points)
 
@@ -95,12 +127,18 @@ def prompt_for(items: list[SpatialObject], scope: SliceScope, target: str) -> Sp
 def register(registry: ToolRegistry) -> None:
     registry.add(
         "edit_spatial_prompts",
-        "Create, move/resize, or clear editable SAM points/boxes in Slicer or OHIF. "
+        "Create, move/resize, or clear editable spatial points/boxes in Slicer, OHIF or QuPath "
+        "for nnInteractive, MedSAM2 or SAM. "
         "Never edits segmentation masks. Add/move needs explicit user voxel coordinates, "
         "or box_center=true for an explicitly requested point in a box. "
+        "To let the user draw a box or click a point without coordinates, "
+        "activate set_interaction_mode instead. "
         "Organ localization without coordinates uses locate_region with an explicitly "
         "chosen capable model. "
         "Clear uses target or explicit all_targets; kind=all clears both boxes and points. "
+        "Whole volume changes scope only. Clear spleen boxes in the whole volume: "
+        "target=Spleen, kind=box, scope=full, polarity=all. "
+        "Clear all spatial hints means scope=full, kind=all, polarity=all, all_targets=true. "
         "Missing coordinates/ambiguous selection require a question; never fabricate anatomy.",
         SpatialArgs,
         lambda args: edit(registry.context, args),
@@ -113,24 +151,20 @@ def edit(ctx: ToolContext, args: SpatialArgs) -> AssistantReply:
     asset, context = ctx.asset, ctx.context
     if "edit_spatial_prompts" not in context.viewer_actions:
         raise DomainError(
-            "Open an updated Slicer or OHIF session to edit SAM prompts through chat."
+            "Open an updated Slicer, OHIF or QuPath session to edit spatial prompts through chat."
         )
     scope = context.slice
-    if asset.kind != "volume3d" or scope is None or scope.index >= asset.spatial_shape[scope.axis]:
-        raise DomainError("Select a source-aligned volume slice before editing SAM prompts.")
+    if asset.kind == "volume3d" and (
+        scope is None or scope.index >= asset.spatial_shape[scope.axis]
+    ):
+        raise DomainError("Select a source-aligned volume slice before editing spatial prompts.")
     if context.base_revision is None:
         raise DomainError("Refresh the viewer to supply the current annotation revision.")
     items = context.spatial_objects
+    if any(len(point) != len(asset.spatial_shape) for item in items for point in item.coordinates):
+        raise DomainError("Viewer input dimensions do not match the source image.")
     if len({i.id for i in items}) != len(items):
         raise DomainError("Viewer hint IDs must be unique.")
-    for item in items:
-        if any(
-            any(v >= size for v, size in zip(p, asset.spatial_shape, strict=True))
-            for p in item.coordinates
-        ):
-            raise DomainError(
-                "Move SAM hints inside the source image before editing them through chat."
-            )
     if args.all_targets and args.target:
         raise DomainError(
             "Choose a target or all targets, not both. Omit target when all_targets=true.",
@@ -197,7 +231,7 @@ def edit(ctx: ToolContext, args: SpatialArgs) -> AssistantReply:
                 v
                 for point in coords
                 for axis, v in enumerate(point)
-                if len(point) == 2 or axis != scope.axis
+                if len(point) == 2 or scope is None or axis != scope.axis
             ]
             if any(value not in supplied for value in in_plane):
                 raise DomainError(
@@ -208,26 +242,31 @@ def edit(ctx: ToolContext, args: SpatialArgs) -> AssistantReply:
                 )
         if len(coords) != (2 if args.kind == "box" else 1):
             raise DomainError("Provide one point or two box corners.")
-        axes = [axis for axis in range(3) if axis != scope.axis]
+        axes = [
+            axis for axis in range(len(asset.spatial_shape)) if scope is None or axis != scope.axis
+        ]
         expanded = []
         for point in coords:
-            if len(point) == 2:
+            if scope is None and len(point) == 2:
+                p = list(point)
+            elif scope is not None and len(point) == 2:
                 p = [float(scope.index)] * 3
                 for axis, value in zip(axes, point, strict=True):
                     p[axis] = value
-            elif len(point) == 3:
+            elif scope is not None and len(point) == 3:
                 p = list(point)
             else:
                 raise DomainError(
                     "Provide two in-plane source coordinates or three IJK coordinates."
                 )
-            if abs(p[scope.axis] - scope.index) > 0.5 or any(
-                v >= size for v, size in zip(p, asset.spatial_shape, strict=True)
+            if (scope is not None and abs(p[scope.axis] - scope.index) > 0.5) or any(
+                v < 0 or v >= size for v, size in zip(p, asset.spatial_shape, strict=True)
             ):
                 raise DomainError(
                     "Coordinates must be inside the source image on the current slice."
                 )
-            p[scope.axis] = float(scope.index)
+            if scope is not None:
+                p[scope.axis] = float(scope.index)
             expanded.append(p)
         upsert = [
             SpatialObject(
@@ -255,13 +294,13 @@ def edit(ctx: ToolContext, args: SpatialArgs) -> AssistantReply:
     return AssistantReply(
         assistant="viewer",
         message=(
-            "Updating local SAM prompts. "
+            "Updating local spatial prompts. "
             + (
                 "The box center is an editable starting point, not a localized anatomical point. "
                 if args.box_center
                 else ""
             )
-            + "Drag hints to refine them before running SAM."
+            + "Drag hints to refine them before running the spatial model."
         ),
         data=action.model_dump(mode="json"),
     )

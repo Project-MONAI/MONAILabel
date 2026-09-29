@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import hashlib
 import io
 import json
@@ -258,10 +269,21 @@ def test_browser_launch_uses_current_user_and_sample(
     expected_mode = mode
 
     def launch(
-        self, installation, url, project_id, *, asset_id, token, secret_env, mode, shared_filesystem
+        self,
+        installation,
+        url,
+        project_id,
+        *,
+        asset_id,
+        token,
+        secret_env,
+        mode,
+        shared_filesystem,
+        ca_certificate,
     ):
         assert mode == expected_mode
         assert shared_filesystem
+        assert ca_certificate is None
         assert "CUSTOM_AUTH" in secret_env
         user = http.app.state.services.auth.authenticate(token)
         calls.append((project_id, asset_id, user.username, url))
@@ -308,6 +330,7 @@ def test_viewer_receives_session_without_provider_environment(tmp_path, monkeypa
         "mode": "annotation",
         "shared_filesystem": False,
         "token": "viewer-session",
+        "ca_certificate": None,
     }
     assert "viewer-session" not in json.dumps(result)
 

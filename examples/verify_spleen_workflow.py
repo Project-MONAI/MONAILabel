@@ -1,4 +1,15 @@
-"""Run the README's eight prompts in a disposable workspace.
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Run the Spleen learning prompts in a disposable workspace.
 
 Fixture mode tests contracts without downloads or a GPU. --real uses Decathlon
 and VISTA3D with recommended settings. --coordinator-url tests language understanding
@@ -235,7 +246,6 @@ def run_workflow(
                         assert all(
                             bool(a["annotation_id"]) == (a["id"] in evaluation_ids) for a in assets
                         )
-                    elif step["id"] == "review_evaluation":
                         decisions = client.get(prefix + "/decisions")
                         assert len(decisions) == 9 and {d["asset_id"] for d in decisions} == set(
                             evaluation_ids
@@ -282,7 +292,9 @@ def run_workflow(
                         assert set(evaluation["validation_assets"]) == set(evaluation_ids)
                         assert not set(evaluation_ids) & set(trained.training_assets)
                         assert (
-                            services.store.get(ModelRecord, base["id"]).model_dump(mode="json")
+                            services.models.get(base["project_id"], base["id"]).model_dump(
+                                mode="json"
+                            )
                             == base
                         )
                         assert client.get(prefix)["defaults"] == defaults

@@ -22,16 +22,6 @@
       }
     },
     {
-      "id": "review_evaluation",
-      "prompt": "Mark all reviews as good for imported evaluation samples.",
-      "tool": "review_saved_annotations",
-      "arguments": {
-        "verdict": "accepted",
-        "scope": "pending",
-        "dataset_use": "evaluation"
-      }
-    },
-    {
       "id": "annotate",
       "prompt": "Run VISTA3D segmentation to annotate spleen for first 5 images and submit for review.",
       "tool": "annotate_batch",

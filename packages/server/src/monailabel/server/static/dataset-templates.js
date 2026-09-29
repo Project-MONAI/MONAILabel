@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { escapeHTML as esc } from "./ui.js";
 
 export async function importDatasetTemplate(ui) {
@@ -10,7 +23,7 @@ export async function importDatasetTemplate(ui) {
       selectField(
         "From where to import",
         "template_id",
-        ["Radiology", "Pathology", "Video"]
+        ["Radiology", "Pathology", "Endoscopy", "Video"]
           .map(
             (category) =>
               `<optgroup label="${category}">${catalog
@@ -62,6 +75,17 @@ export async function importDatasetTemplate(ui) {
     "Import samples",
   );
   const form = document.querySelector("#action-form");
+  const attribution = (template) =>
+    `<p><a href="${esc(template.source_url)}" target="_blank" rel="noopener">Dataset website ↗</a> · ${esc(template.license)}` +
+    (template.labels_url
+      ? ` · <a href="${esc(template.labels_url)}" target="_blank" rel="noopener">Labels and structures ↗</a>`
+      : "") +
+    (template.license_url
+      ? ` · <a href="${esc(template.license_url)}" target="_blank" rel="noopener">Usage terms ↗</a>`
+      : "") +
+    "</p>" +
+    (template.citation ? `<p class="muted">${esc(template.citation)}</p>` : "") +
+    (template.grouping ? `<p class="muted">${esc(template.grouping)}</p>` : "");
   function renderOptions() {
     const template = catalog.find(
       (t) => t.id === form.elements.template_id.value,
@@ -84,7 +108,7 @@ export async function importDatasetTemplate(ui) {
         '<option value="no">Video clip only</option>',
       );
       document.querySelector("#dataset-template-options").innerHTML =
-        `<p>${esc(template.description)}</p><p><a href="${esc(template.source_url)}" target="_blank" rel="noopener">Dataset website ↗</a> · ${esc(template.license)}</p>` +
+        `<p>${esc(template.description)}</p>` + attribution(template) +
         `<p class="muted">${template.cached ? "Already downloaded." : `Downloads ${size}.`}</p>` +
         '<p id="dataset-import-summary" role="status">Imports one clip into Datasets. Open CVAT to draw and save instrument tracks, then submit them for review.</p>' +
         '<p class="muted">No reference tracks are included. Accepted polygon annotations can train a segmentation model; boxes alone cannot. Repeating the import preserves your annotations and CVAT drafts.</p>';
@@ -119,7 +143,7 @@ export async function importDatasetTemplate(ui) {
     );
     form.elements.include_masks.disabled = !template.importable;
     document.querySelector("#dataset-template-options").innerHTML =
-      `<p>${esc(template.description)}</p><p><a href="${esc(template.source_url)}" target="_blank" rel="noopener">Dataset website ↗</a> · ${esc(template.license)}</p>` +
+      `<p>${esc(template.description)}</p>` + attribution(template) +
       (template.importable
         ? `<p class="muted">${template.cached ? "Already downloaded." : `Downloads ${size}${isArchive ? ", even for a few samples" : ""}.`}</p>` +
           (isArchive
@@ -157,7 +181,7 @@ export async function importDatasetTemplate(ui) {
                 "number",
                 'required min="0" max="10000" value="0"',
               ) +
-              '</div><p class="muted">Imports a subset, in filename order. To try the next 5 samples, skip the first 5.</p>'
+              '</div><p class="muted">Imports a subset in a stable order. TNBC samples different patients first; other datasets use filename order. To try the next 5 samples, skip the first 5.</p>'
             : "") +
           (template.channels.length
             ? selectField(
@@ -232,7 +256,9 @@ export async function importDatasetTemplate(ui) {
           (targets
             ? `Masks: ${names || "none selected"}. Change structures in Advanced options. `
             : "") +
-          "These are the dataset’s existing labels. Review them before training or evaluation.";
+          (evaluation
+            ? "Published reference labels are accepted on import and ready for evaluation."
+            : "These are the dataset’s existing labels. Review them before training.");
       };
       form.elements.include_masks.onchange = sync;
       if (form.elements.amount) form.elements.amount.onchange = sync;

@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import {
   trainingSamples,
   bindTrainingSamples,
@@ -13,6 +26,8 @@ import {
   desktopTarget,
 } from "./viewer-launch.js";
 import { trainingResults } from "./training-results.js";
+import { chatContent } from "./chat-content.js";
+import { bindAssistantResize } from "./assistant-resize.js";
 ("use strict");
 import { actionLabel, submitLabel, staticIcons } from "./icons.js";
 import { evaluationSetAction } from "./evaluation-sets.js";
@@ -36,6 +51,7 @@ import { setupModel } from "./model-setup.js";
 import { importHostedModel } from "./model-import.js";
 import { deleteProject, deleteFiles } from "./deletion.js";
 import { escapeHTML, badge, button, jobName } from "./ui.js";
+import { exportDataset, exportProgress } from "./dataset-export.js";
 import {
   datasets,
   samples,
@@ -97,12 +113,13 @@ const state = {
   setup: false,
   conversations: new Map(),
   chatBusy: false,
+  coordinator: null,
   reviewFilter: "pending",
   selectedFiles: new Set(),
   members: [],
   pages: { datasets: 1, review: 1, activity: 1 },
   searches: { datasets: "", review: "", activity: "" },
-  datasetFilter: "all",
+  datasetFilter: "shared",
   activityFilter: "all",
   modelsTab: "annotation",
 };
@@ -154,9 +171,7 @@ function notice(message) {
 function message(text, role = "assistant", action = null) {
   const div = document.createElement("div");
   div.className = `message ${role}-message`;
-  const p = document.createElement("p");
-  p.textContent = text;
-  div.append(p);
+  div.append(chatContent(text, role === "user"));
   if (action) {
     const b = document.createElement("button");
     b.textContent = action.text;
@@ -211,7 +226,7 @@ async function returnToWorkList(projectId, page) {
     throw new Error("This project is no longer available.");
   state.page = page;
   state.reviewFilter = "pending";
-  state.datasetFilter = "all";
+  state.datasetFilter = "shared";
   state.searches[page] = "";
   state.pages[page] = 1;
   delete state.context.asset_id;
@@ -268,7 +283,7 @@ async function selectProject(id) {
   state.modelSplits = [];
   state.evaluationVersions = [];
   state.selectedReviews.clear();
-  state.datasetFilter = "all";
+  state.datasetFilter = "shared";
   state.members = [];
   state.assets = [];
   state.videos = [];
@@ -284,10 +299,24 @@ async function selectProject(id) {
   sessionStorage.setItem("project", state.project?.id ?? "");
   await refresh();
 }
-async function refresh({ automatic = false } = {}) {
+function assistantAvailable() {
+  return state.coordinator?.state === "ready";
+}
+function updateSendButton() {
+  $('#chat-form [type="submit"]').disabled =
+    state.chatBusy || !assistantAvailable();
+}
+async function refreshAssistant() {
   const coordinator = await api("/assistant/status");
-  $(".chat-footnote").textContent = `Assistant ${coordinator.state}`;
+  state.coordinator = coordinator;
+  $(".chat-footnote").textContent = assistantAvailable()
+    ? `Assistant ${coordinator.state}`
+    : coordinator.message;
   $(".chat-footnote").title = `${coordinator.model} · ${coordinator.message}`;
+  updateSendButton();
+}
+async function refresh({ automatic = false } = {}) {
+  await refreshAssistant();
   if (state.project) {
     const prefix = `/projects/${state.project.id}`;
     // Read the counter first: a concurrent write will trigger another refresh.
@@ -449,7 +478,7 @@ function overview() {
     ["review", "Pending review", pending],
     ["review", "Accepted", accepted],
   ];
-  return `<div class="stats">${links.map(([page, label, count]) => `<button class="stat" data-page="${page}" ${label === "Accepted" ? 'data-review-filter="accepted"' : label === "Pending review" ? 'data-review-filter="pending"' : ""}><small>${label}</small><strong>${count}</strong></button>`).join("")}</div><section class="card"><h2>Continue your work</h2><p class="muted">Open a sample to annotate, or review a submitted case.</p><div class="toolbar"><button class="primary" data-page="datasets">${actionLabel("Open datasets", "library")}</button><button data-page="review">${actionLabel("Review annotations", "check")}</button>${canManage() ? button("Import files", "dataset") : ""}</div></section>${state.project.instructions ? `<section class="card"><h3>Instructions for annotators (optional)</h3><p class="preserve-lines">${escapeHTML(state.project.instructions)}</p></section>` : ""}<details class="card" open><summary>Getting started</summary><ol class="getting-started"><li><strong>Import data.</strong> NIfTI, DICOM series, bounded pathology images or videos.</li><li><strong>Choose a model.</strong> Connect a hosted service or use a local segmentation model.</li><li><strong>Annotate and review.</strong> Prompt and edit in Slicer, QuPath, OHIF or CVAT; submit and review the annotated coverage.</li><li><strong>Train and compare.</strong> Train from accepted annotations; add independent evaluation data or a model-specific split when ready.</li></ol></details>${state.project.is_demo ? '<p class="muted">Synthetic demonstration data and CPU baseline models.</p>' : ""}`;
+  return `<div class="stats">${links.map(([page, label, count]) => `<button class="stat" data-page="${page}" ${label === "Accepted" ? 'data-review-filter="accepted"' : label === "Pending review" ? 'data-review-filter="pending"' : ""}><small>${label}</small><strong>${count}</strong></button>`).join("")}</div><section class="card"><h2>Continue your work</h2><p class="muted">Open a sample to annotate, or review a submitted case.</p><div class="toolbar"><button class="primary" data-page="datasets">${actionLabel("Open datasets", "library")}</button><button data-page="review">${actionLabel("Review annotations", "check")}</button>${canManage() ? button("Import files", "dataset") : ""}</div></section>${state.project.instructions ? `<section class="card"><h3>Instructions for annotators (optional)</h3><p class="preserve-lines">${escapeHTML(state.project.instructions)}</p></section>` : ""}<details class="card" open><summary>Getting started</summary><ol class="getting-started"><li><strong>Import data.</strong> NIfTI, DICOM series, bounded pathology images or videos.</li><li><strong>Choose a model.</strong> Connect a hosted service or use a local segmentation model.</li><li><strong>Annotate and review.</strong> Prompt and edit in Slicer, QuPath, OHIF or CVAT; submit and review the annotated coverage.</li><li><strong>Train and compare.</strong> Train from accepted annotations; add independent evaluation data or a model-specific split when ready.</li></ol></details>${state.project.is_demo ? '<p class="muted">Synthetic demonstration data and baseline models.</p>' : ""}`;
 }
 function requireProject() {
   return '<div class="empty"><h3>Select or create a project</h3><p>Your datasets, models, and team will appear here.</p></div>';
@@ -608,10 +637,11 @@ async function openForm(kind, id) {
       state.models.find((m) => m.id === id),
     );
   if (kind === "derive-model") {
-    const recipe = state.recipes.find((item) => item.id === "vista3d");
+    const base = state.models.find((item) => item.id === id);
+    const recipe = state.recipes.find((item) => item.id === base.provider);
     let chosen = () => [];
     modal(
-      "Create a VISTA3D project model",
+      `Create a ${base.name} project model`,
       field(
         "Model name",
         "name",
@@ -634,7 +664,7 @@ async function openForm(kind, id) {
         if (!targets.length) {
           const learner = await api(`${prefix}/learners`, "POST", {
             name,
-            recipe: "vista3d",
+            recipe: base.provider,
             initial_model_id: id,
             inherit_targets: true,
           });
@@ -647,7 +677,7 @@ async function openForm(kind, id) {
         }
         const reply = await api(`${prefix}/assistant`, "POST", {
           message:
-            "Create a VISTA3D project model named exactly " +
+            `Create a ${base.name} project model named exactly ` +
             JSON.stringify(name) +
             " for fine-tuning from the selected base model, with these initial training structures: " +
             targets.join(", ") +
@@ -707,7 +737,9 @@ async function openForm(kind, id) {
         '<div id="training-parent"></div>' +
         trainingSettings(learner) +
         '<div id="training-evaluation"></div>' +
-        (learner.recipe === "vista3d"
+        (["vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(
+          learner.recipe,
+        )
           ? '<fieldset><legend>Structures to train</legend><div class="checkboxes">' +
             state.project.labels
               .filter(
@@ -729,10 +761,13 @@ async function openForm(kind, id) {
           : "") +
         trainingSamples(),
       async (f) => {
-        const targets =
-          learner.recipe === "vista3d"
-            ? [0, ...f.getAll("targets").map(Number)]
-            : learner.label_ids;
+        const targets = [
+          "vista3d",
+          "totalsegmentator-ct",
+          "totalsegmentator-mr",
+        ].includes(learner.recipe)
+          ? [0, ...f.getAll("targets").map(Number)]
+          : learner.label_ids;
         if (targets.length < 2)
           throw new Error("Choose at least one annotated organ to fine-tune.");
         const projectId = state.project.id;
@@ -909,7 +944,12 @@ async function watchJob(jobId, originProject, viewerTab) {
   }
   if (state.project?.id === originProject) {
     updateContext(job.result);
-    await refresh();
+    // A completed job still opens its viewer if an unrelated list refresh fails.
+    try {
+      await refresh();
+    } catch (error) {
+      message(error.message);
+    }
   }
   if (job.result.url) {
     const viewerName =
@@ -1003,14 +1043,16 @@ async function launchViewer(
 }
 async function send(text) {
   if (state.chatBusy) return;
+  if (!assistantAvailable())
+    throw new Error(state.coordinator?.message || "Checking assistant status…");
   state.chatBusy = true;
-  $('#chat-form [type="submit"]').disabled = true;
+  updateSendButton();
   $("#new-conversation").disabled = true;
   try {
     await sendPrompt(text);
   } finally {
     state.chatBusy = false;
-    $('#chat-form [type="submit"]').disabled = false;
+    updateSendButton();
     $("#new-conversation").disabled = false;
   }
 }
@@ -1265,8 +1307,10 @@ async function action(name, id) {
       { state, api, modal, field, selectField, message },
       "validation",
     );
+  if (name === "export-dataset") return exportDataset({state, api, modal});
   if (name === "job-details") {
     const job = state.jobs.find((j) => j.id === id);
+    if (job.kind === "dataset_export") return exportProgress(job, {api, modal});
     if (
       ["train", "evaluate", "training_report", "batch_annotate"].includes(
         job.kind,
@@ -1297,7 +1341,7 @@ async function action(name, id) {
   }
   if (name === "reset-filters") {
     state.searches[state.page] = "";
-    if (state.page === "datasets") state.datasetFilter = "all";
+    if (state.page === "datasets") state.datasetFilter = "shared";
     if (state.page === "activity") state.activityFilter = "all";
     if (state.page === "review") state.reviewFilter = "pending";
     state.pages[state.page] = 1;
@@ -1349,7 +1393,7 @@ $("#login-form").addEventListener("submit", async (event) => {
 });
 $("#chat-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  if (state.chatBusy) return;
+  if (state.chatBusy || !assistantAvailable()) return;
   voice.cancel();
   const text = $("#chat-input").value.trim();
   if (!text) return;
@@ -1498,17 +1542,12 @@ function workspaceEditing() {
   );
 }
 async function updateIfChanged() {
-  if (
-    polling ||
-    document.hidden ||
-    !state.user ||
-    !state.project ||
-    workspaceEditing()
-  )
-    return;
+  if (polling || document.hidden || !state.user) return;
   polling = true;
-  const projectId = state.project.id;
   try {
+    await refreshAssistant();
+    if (!state.project || workspaceEditing()) return;
+    const projectId = state.project.id;
     const change = await api(`/projects/${projectId}/changes`);
     if (
       state.project?.id === projectId &&
@@ -1539,6 +1578,11 @@ $("#close-assistant").addEventListener("click", () => {
   $("#toggle-assistant").focus();
 });
 if (window.innerWidth < 1200) showAssistant(false);
+bindAssistantResize(
+  $("#workspace"),
+  $("#assistant-panel"),
+  $("#assistant-resize"),
+);
 
 $("#mobile-nav").addEventListener("click", () => {
   const open = $("#sidebar-content").classList.toggle("mobile-open");

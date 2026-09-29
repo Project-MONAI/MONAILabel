@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """HTTP authentication and centralized resource access checks."""
 
 from typing import Annotated, cast
@@ -88,6 +99,8 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
             "review-mask",
             "restore",
             "annotate",
+            "viewer-inference",
+            "spatial-inference",
             "reject",
             "cancel",
             "mask-import",
@@ -96,9 +109,16 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
             action = "annotate"
         elif endpoint in {"decision", "review-complete", "review-decisions"}:
             action = "review"
-        elif endpoint in {"label-colors", "cvat-submit", "track", "find-and-track"}:
+        elif endpoint in {
+            "label-colors",
+            "cvat-submit",
+            "track",
+            "find-and-track",
+            "interactive",
+            "target",
+        }:
             action = "edit"
-        elif endpoint not in {"assistant", "viewer", "editor"}:
+        elif endpoint not in {"assistant", "viewer", "editor", "exports"}:
             action = "manage"
     if request.url.path.endswith(("/credentials", "/members", "/model-services")):
         action = "manage"

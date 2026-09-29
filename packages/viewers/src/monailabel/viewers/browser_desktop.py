@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Provision browser desktop assets and isolated native viewer containers."""
 
 import hashlib
@@ -32,7 +43,8 @@ class BrowserDesktop:
         self.namespace = namespace
         self.viewers = ViewerManager(tools)
         self.dist = self.viewers.root / "desktop" / f"novnc-{NOVNC_VERSION}"
-        self.sockets = Path(tempfile.gettempdir()) / ("monailabel-desktop-" + namespace)
+        socket_root = Path(os.environ.get("MONAILABEL_DESKTOP_SOCKET_DIR", tempfile.gettempdir()))
+        self.sockets = socket_root / ("monailabel-desktop-" + namespace)
 
     @staticmethod
     def run(*args: str, timeout: int = 60) -> str:
@@ -108,6 +120,23 @@ class BrowserDesktop:
         installation = self.viewers.ensure(viewer, progress=progress)
         executable = Path(installation.executable).resolve()
         installation_root = executable.parent if viewer == "slicer" else executable.parent.parent
+        # Docker on the host cannot bind-mount files from the server container's
+        # site-packages. Stage the bridges in the shared tool cache instead.
+        digest = hashlib.sha256()
+        sources = sorted(
+            p for p in RESOURCES.rglob("*") if p.is_file() and "__pycache__" not in p.parts
+        )
+        for source in sources:
+            digest.update(source.relative_to(RESOURCES).as_posix().encode())
+            digest.update(source.read_bytes())
+        bridges = self.viewers.root / "desktop" / ("bridges-" + digest.hexdigest()[:20])
+        bridges.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(bridges) + ".lock", timeout=60):
+            if not bridges.exists():
+                with tempfile.TemporaryDirectory(dir=bridges.parent) as temporary:
+                    staged = Path(temporary) / "bridges"
+                    shutil.copytree(RESOURCES, staged, ignore=shutil.ignore_patterns("__pycache__"))
+                    staged.rename(bridges)
         directory = self.root / identifier
         directory.mkdir(parents=True, mode=0o700)
         os.chmod(directory, 0o700)
@@ -160,7 +189,7 @@ class BrowserDesktop:
             "--volume",
             f"{installation_root}:/viewer:ro",
             "--volume",
-            f"{RESOURCES}:/bridges:ro",
+            f"{bridges}:/bridges:ro",
             image,
         )
         for _ in range(180):

@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 // Small shared action icons. Text remains the primary label for consequential actions.
 const paths = {
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -17,6 +30,11 @@ const paths = {
   compare:
     '<path d="M12 3v18M3 8h6M15 8h6M3 16h6M15 16h6m-9-3 3 3-3 3m12-14-3 3 3 3"/>',
   search: '<circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/>',
+  scan: '<rect x="3" y="3" width="18" height="15" rx="4"/><circle cx="12" cy="10" r="4"/><path d="M9 14v7h6v-7M7 21h10"/>',
+  magnet: '<path d="M5 15V9a7 7 0 0 1 14 0v6h-4V9a3 3 0 0 0-6 0v6ZM5 11h4m6 0h4M8 21h8M12 17v4"/>',
+  segment: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><circle cx="12" cy="12" r="4"/><path d="M12 10v4m-2-2h4"/>',
+  vision: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  network: '<circle cx="12" cy="4" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="20" r="2"/><path d="m10.5 5.5-4 5m7-5 4 5m-11 3 4 5m7-5-4 5M7 12h10"/>',
   check: '<path d="m4 12 5 5L20 6"/>',
   left: '<path d="m15 5-7 7 7 7"/>',
   right: '<path d="m9 5 7 7-7 7"/>',

@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 // Guided model setup. Inference connections and trainable recipes have separate forms.
 import { importHostedModel } from "./model-import.js";
 
@@ -111,7 +124,7 @@ export function setupModel(ui, path = "") {
       `<p class="muted">What would you like to do?</p><div class="setup-paths">
       <button type="button" data-action="model" data-id="hosted"><strong>Use a hosted vision model</strong><span>Choose from compatible models available through your API key.</span></button>
       <button type="button" data-action="model" data-id="endpoint"><strong>Use an existing segmentation model</strong><span>Connect a deployed U-Net, Hugging Face segmentation endpoint, or another mask service.</span></button>
-      <button type="button" data-action="model" data-id="learner"><strong>Train a project model</strong><span>Create a U-Net using your reviewed annotations. No inference endpoint or API key needed.</span></button>
+      <button type="button" data-action="model" data-id="learner"><strong>Train a project model</strong><span>Train U-Net or nnU-Net v2 using your reviewed annotations.</span></button>
       </div>`,
       async () => false,
     );
@@ -250,6 +263,10 @@ export function setupModel(ui, path = "") {
       async (f) => {
         const ids = labelIds(f);
         const config = {};
+        if (f.get("recipe") === "nnunet-v2") {
+          if (!f.get("modality")) throw new Error("Choose CT or MRI.");
+          config.modality = f.get("modality");
+        }
         const name = f.get("name").trim();
         if (!name) throw new Error("Give this model a name to use in chat.");
         if (
@@ -264,9 +281,9 @@ export function setupModel(ui, path = "") {
           name,
           recipe: f.get("recipe"),
           initial_model_id:
-            f.get("recipe") === "vista3d"
+            ["vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(f.get("recipe"))
               ? state.models.find(
-                  (model) => model.preset === "vista3d" && model.read_only,
+                  (model) => model.preset === f.get("recipe") && model.read_only,
                 )?.id || null
               : null,
           label_ids: ids,
@@ -288,10 +305,12 @@ export function setupModel(ui, path = "") {
       );
       form.querySelector('button[type="submit"]').disabled = !recipe?.available;
       form.querySelector("#recipe-settings").innerHTML =
-        form.elements.recipe.value === "monai-unet"
+        form.elements.recipe.value === "nnunet-v2"
+          ? selectField("Scan modality", "modality", '<option value="">Choose CT or MRI</option><option value="CT">CT</option><option value="MRI">MRI</option>') + '<p class="muted">Single-channel 3D scans. nnU-Net plans spacing, normalization, patch size and network from your training cases. Use one consistent MRI sequence per model.</p>'
+          : form.elements.recipe.value === "monai-unet"
           ? '<p class="muted">Train a U-Net from scratch on 2D images or 3D scans. The image format is detected automatically. Start with the recommended settings; adjust them when you start training.</p>'
           : form.elements.recipe.value === "vista3d"
-            ? '<p class="muted">Create a separate CT model based on VISTA3D. Fine-tuning uses the selected organs; the shared base stays read-only. A compatible GPU is required by the default recipe.</p>'
+            ? '<p class="muted">Create a separate CT model based on VISTA3D. Fine-tuning uses the selected organs; the shared base stays read-only.</p>'
             : `<p class="muted">${esc(recipe?.description || "Install a training runtime on the server to create a setup.")}</p>`;
     }
     form.elements.recipe.addEventListener("change", recipeChanged);

@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Startup configuration. Credentials are environment references, never arguments."""
 
 import os
@@ -26,14 +37,19 @@ class CoordinatorConfig(Contract):
 
     @model_validator(mode="before")
     @classmethod
-    def default_budget(cls, value: Any) -> Any:
-        if isinstance(value, dict) and "max_tokens" not in value:
+    def defaults(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        defaults = {}
+        if "max_tokens" not in value:
             lightning = (
                 value.get("provider", "local") == "local"
                 and value.get("variant", "lightning") == "lightning"
             )
-            return {**value, "max_tokens": 8192 if lightning else 4096}
-        return value
+            defaults["max_tokens"] = 8192 if lightning else 4096
+        if value.get("provider") == "openai" and "timeout" not in value:
+            defaults["timeout"] = 180
+        return {**defaults, **value}
 
     @model_validator(mode="after")
     def validate_endpoint(self) -> Self:

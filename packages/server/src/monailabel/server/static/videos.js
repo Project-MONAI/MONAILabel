@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { escapeHTML as esc, badge, button } from "./ui.js";
 import { upload } from "./dataset-import.js";
 import { reserveViewerTab, closePendingViewer } from "./viewer-launch.js";
@@ -47,13 +60,6 @@ export async function videoAction(name, id, ui) {
           "required maxlength='200'",
           "Use the same ID for related clips and exported images.",
         ) +
-        field(
-          "Instrument labels",
-          "labels",
-          "text",
-          "maxlength='1000' placeholder='Grasper, Scissors'",
-          "Comma-separated names; existing project labels are kept.",
-        ) +
         selectField(
           "Dataset use",
           "split",
@@ -67,12 +73,6 @@ export async function videoAction(name, id, ui) {
           group_id: form.get("group_id").trim(),
           split: form.get("split"),
         });
-        for (const label of form
-          .get("labels")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean))
-          params.append("labels", label);
         await upload(
           `/projects/${projectId}/videos/upload?${params}`,
           file,
@@ -83,7 +83,7 @@ export async function videoAction(name, id, ui) {
                 : `Uploading ${Math.round(fraction * 100)}%`;
           },
         );
-        message("Video imported. Open CVAT to annotate instrument tracks.");
+        message("Video imported. Open CVAT to annotate and track objects.");
       },
       "Import video",
     );

@@ -1,14 +1,50 @@
-"""Slicer-native SAM hints. Loaded in Slicer's Python; no server or model dependencies."""
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Slicer-native spatial hints. Loaded in Slicer's Python; no server or model dependencies."""
 
 import numpy as np
+import qt
 import slicer
 import vtk
 
 
+def observe_selection(node):
+    """Use native markup interaction to choose a box without an extra selector."""
+    if getattr(node, "_monailabel_selection_observers", None):
+        return
+
+    def select(caller, event):
+        slicer.modules.markups.logic().SetActiveListID(node)
+
+    node._monailabel_selection_observers = [
+        node.AddObserver(node.PointStartInteractionEvent, select),
+        node.GetDisplayNode().AddObserver(node.GetDisplayNode().ActionEvent, select),
+    ]
+
+
+def show_target(dock, target=None):
+    """Keep every label's hints, showing the active label while drawing."""
+    for node in dock.region_nodes:
+        if node.GetScene() and node.GetDisplayNode():
+            label = node.GetAttribute("MONAILabel.Target") or ""
+            node.GetDisplayNode().SetVisibility(
+                target is None or label.casefold() == target.casefold()
+            )
+
+
 def inventory(dock):
     if dock.volume.GetParentTransformNode():
-        raise ValueError("Harden the volume transform before editing SAM hints.")
-    selected = dock.spatial_hint.currentNode()
+        raise ValueError("Harden the volume transform before editing spatial hints.")
+    selected = dock.selected_hint()
     nodes = [n for n in dock.region_nodes if n.GetScene() == slicer.mrmlScene]
     if selected and selected not in nodes:
         nodes.append(selected)
@@ -24,7 +60,7 @@ def inventory(dock):
         ):
             continue
         if node.GetParentTransformNode():
-            raise ValueError("Harden markup transforms before editing SAM hints.")
+            raise ValueError("Harden markup transforms before editing spatial hints.")
         points = []
         for i in range(node.GetNumberOfControlPoints()):
             if node.GetNthControlPointPositionStatus(i) != node.PositionDefined:
@@ -75,7 +111,7 @@ def check(dock, expected, scope):
         raise RuntimeError("The source slice changed during the request. Retry it.")
     current, handles = inventory(dock)
     if current != expected:
-        raise RuntimeError("SAM hints or their selection changed during the request. Retry it.")
+        raise RuntimeError("spatial hints or their selection changed during the request. Retry it.")
     return handles
 
 
@@ -85,7 +121,7 @@ def write(dock, item, scope, handle=None):
     if node is None:
         node = slicer.mrmlScene.AddNewNodeByClass(
             "vtkMRMLMarkupsFiducialNode" if point else "vtkMRMLMarkupsClosedCurveNode",
-            (item["target"] or "SAM")
+            (item["target"] or "Prompt")
             + (
                 " · positive point"
                 if point and item["positive"]
@@ -132,12 +168,14 @@ def write(dock, item, scope, handle=None):
     display.SetSelectedColor(*color)
     display.SetColor(*color)
     display.SetPropertiesLabelVisibility(False)
+    display.SetPointLabelsVisibility(False)
     return node
 
 
 def apply(dock, action):
     dock.checked_edit_mask(action)
     handles = check(dock, action["expected"], action["slice"])
+    cancel_placement(dock)
     # Remove control points backwards so list indices remain valid.
     removed = sorted((handles[i] for i in action["remove"]), key=lambda h: h[1] or 0, reverse=True)
     for node, index in removed:
@@ -148,7 +186,118 @@ def apply(dock, action):
     for item in action["upsert"]:
         write(dock, item, action["slice"], handles.get(item["id"]))
     dock.region_nodes = [n for n in dock.region_nodes if n.GetScene() == slicer.mrmlScene]
+    show_target(dock, dock.interaction_target if dock.hint_panel.visible else None)
     return (
-        f"Updated SAM hints ({len(action['upsert'])} added/adjusted, "
+        f"Updated spatial hints ({len(action['upsert'])} added/adjusted, "
         f"{len(action['remove'])} removed). Drag them to refine; segmentation unchanged."
     )
+
+
+def cancel_placement(dock):
+    dock.interaction_mode = "navigate"
+    for button in getattr(dock, "hint_buttons", {}).values():
+        button.setChecked(False)
+    pending = getattr(dock, "hint_placement", None)
+    if pending is None:
+        return
+    node, observer, kind = pending
+    dock.hint_placement = None
+    node.RemoveObserver(observer)
+    interaction = slicer.app.applicationLogic().GetInteractionNode()
+    interaction.SetPlaceModePersistence(False)
+    interaction.SetCurrentInteractionMode(interaction.ViewTransform)
+    if node.GetScene() and (kind == "box" or not node.GetNumberOfDefinedControlPoints()):
+        slicer.mrmlScene.RemoveNode(node)
+
+
+def place(dock, kind, positive=True):
+    """Native point placement persists across slices; two corners create a slice box."""
+    if dock.asset is None or dock.volume is None:
+        raise ValueError("Open an image before adding a spatial prompt.")
+    if dock.future or dock.job_id or dock.loading:
+        raise ValueError("Wait for the current request before changing prompts.")
+    if not (dock.can_annotate or dock.can_review):
+        raise ValueError("Annotation permission is required to add spatial prompts.")
+    scope = dock.current_slice()
+    if not scope:
+        raise ValueError("Select a source slice first.")
+    cancel_placement(dock)
+    dock.configure_interaction()
+    specification = getattr(dock, "hint_specification", None)
+    input_kind = "box" if kind == "box" else "positive_point" if positive else "negative_point"
+    if not specification or input_kind not in specification["inputs"]:
+        raise ValueError("The selected model does not accept this input.")
+    target = getattr(dock, "interaction_target", "")
+    if not target:
+        raise ValueError("Choose or type a target label before placing hints.")
+    dock.interaction_mode = "box" if kind == "box" else "positive" if positive else "negative"
+    show_target(dock, target)
+    dock.hint_panel.show()
+    for key, button in dock.hint_buttons.items():
+        button.setChecked(key == input_kind)
+    asset_id = dock.asset["id"]
+    name = "Box corners" if kind == "box" else "Positive points" if positive else "Negative points"
+    node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", name)
+    if kind == "box":
+        node.SetMaximumNumberOfControlPoints(2)
+    else:
+        dock.region_nodes.append(node)
+    for key, value in {"AssetID": asset_id, "ProjectID": dock.project_id, "Target": target}.items():
+        node.SetAttribute("MONAILabel." + key, value)
+    node.SetControlPointLabelFormat(("positive" if positive else "negative") + " %d")
+    display = node.GetDisplayNode()
+    color = (0.3, 0.9, 0.4) if positive else (1, 0.3, 0.3)
+    display.SetSelectedColor(*color)
+    display.SetColor(*color)
+    display.SetPropertiesLabelVisibility(False)
+    display.SetPointLabelsVisibility(False)
+    dock.select_hint(node)
+
+    def placed(caller, event):
+        if kind == "point":
+            return  # Each native point keeps its polarity; validate geometry before inference.
+        if node.GetNumberOfDefinedControlPoints() < 2:
+            return
+        try:
+            if dock.asset["id"] != asset_id or not same_slice(scope, dock.current_slice()):
+                raise ValueError("The image or slice changed. Place the box again.")
+            matrix = dock.source_matrix(inverse=True)
+            points = []
+            for index in range(2):
+                world = [0.0, 0.0, 0.0]
+                node.GetNthControlPointPositionWorld(index, world)
+                point = list(matrix.MultiplyPoint(world + [1])[:3])
+                if abs(point[scope["axis"]] - scope["index"]) > 0.5:
+                    raise ValueError("Place the box in the selected slice view.")
+                point[scope["axis"]] = scope["index"]
+                if any(
+                    v < 0 or v > n - 1
+                    for v, n in zip(point, dock.asset["spatial_shape"], strict=True)
+                ):
+                    raise ValueError("Place the box inside the source image.")
+                points.append(point)
+            coordinates = [np.min(points, axis=0).tolist(), np.max(points, axis=0).tolist()]
+            if any(coordinates[0][a] >= coordinates[1][a] for a in range(3) if a != scope["axis"]):
+                raise ValueError("Draw a box with nonzero width and height.")
+            item = dict(
+                id=node.GetID(), target=target, kind="box", coordinates=coordinates, positive=True
+            )
+            cancel_placement(dock)
+            result = write(dock, item, scope)
+            dock.select_hint(result)
+        except Exception as exc:
+            cancel_placement(dock)
+            slicer.util.errorDisplay(str(exc))
+
+    # Markups still processes the native mouse event when PointPositionDefined fires.
+    # Finish box conversion on the next Qt turn before removing its temporary node.
+    def schedule(caller, event):
+        if kind == "box" and node.GetNumberOfDefinedControlPoints() == 2:
+            qt.QTimer.singleShot(0, lambda: placed(caller, event) if node.GetScene() else None)
+
+    observer = node.AddObserver(node.PointPositionDefinedEvent, schedule)
+    dock.hint_placement = (node, observer, kind)
+    slicer.modules.markups.logic().SetActiveListID(node)
+    interaction = slicer.app.applicationLogic().GetInteractionNode()
+    interaction.SetPlaceModePersistence(True)
+    interaction.SetCurrentInteractionMode(interaction.Place)

@@ -1,0 +1,42 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[project]
+name = "monailabel-totalsegmentator"
+version = "1.0.0rc1"
+description = "TotalSegmentator CT and MRI inference and fine-tuning"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "src/monailabel/totalsegmentator/resources/LICENSE-TotalSegmentator"]
+requires-python = ">=3.12"
+dependencies = [
+    "monailabel-core==1.0.0rc1",
+    "TotalSegmentator==2.18.0",
+    "nnunetv2>=2.6,<2.7",
+    "torch>=2.11,<2.12",
+    # FURY 0.12 caps VTK below the first Linux ARM64 wheels; previews are unused.
+    "fury==0.11.0",
+    "vtk>=9.5,<9.6",
+    "httpx>=0.28",
+    "filelock>=3",
+    "platformdirs>=4",
+]
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/monailabel"]
+
+[project.urls]
+Repository = "https://github.com/Project-MONAI/MONAILabel"
+Documentation = "https://github.com/Project-MONAI/MONAILabel/blob/1.0/docs/providers.md"

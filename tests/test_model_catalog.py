@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Account discovery, conservative filtering, credential isolation and safe import."""
 
 import httpx
@@ -10,6 +21,34 @@ from monailabel.providers.catalog.compatibility import compatible
 from monailabel.providers.catalog.discovery import Catalog, CatalogModel
 from monailabel.providers.catalog.presets import HOSTED_PRESETS, resolve_presets
 from monailabel.providers.catalog.selection import recent_models
+
+
+def test_viewer_catalog_groups_predefined_before_project_models(client, http, hosted_presets):
+    service = http.app.state.services
+    project = client.post("/api/projects", {"name": "Grouped models"})
+    custom = ModelRecord(
+        project_id=project["id"],
+        name="My spleen",
+        provider="vista3d",
+        label_ids=[0, 1],
+        mode="fine_tune",
+        preset="vista3d",
+    )
+    with service.store.transaction() as session:
+        session.insert(custom)
+    models = client.get(f"/api/projects/{project['id']}/models")
+    groups = list(dict.fromkeys(m["catalog_group"] for m in models))
+    assert groups == [
+        "Radiology segmentation",
+        "Interactive segmentation",
+        "Vision-language models",
+        "Trained models",
+    ]
+    assert models[-1]["id"] == custom.id
+    assert (
+        next(m for m in models if m["provider"] == "nninteractive")["catalog_group"]
+        == "Interactive segmentation"
+    )
 
 
 def test_nvidia_latest_versions_keep_variants_and_distinct_hosting_routes():
@@ -81,7 +120,7 @@ def test_nvidia_version_filter_is_specific_to_import_picker(
     routes = http.post(
         prefix + f"/models/{preset['id']}/model-catalog", json={"service": "nvidia"}
     ).json()
-    assert [m["id"] for m in routes["models"]] == ["gcp/google/gemini-3.5-flash"]
+    assert [m["id"] for m in routes["models"]] == ["gcp/google/gemini-3.8-flash"]
     direct = http.post(prefix + "/model-catalog", json={"service": "gemini"}).json()
     assert len(direct["models"]) == 3
 
@@ -116,6 +155,88 @@ def test_preset_exposes_all_available_routes_and_keeps_the_selected_route(
     assert changed.json()["provider"] == "openai-polygons"
 
 
+@pytest.mark.parametrize("gateway", [True, False])
+def test_gemini_preset_is_fixed_to_38(catalog_http, monkeypatch, gateway):
+    from monailabel.providers.catalog.discovery import Catalog, CatalogModel
+
+    monkeypatch.setenv("NV_INFERENCE_API_KEY", "fixture")
+    monkeypatch.setenv("GEMINI_API_KEY", "fixture")
+    versions = [
+        "gemini-3.5-flash",
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-4-flash",
+        "gemini-4-flash-preview",
+        "gemini-4-flash-lite",
+        "gemini-4-pro",
+        "gemini-4-flash-image",
+    ]
+
+    def discover(service, key):
+        if service.id == "nvidia" and not gateway:
+            return Catalog([], 0)
+        prefix = "gcp/google/" if service.id == "nvidia" else ""
+        return Catalog(
+            [
+                CatalogModel(prefix + version, version, service.provider, service.inference_url)
+                for version in versions
+            ],
+            0,
+        )
+
+    monkeypatch.setattr("monailabel.providers.catalog.presets.discover", discover)
+    resolved = resolve_presets(tuple(s for s in HOSTED_PRESETS if s.key == "gemini-flash"))
+    expected = ("gcp/google/" if gateway else "") + "gemini-3.8-flash"
+    assert resolved["gemini-flash"].config["model"] == expected
+
+
+@pytest.mark.parametrize("manual", [False, True])
+def test_gemini_38_replaces_old_automatic_preset_and_preserves_manual_choice(
+    client, http, hosted_presets, catalog_http, manual
+):
+    hosted_presets.enabled = False
+    project = client.post("/api/projects", {"name": "Gemini versions"})
+    service = http.app.state.services
+    old = ModelRecord(
+        project_id=project["id"],
+        name="Gemini 3.5 Flash",
+        provider="openai-chat-polygons",
+        label_ids=[0],
+        preset="gemini-flash",
+        connection_mode="manual" if manual else "automatic",
+        config={
+            "url": SERVICES["nvidia"].inference_url,
+            "model": "gcp/google/gemini-3.5-flash",
+            "token_env": "NV_INFERENCE_API_KEY",
+        },
+    )
+    with service.store.transaction() as session:
+        session.insert(old)
+    service.models.set_default(project["id"], old.id, project["version"])
+    catalog_http(
+        lambda request: httpx.Response(
+            200,
+            json={
+                "data": [
+                    {"id": "gcp/google/gemini-3.5-flash"},
+                    {"id": "gcp/google/gemini-3.8-flash"},
+                ]
+            },
+        )
+    )
+    hosted_presets.enabled = True
+    hosted_presets.hosted = resolve_presets()
+    hosted_presets.ensure(project["id"])
+    prefix = f"/api/projects/{project['id']}"
+    current = next(m for m in client.get(prefix + "/models") if m["preset"] == "gemini-flash")
+    assert current["name"] == ("Gemini 3.5 Flash" if manual else "Gemini 3.8 Flash")
+    assert (current["id"] == old.id) is manual
+    assert client.get(prefix)["annotation_model_id"] == current["id"]
+    saved = service.store.get(ModelRecord, old.id)
+    assert saved.archived is not manual
+    assert saved.config["model"] == "gcp/google/gemini-3.5-flash"
+
+
 @pytest.mark.parametrize("gateway", ["all", "partial", "forbidden", "missing"])
 def test_presets_prefer_gateway_and_fall_back_per_model(catalog_http, monkeypatch, gateway):
     for service in SERVICES.values():
@@ -143,7 +264,7 @@ def test_presets_prefer_gateway_and_fall_back_per_model(catalog_http, monkeypatc
             json={
                 "models": [
                     {
-                        "name": "models/gemini-3.5-flash",
+                        "name": "models/gemini-3.8-flash",
                         "supportedGenerationMethods": ["generateContent"],
                     }
                 ]
@@ -186,6 +307,9 @@ def test_unavailable_presets_are_hidden_and_historical_connections_preserved(htt
         "vista3d",
         "sam2",
         "medsam2",
+        "nninteractive",
+        "totalsegmentator-ct",
+        "totalsegmentator-mr",
     }
     previous = service.store.get(ModelRecord, astra.id)
     assert previous.archived and previous.config == astra.config
@@ -224,7 +348,9 @@ def test_retired_sol_preserves_history_and_imports_and_migrates_defaults(
     assert service.store.get(ModelRecord, sol.id) == sol.model_copy(
         update={"archived": True, "version": sol.version + 1}
     )
-    assert service.models.get(project["id"], imported.id) == imported
+    assert service.models.get(project["id"], imported.id) == service.models.with_capabilities(
+        imported
+    )
     expected = next((m.id for m in active if m.preset == "nvidia-astra"), None)
     updated = service.store.get(Project, project["id"])
     assert updated.annotation_model_id == expected
@@ -712,3 +838,33 @@ def test_model_discovery_requires_project_manager(http, client, seeded):
         ).status_code
         == 403
     )
+
+
+def test_astra_default_and_explicit_model_override(client, http, hosted_presets):
+    from monailabel.core.models import Asset, AssistantContext, User
+    from monailabel.server.assistant_tools.base import ToolContext
+
+    project = client.post("/api/projects", {"name": "Astra by default"})
+    service = http.app.state.services
+    models = service.models.available(project["id"])
+    astra = next(m for m in models if m.preset == "nvidia-astra")
+    vista = next(m for m in models if m.preset == "vista3d")
+    assert project["annotation_model_id"] == astra.id
+    assert project["defaults"] == {}
+    asset = Asset(
+        project_id=project["id"],
+        name="CT",
+        group_id="case",
+        image_key="fixture",
+        spatial_shape=[8, 8, 8],
+        kind="volume3d",
+        split="pool",
+    )
+    ctx = ToolContext(
+        service, project["id"], service.store.list(User)[0], AssistantContext(), "Annotate spleen"
+    )
+    assert ctx.model_id(None, targets=["spleen"], source=asset) == astra.id
+    assert ctx.model_id(None, "VISTA3D", targets=["spleen"], source=asset) == vista.id
+    service.models.set_default(project["id"], vista.id, project["version"])
+    hosted_presets.ensure(project["id"])
+    assert service.store.get(Project, project["id"]).annotation_model_id == vista.id

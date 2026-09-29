@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 .monailabel-assistant {
   box-sizing: border-box;
   color: #e2e8f0;
@@ -7,12 +20,18 @@
   flex-direction: column;
   gap: 10px;
   height: 100%;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
   font-size: 14px;
 }
 .monailabel-assistant > :not([role="log"]) {
   flex-shrink: 0;
+}
+.monailabel-assistant > * {
+  min-width: 0;
+  max-width: 100%;
 }
 .monailabel-panel-heading {
   display: flex;
@@ -51,6 +70,7 @@
 .monailabel-assistant select,
 .monailabel-assistant input:not([type="checkbox"]),
 .monailabel-assistant textarea {
+  box-sizing: border-box;
   border: 1px solid #334155;
   background: #172033;
   border-radius: 6px;
@@ -134,6 +154,102 @@
   cursor: pointer;
   min-height: 44px;
   padding-block: 12px;
+}
+.monailabel-interaction input {
+  min-height: 32px;
+  height: 32px;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+.monailabel-interaction-tools {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.monailabel-interaction-tools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+}
+.monailabel-interaction-tools button[aria-pressed="true"] {
+  background: #164e63;
+  color: #cffafe;
+  border-color: #67e8f9;
+}
+.monailabel-interaction-tools button.monailabel-interaction-primary {
+  width: auto;
+  gap: 5px;
+  padding: 0 8px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #0e7490;
+  color: #fff;
+  border-color: #0e7490;
+}
+.monailabel-interaction-tools
+  button.monailabel-interaction-primary:hover:enabled {
+  background: #0891b2;
+}
+.monailabel-interaction-divider {
+  height: 20px;
+  border-left: 1px solid #334155;
+  margin-inline: 3px;
+}
+.monailabel-update-action {
+  display: inline-flex;
+  position: relative;
+}
+.monailabel-update-menu > summary[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+.monailabel-update-action:has(details) > button {
+  border-radius: 4px 0 0 4px;
+}
+.monailabel-update-menu > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 32px;
+  color: white;
+  background: #0e7490;
+  border-left: 1px solid #38a3bd;
+  border-radius: 0 4px 4px 0;
+  list-style: none;
+  cursor: pointer;
+}
+.monailabel-update-menu > summary:focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: 2px;
+}
+.monailabel-update-menu > div {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 10;
+  min-width: 150px;
+  padding: 4px;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  background: #172033;
+  box-shadow: 0 4px 12px #0008;
+}
+.monailabel-update-menu > div > button {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  text-align: left;
+  white-space: nowrap;
 }
 .monailabel-tabs {
   display: flex;

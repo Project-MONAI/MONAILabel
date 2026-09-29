@@ -4,7 +4,7 @@
     "name": "Decathlon \u00b7 BrainTumour",
     "category": "Radiology",
     "description": "MRI images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 7608266240,
     "has_masks": true,
@@ -20,14 +20,17 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task01_BrainTumour.tar",
     "checksum": "md5:240a19d752f0d9e9101544901065d872",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task02_Heart",
     "name": "Decathlon \u00b7 Heart",
     "category": "Radiology",
     "description": "MRI images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 455721472,
     "has_masks": true,
@@ -38,14 +41,17 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task02_Heart.tar",
     "checksum": "md5:06ee59366e1e5124267b774dbd654057",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task03_Liver",
     "name": "Decathlon \u00b7 Liver",
     "category": "Radiology",
     "description": "CT images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 28925891584,
     "has_masks": true,
@@ -56,14 +62,17 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task03_Liver.tar",
     "checksum": "md5:a90ec6c4aa7f6a3d087205e23d4e6397",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task04_Hippocampus",
     "name": "Decathlon \u00b7 Hippocampus",
     "category": "Radiology",
     "description": "MRI images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 28425216,
     "has_masks": true,
@@ -74,14 +83,17 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task04_Hippocampus.tar",
     "checksum": "md5:9d24dba78a72977dbd1d2e110310f31b",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task05_Prostate",
     "name": "Decathlon \u00b7 Prostate",
     "category": "Radiology",
-    "description": "MRI images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "description": "T2/ADC MRI with prostate-zone (PZ/TZ) reference masks; 240 MB. Choose T2 (channel 0), images only, to try whole-prostate annotation with TotalSegmentator MRI.",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 239839232,
     "has_masks": true,
@@ -95,14 +107,17 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task05_Prostate.tar",
     "checksum": "md5:35138f08b1efaef89d7424d2bcc928db",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task06_Lung",
     "name": "Decathlon \u00b7 Lung",
     "category": "Radiology",
-    "description": "CT images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "description": "CT images with lung tumor reference masks; 9 GB. The published cancer label is named lung tumor on import.",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 9163696640,
     "has_masks": true,
@@ -113,14 +128,22 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task06_Lung.tar",
     "checksum": "md5:8afd997733c7fc0432f71255ba4e52dc",
-    "format": "msd"
+    "format": "msd",
+    "label_groups": {
+      "lung tumor": [
+        1
+      ]
+    },
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task07_Pancreas",
     "name": "Decathlon \u00b7 Pancreas",
     "category": "Radiology",
     "description": "CT images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 12289971712,
     "has_masks": true,
@@ -131,14 +154,17 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task07_Pancreas.tar",
     "checksum": "md5:4f7080cfca169fa8066d17ce6eb061e4",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task08_HepaticVessel",
     "name": "Decathlon \u00b7 HepaticVessel",
     "category": "Radiology",
     "description": "CT images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 9347254784,
     "has_masks": true,
@@ -149,14 +175,17 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task08_HepaticVessel.tar",
     "checksum": "md5:641d79e80ec66453921d997fbf12a29c",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task09_Spleen",
     "name": "Decathlon \u00b7 Spleen",
     "category": "Radiology",
     "description": "CT images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 1610352640,
     "has_masks": true,
@@ -167,14 +196,17 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task09_Spleen.tar",
     "checksum": "md5:410d4a301da4e5b2f6f86ec3ddba524e",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "Task10_Colon",
     "name": "Decathlon \u00b7 Colon",
     "category": "Radiology",
     "description": "CT images with optional reference masks.",
-    "source_url": "https://medicaldecathlon.com/dataaws/",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
     "license": "CC BY-SA 4.0",
     "download_bytes": 6242760704,
     "has_masks": true,
@@ -185,13 +217,16 @@
     ],
     "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task10_Colon.tar",
     "checksum": "md5:bad7a188931dc2f6acf72b08eb6202d0",
-    "format": "msd"
+    "format": "msd",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Antonelli et al. The Medical Segmentation Decathlon. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9. Retain the source institution attribution in the task dataset.json."
   },
   {
     "id": "totalsegmentator-small",
     "name": "TotalSegmentator CT \u00b7 102-case sample",
     "category": "Radiology",
-    "description": "Pinned v2.0.1 CT dataset. Choose up to 31 structures when importing masks. Downloads the full archive once, even for a few cases.",
+    "description": "Pinned v2.0.1 CT dataset. Choose up to 31 structures when importing masks. Downloads the full archive once, even for a few cases. Try TotalSegmentator CT. Includes model development data; not an independent benchmark of the pretrained model.",
     "source_url": "https://zenodo.org/records/10047263",
     "license": "CC BY 4.0",
     "download_bytes": 3244617817,
@@ -317,13 +352,16 @@
     ],
     "url": "https://zenodo.org/records/10047263/files/Totalsegmentator_dataset_small_v201.zip",
     "checksum": "md5:6b5524af4b15e6ba06ef2d700c0c73e0",
-    "format": "totalsegmentator"
+    "format": "totalsegmentator",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "citation": "Wasserthal et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: Artificial Intelligence (2023). DOI: 10.1148/ryai.230024.",
+    "labels_url": "https://github.com/wasserth/TotalSegmentator#class-details"
   },
   {
     "id": "totalsegmentator-ct",
     "name": "TotalSegmentator CT \u00b7 1,228 cases",
     "category": "Radiology",
-    "description": "Pinned v2.0.1 CT dataset. Choose up to 31 structures when importing masks. Downloads the full archive once, even for a few cases.",
+    "description": "Pinned v2.0.1 CT dataset. Choose up to 31 structures when importing masks. Downloads the full archive once, even for a few cases. Try TotalSegmentator CT. Includes model development data; not an independent benchmark of the pretrained model.",
     "source_url": "https://zenodo.org/records/10047292",
     "license": "CC BY 4.0",
     "download_bytes": 23600000000,
@@ -449,14 +487,157 @@
     ],
     "url": "https://zenodo.org/records/10047292/files/Totalsegmentator_dataset_v201.zip",
     "checksum": "md5:fe250e5718e0a3b5df4c4ea9d58a62fe",
-    "format": "totalsegmentator"
+    "format": "totalsegmentator",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "citation": "Wasserthal et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: Artificial Intelligence (2023). DOI: 10.1148/ryai.230024.",
+    "labels_url": "https://github.com/wasserth/TotalSegmentator#class-details"
+  },
+  {
+    "id": "totalsegmentator-mr",
+    "name": "TotalSegmentator MRI \u00b7 616 cases",
+    "category": "Radiology",
+    "description": "Pinned v2.0.0 MRI dataset with 50 structures. Try TotalSegmentator MRI with a few cases; the full 5.1 GB archive downloads once. Includes model development data, so it is not an independent benchmark of the pretrained model.",
+    "source_url": "https://zenodo.org/records/14710732",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "citation": "Akinci D\u2019Antonoli et al. TotalSegmentator MRI: Robust Sequence-independent Segmentation of Multiple Anatomic Structures in MRI. Radiology (2025). DOI: 10.1148/radiol.241613. Dataset DOI: 10.5281/zenodo.14710732.",
+    "download_bytes": 5100514630,
+    "has_masks": true,
+    "targets": [
+      "spleen",
+      "kidney_right",
+      "kidney_left",
+      "gallbladder",
+      "liver",
+      "stomach",
+      "pancreas",
+      "adrenal_gland_right",
+      "adrenal_gland_left",
+      "lung_left",
+      "lung_right",
+      "esophagus",
+      "small_bowel",
+      "duodenum",
+      "colon",
+      "urinary_bladder",
+      "prostate",
+      "sacrum",
+      "vertebrae",
+      "intervertebral_discs",
+      "spinal_cord",
+      "heart",
+      "aorta",
+      "inferior_vena_cava",
+      "portal_vein_and_splenic_vein",
+      "iliac_artery_left",
+      "iliac_artery_right",
+      "iliac_vena_left",
+      "iliac_vena_right",
+      "humerus_left",
+      "humerus_right",
+      "scapula_left",
+      "scapula_right",
+      "clavicula_left",
+      "clavicula_right",
+      "femur_left",
+      "femur_right",
+      "hip_left",
+      "hip_right",
+      "gluteus_maximus_left",
+      "gluteus_maximus_right",
+      "gluteus_medius_left",
+      "gluteus_medius_right",
+      "gluteus_minimus_left",
+      "gluteus_minimus_right",
+      "autochthon_left",
+      "autochthon_right",
+      "iliopsoas_left",
+      "iliopsoas_right",
+      "brain"
+    ],
+    "url": "https://zenodo.org/records/14710732/files/TotalsegmentatorMRI_dataset_v200.zip",
+    "checksum": "md5:54638f4cb883ce3b34225195358c398f",
+    "format": "totalsegmentator-mr",
+    "labels_url": "https://github.com/wasserth/TotalSegmentator#class-details"
+  },
+  {
+    "id": "prostate-mri",
+    "name": "Prostate MRI \u00b7 Whole gland",
+    "category": "Radiology",
+    "description": "T2-weighted MRI for TotalSegmentator MRI annotation and fine-tuning. Whole-prostate references combine the published PZ and TZ masks on the original image grid.",
+    "source_url": "http://medicaldecathlon.com/dataaws/",
+    "license": "CC BY-SA 4.0",
+    "download_bytes": 239839232,
+    "has_masks": true,
+    "channels": [
+      "T2",
+      "ADC"
+    ],
+    "sections": [
+      "training",
+      "test"
+    ],
+    "url": "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task05_Prostate.tar",
+    "checksum": "md5:35138f08b1efaef89d7424d2bcc928db",
+    "format": "msd",
+    "dataset_id": "Task05_Prostate",
+    "label_groups": {
+      "prostate": [
+        1,
+        2
+      ]
+    },
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "citation": "Medical Segmentation Decathlon, Task05 Prostate, Radboud University Nijmegen Medical Centre. MONAI Label combines peripheral-zone (PZ) and transition-zone (TZ) labels into one whole-prostate mask; derived masks retain CC BY-SA 4.0. Antonelli et al. Nature Communications (2022). DOI: 10.1038/s41467-022-30695-9.",
+    "grouping": "All channels and template variants of each published prostate case share the same source group.",
+    "labels_url": "https://www.nature.com/articles/s41467-022-30695-9"
+  },
+  {
+    "id": "tnbc-nuclei",
+    "name": "TNBC \u00b7 Nuclei (50 patches, 11 patients)",
+    "category": "Pathology",
+    "description": "Small H&E breast histology collection with binary nuclei masks. Ready for annotation, review, U-Net training and held-out evaluation. Quick starts sample different patients first.",
+    "source_url": "https://zenodo.org/records/1175282",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "citation": "Naylor et al. Segmentation of Nuclei in Histopathology Images by Deep Regression of the Distance Map. IEEE TMI (2019). Dataset DOI: 10.5281/zenodo.1175282.",
+    "grouping": "Patches from each of the 11 published patient groups stay together. Combined import percentages select patient groups, so image counts can differ from the requested percentage.",
+    "download_bytes": 25279869,
+    "has_masks": true,
+    "url": "https://zenodo.org/records/1175282/files/TNBC_NucleiSegmentation.zip",
+    "checksum": "md5:fe14b0936673ab70c38475f89db78553",
+    "format": "tnbc",
+    "labels_url": "https://zenodo.org/records/1175282"
+  },
+  {
+    "id": "kvasir-instrument",
+    "name": "Kvasir-Instrument \u00b7 Instruments (590 frames)",
+    "category": "Endoscopy",
+    "description": "Labeled endoscopy still images with binary instrument masks for segmentation learning and evaluation. These are independent image records, not a temporally ordered video or tracking reference.",
+    "source_url": "https://datasets.simula.no/kvasir-instrument/",
+    "license": "Research and education only; commercial use requires prior written permission. Cite the dataset paper.",
+    "license_url": "https://datasets.simula.no/kvasir-instrument/#terms-of-use",
+    "citation": "Jha et al. Kvasir-Instrument: Diagnostic and Therapeutic Tool Segmentation Dataset in Gastrointestinal Endoscopy. MMM (2021). DOI: 10.1007/978-3-030-67835-7_19.",
+    "grouping": "The release has no patient/procedure mapping. All frames stay in one conservative source group. Use this collection for training OR separate evaluation; automatic percentage splitting is unavailable.",
+    "download_bytes": 169413431,
+    "has_masks": true,
+    "url": "https://files.osf.io/v1/resources/kp6my/providers/osfstorage/5f36428c3bf252005ba25d53?version=1",
+    "checksum": "sha256:0cc32d79cb629df4158461aad1869508adf57838d67b8adb160e9738f353807c",
+    "format": "kvasir-instrument",
+    "mask_download": {
+      "id": "kvasir-instrument-masks",
+      "url": "https://files.osf.io/v1/resources/kp6my/providers/osfstorage/5f3642783bf2520074a1d240?version=1",
+      "checksum": "sha256:9c606f9f4342ccbe8fc308d3564bfb6e8428a62f2c2c246161a78d9df20c740a",
+      "download_bytes": 1413157
+    },
+    "labels_url": "https://datasets.simula.no/kvasir-instrument/"
   },
   {
     "id": "hyperkvasir-tool-tracking",
-    "name": "HyperKvasir · endoscopic tool tracking (CVAT)",
+    "name": "HyperKvasir \u00b7 endoscopic tool tracking (CVAT)",
     "category": "Video",
     "kind": "video",
-    "description": "A 71-second endoscopy clip with a moving snare: practice tracking the tool across frames in CVAT. Imports the original 720 × 576 video and a Snare label, without reference tracks. Source: Borgli et al., HyperKvasir (2020), snare-resection video 99b387e7-d07b-4268-9226-4df450c2a198.",
+    "description": "A 71-second endoscopy clip with a moving snare: practice tracking the tool across frames in CVAT. Imports the original 720 \u00d7 576 video and a Snare label, without reference tracks. Source: Borgli et al., HyperKvasir (2020), snare-resection video 99b387e7-d07b-4268-9226-4df450c2a198.",
     "source_url": "https://osf.io/mh9sj/",
     "license": "CC BY-NC 4.0 (OSF dataset license)",
     "download_bytes": 50151936,
@@ -466,8 +647,12 @@
     "video": {
       "name": "HyperKvasir-snare-99b387e7-d07b-4268-9226-4df450c2a198.avi",
       "group_id": "hyperkvasir:99b387e7-d07b-4268-9226-4df450c2a198",
-      "labels": ["Snare"]
-    }
+      "labels": [
+        "Snare"
+      ]
+    },
+    "license_url": "https://osf.io/mh9sj/",
+    "citation": "Borgli et al. HyperKvasir, a comprehensive multi-class image and video dataset for gastrointestinal endoscopy. Scientific Data (2020). DOI: 10.1038/s41597-020-00622-y. Video 99b387e7-d07b-4268-9226-4df450c2a198; license from the OSF source record."
   },
   {
     "id": "openslide-cmu-small",
@@ -479,7 +664,9 @@
     "download_bytes": 1938955,
     "url": "https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio/CMU-1-Small-Region.svs",
     "checksum": "md5:1ad6e35c9d17e4d85fb7e3143b328efe",
-    "format": "image"
+    "format": "image",
+    "license_url": "https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio/",
+    "citation": "CMU-1-Small-Region.svs, Carnegie Mellon University OpenSlide test data. Goode et al. OpenSlide: A vendor-neutral software foundation for digital pathology. J Pathol Inform (2013). DOI: 10.4103/2153-3539.119005."
   },
   {
     "id": "monuseg",
@@ -491,7 +678,8 @@
     "importable": false,
     "format": "external",
     "url": "",
-    "checksum": ""
+    "checksum": "",
+    "labels_url": "https://monuseg.grand-challenge.org/Data/"
   },
   {
     "id": "camelyon",
@@ -503,7 +691,8 @@
     "importable": false,
     "format": "external",
     "url": "",
-    "checksum": ""
+    "checksum": "",
+    "labels_url": "https://camelyon17.grand-challenge.org/Data/"
   },
   {
     "id": "bach",
@@ -515,6 +704,7 @@
     "importable": false,
     "format": "external",
     "url": "",
-    "checksum": ""
+    "checksum": "",
+    "labels_url": "https://zenodo.org/records/3632035"
   }
 ]

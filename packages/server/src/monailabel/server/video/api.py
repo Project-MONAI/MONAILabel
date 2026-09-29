@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Authenticated clip import, CVAT launch, immutable tracks and review."""
 
 import tempfile
@@ -9,7 +20,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from pydantic import Field
 
-from monailabel.core.errors import DomainError
+from monailabel.core.errors import Conflict, DomainError
 from monailabel.core.models import Contract, Job, Project, ReviewDecision
 from monailabel.core.video import (
     TrackAnnotation,
@@ -19,11 +30,14 @@ from monailabel.core.video import (
     VideoEditorRequest,
     VideoFindTrackingRequest,
     VideoImport,
+    VideoInteractiveRequest,
     VideoMetadata,
+    VideoTargetRequest,
     VideoTrackingProposal,
     VideoTrackingRequest,
 )
 from monailabel.server.access import Principal, Service, authorize
+from monailabel.server.labels import resolve_labels
 from monailabel.server.video.assets import MAX_VIDEO_BYTES
 from monailabel.server.video.models import VideoEditor
 
@@ -152,6 +166,38 @@ def submit_editor(
     return service.video_editors.submit(video_id, body.editor_id, user)
 
 
+@router.post("/videos/{video_id}/editors/{editor_id}/target")
+def video_target(
+    video_id: str, editor_id: str, body: VideoTargetRequest, service: Service, user: Principal
+) -> dict[str, int | bool]:
+    video = service.store.get(VideoAsset, video_id)
+    editor = service.store.get(VideoEditor, editor_id)
+    if editor.asset_id != video.id or editor.project_id != video.project_id or not editor.ready:
+        raise DomainError("Choose a ready CVAT editor for this video.")
+    service.auth.require(
+        user, video.project_id, "review" if editor.mode == "review" else "annotate"
+    )
+    if (
+        video.revision != body.base_revision
+        or editor.base_revision != video.revision
+        or editor.submitted_annotation_id
+    ):
+        raise Conflict("The video revision changed. Reopen it; your draft is preserved.")
+    model = service.models.get(video.project_id, body.model_id)
+    if not (
+        service.video_tracking.supports(model)
+        or (model.interaction and model.interaction.video_scopes)
+    ):
+        raise DomainError("Choose a compatible video annotation model.")
+    _, labels = resolve_labels(
+        service.store, video.project_id, [body.target], model.id, set_defaults=False
+    )
+    refresh = labels[0] not in editor.label_map
+    if refresh:
+        service.video_editors.ensure_labels(editor.id)
+    return {"label_id": labels[0], "refresh": refresh}
+
+
 @router.post("/videos/{video_id}/track", status_code=202)
 def track_video(
     video_id: str, body: VideoTrackingRequest, service: Service, user: Principal
@@ -174,6 +220,18 @@ def find_and_track_video(
         user, asset.project_id, "review" if editor.mode == "review" else "annotate"
     )
     return service.video_tracking.find(video_id, body)
+
+
+@router.post("/videos/{video_id}/interactive", status_code=202)
+def interactive_video(
+    video_id: str, body: VideoInteractiveRequest, service: Service, user: Principal
+) -> Job:
+    asset = service.store.get(VideoAsset, video_id)
+    editor = service.store.get(VideoEditor, body.editor_id)
+    service.auth.require(
+        user, asset.project_id, "review" if editor.mode == "review" else "annotate"
+    )
+    return service.video_tracking.interactive(video_id, body)
 
 
 @router.get("/videos/{video_id}/tracking-proposals/{proposal_id}")

@@ -1,0 +1,119 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+.chat-content {
+  container-type: inline-size;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+.chat-plain {
+  white-space: pre-wrap;
+}
+.chat-content > :first-child {
+  margin-top: 0;
+}
+.chat-content > :last-child {
+  margin-bottom: 0;
+}
+.chat-content p,
+.chat-content ul,
+.chat-content ol,
+.chat-content pre,
+.chat-content blockquote {
+  margin: 0.65em 0;
+}
+.chat-content ul,
+.chat-content ol {
+  padding-left: 1.5em;
+}
+.chat-content li + li {
+  margin-top: 0.3em;
+}
+.chat-content h1,
+.chat-content h2,
+.chat-content h3,
+.chat-content h4,
+.chat-content h5,
+.chat-content h6 {
+  font-size: 1.05em;
+  margin: 1em 0 0.4em;
+}
+.chat-content code {
+  font-size: 0.92em;
+  white-space: pre-wrap;
+  background: #e8eeef;
+  padding: 0.1em 0.25em;
+  border-radius: 3px;
+}
+.chat-content pre {
+  padding: 10px;
+  background: #e8eeef;
+  border-radius: 5px;
+  white-space: pre-wrap;
+}
+.chat-content pre code {
+  padding: 0;
+}
+.chat-content blockquote {
+  border-left: 3px solid #a6bab4;
+  padding-left: 10px;
+  color: #52645e;
+}
+.chat-content table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+  font-size: inherit;
+}
+.chat-content th,
+.chat-content td {
+  padding: 6px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #d8e2e1;
+  white-space: normal;
+}
+.chat-content th {
+  font-weight: 600;
+  background: #e8eeef;
+}
+@container (max-width: 440px) {
+  .chat-wide-table,
+  .chat-wide-table tbody,
+  .chat-wide-table tr,
+  .chat-wide-table td {
+    display: block;
+    width: auto;
+  }
+  .chat-wide-table thead {
+    display: none;
+  }
+  .chat-wide-table tr {
+    padding: 8px 0;
+    border-bottom: 1px solid #d8e2e1;
+  }
+  .chat-wide-table td {
+    border: 0;
+    padding: 2px 0;
+  }
+  .chat-wide-table td:first-child {
+    font-weight: 600;
+  }
+  .chat-wide-table td:not(:first-child)::before {
+    content: attr(data-label) ": ";
+    color: #52645e;
+    font-size: 0.92em;
+  }
+}

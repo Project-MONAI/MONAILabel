@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("../../packages/viewers/src/monailabel/viewers/resources/ohif/extension/src/speech.js", import.meta.url), "utf8");
@@ -26,6 +39,10 @@ assert.equal(text, "Annotate the spleen on this slice");
 speech.stop();
 assert.equal(state, "idle");
 speech.start();
+instances.at(-1).onend();
+assert.match(error, /No speech was transcribed/);
+assert.equal(state, "idle");
+speech.start();
 const late = instances.at(-1);
 speech.cancel();
 late.emit("must not arrive after Send or a project switch");
@@ -37,6 +54,9 @@ assert.equal(state, "idle");
 speech.speak("Annotation ready.");
 assert.deepEqual(spoken, ["Annotation ready."]);
 speech.dispose();
+const count = instances.length;
+speech.start();
+assert.equal(instances.length, count);
 speech.speak("Must not speak after leaving.");
 assert.equal(spoken.length, 1);
 window.isSecureContext = false;

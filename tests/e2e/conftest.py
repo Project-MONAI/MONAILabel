@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Opt-in infrastructure, isolated from user workspaces and CVAT deployments."""
 
 import json
@@ -44,6 +55,7 @@ class VideoStack:
     ui_port: int = field(default_factory=free_port)
     server: object = field(default=None, repr=False)
     thread: object = field(default=None, repr=False)
+    https: bool = False
 
     @property
     def cvat_url(self):
@@ -128,7 +140,21 @@ class VideoStack:
             remote.bind((host, port))
             sockets.append(remote)
         self.app = create_app(self.root / "workspace", chat_provider=ScriptedChat())
-        self.server = uvicorn.Server(uvicorn.Config(self.app, access_log=False, log_level="error"))
+        tls = {}
+        if self.https:
+            from monailabel.server.tls import ensure_local_certificate
+
+            certificate = ensure_local_certificate(self.root / "workspace", primary)
+            tls = {
+                "ssl_certfile": str(certificate.certificate),
+                "ssl_keyfile": str(certificate.key),
+            }
+            self.app.state.direct_tls = True
+            self.app.state.local_ca_certificate = certificate.authority.read_text()
+            self.url = self.url.replace("http:", "https:")
+        self.server = uvicorn.Server(
+            uvicorn.Config(self.app, access_log=False, log_level="error", **tls)
+        )
         self.thread = threading.Thread(target=lambda: self.server.run(sockets=sockets), daemon=True)
         self.thread.start()
         deadline = time.monotonic() + 30

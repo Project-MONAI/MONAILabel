@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import {
   annotation,
   ToolGroupManager,
@@ -6,6 +19,7 @@ import {
   RectangleROITool,
   utilities,
 } from "@cornerstonejs/tools";
+import { eventTarget } from "@cornerstonejs/core";
 import { mat4, vec3 } from "gl-matrix";
 
 function viewportFor(services) {
@@ -14,7 +28,49 @@ function viewportFor(services) {
   );
 }
 
-export function drawHint(services, tool) {
+const placements = new WeakMap();
+
+export function cancelHint(services) {
+  placements.get(services)?.();
+  placements.delete(services);
+}
+
+export function navigateHints(services) {
+  cancelHint(services);
+  const viewport = viewportFor(services);
+  if (!viewport) return;
+  const group = ToolGroupManager.getToolGroupForViewport(
+    viewport.id,
+    viewport.renderingEngineId,
+  );
+  const active = group?.getActivePrimaryMouseButtonTool();
+  if (["Probe", "RectangleROI"].includes(active)) group.setToolPassive(active);
+  if (group?.hasTool("WindowLevel"))
+    group.setToolActive("WindowLevel", {
+      bindings: [{ mouseButton: Enums.MouseBindings.Primary }],
+    });
+}
+
+export function showHintTarget(services, asset, target = null) {
+  const viewport = viewportFor(services);
+  if (!viewport || !asset) return;
+  for (const tool of ["RectangleROI", "Probe"]) {
+    for (const item of annotation.state.getAnnotations(
+      tool,
+      viewport.element,
+    ) || []) {
+      if (item.data.monailabelAsset !== asset.id) continue;
+      const label = item.data.monailabelTarget || "";
+      annotation.visibility.setAnnotationVisibility(
+        item.annotationUID,
+        target === null || label.toLowerCase() === target.trim().toLowerCase(),
+      );
+    }
+  }
+  viewport.render();
+}
+
+export function drawHint(services, tool, asset, positive = true, target = "") {
   const viewport = viewportFor(services);
   if (!viewport) throw new Error("Select the source viewport first.");
   const group = ToolGroupManager.getToolGroupForViewport(
@@ -22,6 +78,32 @@ export function drawHint(services, tool) {
     viewport.renderingEngineId,
   );
   if (!group) throw new Error("The selected viewport has no annotation tools.");
+  cancelHint(services);
+  const created = (event) => {
+    const item = event.detail.annotation;
+    if (
+      item?.metadata?.toolName !== tool ||
+      event.detail.viewportId !== viewport.id
+    )
+      return;
+    if (item.data.monailabelAsset) return; // Assistant-created hints already carry their own polarity.
+    item.data.monailabelAsset = asset.id;
+    item.data.monailabelTarget = target;
+    item.data.label =
+      tool === "Probe" ? (positive ? "positive" : "negative") : "box";
+    const color =
+      tool === "Probe" ? (positive ? "#4de666" : "#ff4d4d") : "#ffc757";
+    annotation.config.style.setAnnotationStyles(item.annotationUID, {
+      color,
+      colorHighlighted: color,
+      colorSelected: color,
+      textBoxVisibility: false,
+    });
+  };
+  eventTarget.addEventListener(Enums.Events.ANNOTATION_ADDED, created);
+  placements.set(services, () =>
+    eventTarget.removeEventListener(Enums.Events.ANNOTATION_ADDED, created),
+  );
   const active = group.getActivePrimaryMouseButtonTool();
   if (active) group.setToolPassive(active);
   if (!group.hasTool(tool)) group.addTool(tool);
@@ -45,7 +127,8 @@ export function spatialObjects(services, asset) {
           (item) =>
             (!item.data.monailabelAsset ||
               item.data.monailabelAsset === asset.id) &&
-            annotation.visibility.isAnnotationVisible(item.annotationUID) &&
+            (item.data.monailabelAsset === asset.id ||
+              annotation.visibility.isAnnotationVisible(item.annotationUID)) &&
             item.data.handles?.points?.length,
         )
         .map((item) => {
@@ -90,7 +173,7 @@ export function checkSpatial(services, asset, expected, scope, currentScope) {
     JSON.stringify(spatialObjects(services, asset)) !== JSON.stringify(expected)
   )
     throw new Error(
-      "SAM hints or their selection changed during the request. Retry it.",
+      "Spatial hints or their selection changed during the request. Retry it.",
     );
 }
 
@@ -166,6 +249,7 @@ function writeSpatial(services, asset, item, scope) {
     color,
     colorHighlighted: color,
     colorSelected: color,
+    textBoxVisibility: false,
   });
 }
 
@@ -175,7 +259,7 @@ export function applySpatial(services, asset, projectId, action, scope) {
     action.asset_id !== asset.id ||
     action.base_revision !== asset.revision
   )
-    throw new Error("SAM edit belongs to another sample or revision.");
+    throw new Error("Spatial edit belongs to another sample or revision.");
   checkSpatial(services, asset, action.expected, action.slice, scope);
   action.remove.forEach((id) => annotation.state.removeAnnotation(id));
   action.upsert.forEach((item) =>

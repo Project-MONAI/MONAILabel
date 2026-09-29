@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Recipe factories: framework imports happen only when a neural job executes."""
 
 from importlib.util import find_spec
@@ -11,6 +22,10 @@ from monailabel.providers.local import GaussianSegmenter, GaussianTrainer
 from monailabel.providers.vista3d import REVISION as VISTA_REVISION
 from monailabel.providers.vista3d import targets as vista_targets
 from monailabel.server.storage import Artifacts
+from monailabel.totalsegmentator.catalog import DOCUMENTATION
+from monailabel.totalsegmentator.catalog import MODELS as TOTAL_MODELS
+from monailabel.totalsegmentator.catalog import targets as total_targets
+from monailabel.totalsegmentator.config import TotalConfig
 
 
 class Recipes:
@@ -21,13 +36,41 @@ class Recipes:
         available = find_spec("monailabel.monai") is not None
         vista_defaults: dict[str, JsonValue] = {}
         unet_defaults: dict[str, JsonValue] = {}
+        nnunet_defaults: dict[str, JsonValue] = {}
         if available:
             from monailabel.monai.config import UNetConfig
+            from monailabel.monai.nnunet_config import NNUNetConfig
             from monailabel.monai.vista_config import VistaConfig
 
             vista_defaults = VistaConfig().model_dump(mode="json")
             unet_defaults = UNetConfig().model_dump(mode="json")
+            nnunet_defaults = NNUNetConfig(modality="CT").model_dump(
+                mode="json", exclude={"modality"}
+            )
         return [
+            RecipeInfo(
+                id="nnunet-v2",
+                name="nnU-Net v2 · CT / MRI volumes",
+                description="Plan and train a 3D network for your targets "
+                "from reviewed CT or MRI volumes.",
+                available=available and find_spec("nnunetv2") is not None,
+                default_config=nnunet_defaults,
+                documentation_url="https://github.com/MIC-DKFZ/nnUNet",
+                setup="uv run monailabel",
+            ),
+            *[
+                RecipeInfo(
+                    id=provider,
+                    name=name,
+                    description=f"Fine-tune {name} on reviewed volumes using its 3 mm checkpoint.",
+                    available=True,
+                    default_config=TotalConfig().model_dump(mode="json"),
+                    supported_targets=list(total_targets(provider)),
+                    target_class_ids=total_targets(provider),
+                    documentation_url=DOCUMENTATION,
+                )
+                for provider, (name, _) in TOTAL_MODELS.items()
+            ],
             RecipeInfo(
                 id="vista3d",
                 name="VISTA3D CT",
@@ -49,7 +92,7 @@ class Recipes:
             ),
             RecipeInfo(
                 id="pixel-gaussian",
-                name="CPU intensity baseline · demo",
+                name="Intensity baseline · demo",
                 description="A small Gaussian model for checking the learning workflow.",
                 available=True,
                 demo_only=True,
@@ -66,9 +109,18 @@ class Recipes:
             )
         if recipe == "pixel-gaussian":
             if config:
-                raise DomainError("The CPU baseline does not accept recipe settings.")
+                raise DomainError("The demonstration baseline does not accept recipe settings.")
             return {}
         try:
+            if recipe == "nnunet-v2":
+                from monailabel.monai.nnunet_config import NNUNetConfig
+
+                return NNUNetConfig.model_validate(config).model_dump(mode="json")
+            if recipe in TOTAL_MODELS:
+                parsed = TotalConfig.model_validate(config)
+                if not set(parsed.label_mapping.values()) <= set(total_targets(recipe).values()):
+                    raise DomainError("Unsupported TotalSegmentator target IDs for this modality.")
+                return parsed.model_dump(mode="json")
             if recipe == "vista3d":
                 from monailabel.monai.vista_config import VistaConfig
 
@@ -80,6 +132,14 @@ class Recipes:
             raise DomainError(f"Invalid {recipe} settings: {error}") from error
 
     def trainer(self, recipe: str, config: dict[str, JsonValue]) -> Trainer | VolumeTrainer:
+        if recipe == "nnunet-v2":
+            from monailabel.monai.nnunet_runtime import NNUNetTrainer
+
+            return NNUNetTrainer(config, self.artifacts)
+        if recipe in TOTAL_MODELS:
+            from monailabel.totalsegmentator.runtime import TotalTrainer
+
+            return TotalTrainer(recipe, config, self.artifacts)
         if recipe == "pixel-gaussian":
             return GaussianTrainer()
         if recipe == "vista3d":
@@ -93,7 +153,15 @@ class Recipes:
         return UNetTrainer(config, self.artifacts)
 
     def segmenter(self, recipe: str, state: dict[str, JsonValue]) -> Segmenter | VolumeSegmenter:
-        self.validate(recipe, {})
+        self.validate(recipe, state.get("config", {}) if recipe == "nnunet-v2" else {})  # type: ignore[arg-type]
+        if recipe == "nnunet-v2":
+            from monailabel.monai.nnunet_runtime import NNUNetSegmenter
+
+            return NNUNetSegmenter(state, self.artifacts)
+        if recipe in TOTAL_MODELS:
+            from monailabel.totalsegmentator.runtime import TotalSegmenter
+
+            return TotalSegmenter(recipe, state, self.artifacts)
         if recipe == "pixel-gaussian":
             return GaussianSegmenter(state)
         if recipe == "vista3d":

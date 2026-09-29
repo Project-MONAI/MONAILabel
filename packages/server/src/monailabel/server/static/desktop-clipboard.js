@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 // Keep clipboard gestures in the viewer frame so HTTP LAN origins work too.
 export function bindClipboard(UI) {
   const field = document.querySelector("#noVNC_clipboard_text");
@@ -32,7 +45,7 @@ export function bindClipboard(UI) {
   }
 
   function pasteIntoViewer(text) {
-    if (!UI.rfb) return;
+    if (!UI.connected || !UI.rfb || UI.rfb.viewOnly) return false;
     UI.rfb.clipboardPasteFrom(text);
     UI.closeClipboardPanel();
     UI.rfb.focus();
@@ -44,6 +57,7 @@ export function bindClipboard(UI) {
     UI.rfb.sendKey(0x76, "KeyV", false);
     UI.rfb.sendKey(0xffe3, "ControlLeft", false);
     note.textContent = "Pasted into the viewer.";
+    return true;
   }
 
   const receive = UI.clipboardReceive;
@@ -90,4 +104,5 @@ export function bindClipboard(UI) {
     event.preventDefault();
     pasteIntoViewer(text);
   });
+  return { pasteIntoViewer };
 }

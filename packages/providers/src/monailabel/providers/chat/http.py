@@ -1,4 +1,15 @@
-"""Tool calling through OpenAI-compatible Chat Completions or native Claude Messages."""
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Tool calling through native OpenAI/Claude APIs or compatible Chat Completions."""
 
 import json
 import logging
@@ -13,6 +24,7 @@ from monailabel.core.chat import ChatMessage, ToolCall, ToolDefinition
 from monailabel.core.errors import DomainError
 
 from .config import CoordinatorConfig
+from .responses import parse_response, response_payload
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +61,13 @@ class HttpChat:
     ) -> ChatMessage:
         key = self.key()
         native = self.config.provider == "anthropic"
-        payload = self._claude(messages, tools) if native else self._openai(messages, tools)
+        responses = self.config.provider == "openai"
+        if native:
+            payload = self._claude(messages, tools)
+        elif responses:
+            payload = response_payload(self.config, messages, tools)
+        else:
+            payload = self._openai(messages, tools)
         if require_tool:
             if not tools:
                 raise DomainError("A required tool call needs at least one available tool.")
@@ -61,7 +79,8 @@ class HttpChat:
                 headers["x-api-key"] = key
         elif key:
             headers["Authorization"] = f"Bearer {key}"
-        url = self.config.endpoint + ("/messages" if native else "/chat/completions")
+        path = "/messages" if native else "/responses" if responses else "/chat/completions"
+        url = self.config.endpoint + path
         try:
             with httpx.Client(
                 timeout=self.config.timeout, transport=self.transport, follow_redirects=False
@@ -74,6 +93,8 @@ class HttpChat:
             reason = (
                 result.get("stop_reason")
                 if native
+                else (result.get("incomplete_details") or {}).get("reason", result.get("status"))
+                if responses
                 else result.get("choices", [{}])[0].get("finish_reason")
             )
             usage = result.get("usage") or {}
@@ -90,7 +111,7 @@ class HttpChat:
                 reason,
                 token_usage,
             )
-            if reason in {"length", "max_tokens"}:
+            if reason in {"length", "max_tokens", "max_output_tokens"}:
                 logger.warning(
                     "Coordinator response token limit: model=%s finish_reason=%s tokens=%s",
                     self.config.model_name,
@@ -104,14 +125,46 @@ class HttpChat:
                     code="coordinator_invalid_response",
                     status=502,
                 )
-            parsed = self._parse_claude(result) if native else self._parse_openai(result)
+            if native:
+                parsed = self._parse_claude(result)
+            elif responses:
+                parsed = parse_response(result)
+            else:
+                parsed = self._parse_openai(result)
             if require_tool and not parsed.tool_calls:
                 raise ValueError("The coordinator omitted its required tool call.")
             return parsed
         except httpx.HTTPStatusError as error:
+            status = error.response.status_code
+            logger.warning(
+                "Coordinator request failed: provider=%s model=%s http_status=%s",
+                self.config.provider,
+                self.config.model_name,
+                status,
+            )
+            guidance = (
+                "The model service failed while processing the request. "
+                "Check its health and runtime logs, then retry."
+                if status >= 500
+                else "Check its model, API base URL, credentials and tool-calling support."
+            )
+            if status == 429:
+                # Inspect only known error codes; upstream messages may contain private data.
+                try:
+                    detail = error.response.json().get("error") or {}
+                    exhausted = detail.get("type") == "insufficient_quota" or detail.get(
+                        "code"
+                    ) in {"insufficient_quota", "credit_balance_exhausted"}
+                except (ValueError, AttributeError, TypeError):
+                    exhausted = False
+                guidance = (
+                    "The API account has insufficient credit or quota. Check provider billing "
+                    "and spending limits, then restart MONAI Label."
+                    if exhausted
+                    else "The API rate limit was reached. Wait before retrying."
+                )
             raise DomainError(
-                f"Coordinator endpoint returned HTTP {error.response.status_code}. "
-                "Check its model, API base URL, credentials and tool-calling support.",
+                f"Coordinator endpoint returned HTTP {status}. {guidance}",
                 code="coordinator_unavailable",
                 status=503,
             ) from None

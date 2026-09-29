@@ -1,4 +1,15 @@
 #!/usr/bin/env bash
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Install missing prerequisites and prepare the existing, pinned viewer recipes.
 set -euo pipefail
 
@@ -11,7 +22,7 @@ SETUP_NODE_ARCH=x64
 
 usage() {
     cat <<'EOF'
-Usage: ./setup.sh [--check] [--cpu]
+Usage: ./setup.sh [--check]
 
 Prepare MONAI Label on Ubuntu 22.04+ or Debian 12+.
 Installs missing system libraries, uv/Python, Node/Corepack, Docker and
@@ -21,7 +32,6 @@ ARM64 setup prepares the server, OHIF, native QuPath and CVAT.
 Slicer on ARM64 needs a compatible installation. See docs/spark.md.
 
   --check   Check prerequisites without installing or downloading anything.
-  --cpu     Skip Docker/GPU setup; use a hosted chat model and CPU-capable models.
   --help    Show this help.
 
 Run as your normal user; sudo is used only for system packages/configuration.
@@ -198,12 +208,17 @@ EOF
 }
 
 ensure_container_gpu() {
-    local runtime running
+    local runtime running default_runtime configure=(--runtime=docker)
+    if needs_nvidia_default; then configure+=(--set-as-default); fi
     runtime="$("${SETUP_DOCKER[@]}" info --format '{{if index .Runtimes "nvidia"}}ready{{end}}')" ||
         die "Cannot inspect Docker runtimes."
     if [[ "$runtime" == ready ]]; then
-        say "Reusing NVIDIA container runtime"
-        return
+        default_runtime="$("${SETUP_DOCKER[@]}" info --format '{{.DefaultRuntime}}')" ||
+            die "Cannot inspect Docker's default runtime."
+        if ! needs_nvidia_default || [[ "$default_runtime" == nvidia ]]; then
+            say "Reusing NVIDIA container runtime"
+            return
+        fi
     fi
     if ! has nvidia-ctk; then
         say "Installing NVIDIA Container Toolkit"
@@ -218,7 +233,7 @@ ensure_container_gpu() {
         apt_install nvidia-container-toolkit
     fi
     running="$("${SETUP_DOCKER[@]}" ps -q)" || die "Cannot inspect running containers; Docker was not changed."
-    as_root nvidia-ctk runtime configure --runtime=docker
+    as_root nvidia-ctk runtime configure "${configure[@]}"
     if [[ -n "$running" ]]; then
         pending "NVIDIA runtime configured. When existing containers can be stopped, run sudo systemctl restart docker and rerun ./setup.sh."
     else
@@ -226,8 +241,14 @@ ensure_container_gpu() {
     fi
 }
 
+needs_nvidia_default() {
+    # Jetson's CSV device injection requires the runtime, not the --gpus hook alone.
+    [[ -f /etc/nv_tegra_release ]]
+}
+
 docker_gpu_ready() {
-    [[ "$(docker info --format '{{if index .Runtimes "nvidia"}}ready{{end}}')" == ready ]]
+    [[ "$(docker info --format '{{if index .Runtimes "nvidia"}}ready{{end}}')" == ready ]] || return 1
+    ! needs_nvidia_default || [[ "$(docker info --format '{{.DefaultRuntime}}')" == nvidia ]]
 }
 
 probe() {
@@ -244,21 +265,17 @@ check_prerequisites() {
     probe 'Python environment (run ./setup.sh)' "$SETUP_ENV/bin/python" -B -c \
         'import monailabel.server, monai, sam2; import sys; assert sys.version_info >= (3, 12)'
     probe 'Node.js 22+ and Corepack' node_ready
-    if (( ! SETUP_CPU )); then
-        probe 'NVIDIA GPU driver (nvidia-smi)' nvidia-smi -L
-        probe 'Docker access for this user' docker info
-        probe 'NVIDIA container runtime' docker_gpu_ready
-    fi
+    probe 'NVIDIA GPU driver (nvidia-smi)' nvidia-smi -L
+    probe 'Docker access for this user' docker info
+    probe 'NVIDIA container runtime' docker_gpu_ready
 }
 
 main() {
     local check=0 arg viewer original_path="$PATH" viewers=(slicer qupath ohif)
-    SETUP_CPU=0
     for arg in "$@"; do
         case "$arg" in
             --help|-h) usage; return ;;
             --check) check=1 ;;
-            --cpu) SETUP_CPU=1 ;;
             *) usage >&2; die "Unknown option: $arg" ;;
         esac
     done
@@ -266,7 +283,6 @@ main() {
     platform_setup
     if [[ "$SETUP_NODE_ARCH" == arm64 ]]; then
         viewers=(qupath ohif)
-        if (( SETUP_CPU )); then viewers=(ohif); fi
         say "ARM64 setup builds native QuPath and CVAT with Docker. Slicer needs a compatible installation; see docs/spark.md."
     fi
     SETUP_ENV="${UV_PROJECT_ENVIRONMENT:-$SETUP_ROOT/.venv}"
@@ -281,16 +297,14 @@ main() {
         apt_install "${SETUP_PACKAGES[@]}"
         ensure_python
         ensure_node
-        if (( ! SETUP_CPU )); then
-            if ! nvidia-smi -L >/dev/null 2>&1; then
-                pending "Install a compatible NVIDIA driver using your OS driver manager, reboot if required, and rerun ./setup.sh. Use --cpu to skip local GPU/chat setup."
-            fi
-            ensure_docker
-            ensure_container_gpu
-            if ((${#SETUP_PENDING[@]} == 0)); then
-                say "Checking GPU access in Docker"
-                "${SETUP_DOCKER[@]}" run --rm --gpus all ubuntu:24.04 nvidia-smi
-            fi
+        if ! nvidia-smi -L >/dev/null 2>&1; then
+            pending "Install a compatible NVIDIA driver using your OS driver manager, reboot if required, and rerun ./setup.sh."
+        fi
+        ensure_docker
+        ensure_container_gpu
+        if ((${#SETUP_PENDING[@]} == 0)); then
+            say "Checking GPU access in Docker"
+            "${SETUP_DOCKER[@]}" run --rm --gpus all ubuntu:24.04 nvidia-smi
         fi
         for viewer in "${viewers[@]}"; do
             say "Preparing $viewer"
@@ -310,10 +324,9 @@ main() {
         return 1
     fi
     if (( check )); then say "Prerequisites are ready";
-    elif (( SETUP_CPU )); then say "Ready. Start uv run monailabel-server with your hosted chat settings (docs/coordinator.md).";
     elif [[ "$SETUP_NODE_ARCH" == arm64 ]]; then
         say "ARM64 dependencies prepared. Next run the GPU smoke check in docs/spark.md before starting the server."
-    else say "Ready. Start with: uv run monailabel-server"; fi
+    else say "Ready. Start with: uv run monailabel"; fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; fi

@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import copy
 import io
 import json
@@ -798,6 +809,7 @@ def test_tracking_proposal_does_not_change_draft_and_rejects_stale_revision(
     proposal = http.get(path).json()
     assert proposal["request"] == {
         **request,
+        "spatial_prompt": None,
         "output": "box",
         "seed": {**request["seed"], "outside": False, "occluded": False},
     }
@@ -888,7 +900,7 @@ def test_cvat_chat_without_a_selected_track_requires_an_unambiguous_label(
         AssistantContext.model_validate(context),
         "Track tool for 3 frames",
     )
-    with pytest.raises(DomainError, match="Name one project tool label"):
+    with pytest.raises(DomainError, match="Name one object to annotate"):
         track_selected(ctx, TrackVideo(frame_count=3))
     assert not calls
     assert http.get(f"/api/projects/{video['project_id']}/jobs").json() == []
@@ -1466,3 +1478,176 @@ def test_polygon_tracks_roundtrip_and_revision_geometry(http, video, cvat):
     assert response.status_code == 201, response.text
     saved = http.get(f"/api/videos/{video['id']}/tracks").json()["document"]
     assert saved == TrackDocument.model_validate(doc).model_dump()
+
+
+def test_video_opens_without_predefined_labels(http, client, clip, cvat):
+    project = client.post("/api/projects", {"name": "Targets chosen later"})
+    video = http.post(
+        f"/api/projects/{project['id']}/videos/upload",
+        params={"name": "clip.mp4", "group_id": "procedure"},
+        content=clip,
+    ).json()
+    opened = wait(
+        http, http.post(f"/api/videos/{video['id']}/editor", json={"base_revision": 0}).json()
+    )
+    info = client.get("/api/cvat/editors/" + opened["editor_id"])
+    assert info["editor"]["label_map"] == {}
+    assert [label["id"] for label in info["project"]["labels"]] == [0]
+
+
+def test_video_prompt_adds_target_then_waits_for_viewer_labels(
+    http, video, managed_editor, find_tracking, monkeypatch
+):
+    from monailabel.core.models import AssistantContext, Project, User
+    from monailabel.server.assistant_tools.base import ToolContext
+    from monailabel.server.assistant_tools.videos import FindVideoTool, find_and_track
+
+    request, calls = find_tracking
+    service = http.app.state.services
+    editor = managed_editor[0]
+    current = [{"id": 101, "name": "Grasper"}, {"id": 102, "name": "Scissors"}]
+    writes = []
+
+    def upstream(method, path, **kwargs):
+        if method == "GET" and path == "/api/labels":
+            return {"results": current}
+        assert method == "PATCH" and path == "/api/tasks/11"
+        writes.append(kwargs["json"])
+        current.extend(
+            dict(label, id=103 + index) for index, label in enumerate(kwargs["json"]["labels"])
+        )
+        return {}
+
+    monkeypatch.setattr(service.video_editors.client, "request", upstream)
+    context = AssistantContext.model_validate(
+        {
+            "base_revision": 0,
+            "model_id": request["model_id"],
+            "video": {
+                "video_id": video["id"],
+                "editor_id": editor.id,
+                "frame": 2,
+                "draft_signature": request["draft_signature"],
+                "available_label_ids": [1, 2],
+            },
+        }
+    )
+    ctx = ToolContext(
+        service, video["project_id"], service.store.list(User)[0], context, "Locate polyp"
+    )
+    args = FindVideoTool(label_name="Polyp", scope="current_frame")
+    reply = find_and_track(ctx, args)
+    assert reply.data["client_action"] == "refresh_video_labels" and not reply.job_id
+    project = service.store.get(Project, video["project_id"])
+    assert [(label.id, label.name) for label in project.labels] == [
+        (0, "Background"),
+        (1, "Grasper"),
+        (2, "Scissors"),
+        (3, "Polyp"),
+    ]
+    assert len(writes) == 1 and [label["name"] for label in writes[0]["labels"]] == ["Polyp"]
+    assert not calls  # No inference before the native viewer can display the new label.
+    assert find_and_track(ctx, args).data["client_action"] == "refresh_video_labels"
+    assert len(writes) == 1
+    captured = []
+
+    def start(video_id, body):
+        from monailabel.core.models import Job
+
+        captured.append(body)
+        return Job(project_id=project.id, kind="video_tracking", request={})
+
+    monkeypatch.setattr(service.video_tracking, "find", start)
+    ctx.context = context.model_copy(
+        update={"video": context.video.model_copy(update={"available_label_ids": [1, 2, 3]})}
+    )
+    reply = find_and_track(ctx, args)
+    assert reply.job_id and captured[0].label_id == 3
+    assert captured[0].frame == 2 and captured[0].frame_count == 1
+    assert captured[0].draft_signature == request["draft_signature"]
+    assert not calls and len(writes) == 1
+
+
+def test_interactive_video_points_seed_tracking_and_preserve_source(
+    http, video, cvat, monkeypatch, hosted_presets
+):
+    from types import SimpleNamespace
+
+    from monailabel.core.ports import Prediction
+
+    service = http.app.state.services
+    prefix = f"/api/videos/{video['id']}"
+    editor = wait(http, http.post(prefix + "/editor", json={"base_revision": 0}).json())
+    hosted_presets.ensure(video["project_id"])
+    info = http.get(f"/api/cvat/editors/{editor['editor_id']}").json()
+    model = next(m for m in info["detection_models"] if m["provider"] == "sam2")
+    assert model["interaction"]["video_scopes"] == ["frame", "range"]
+    assert not any(
+        m["provider"] in {"nninteractive", "medsam2", "vista3d"} for m in info["detection_models"]
+    )
+    calls = []
+
+    def predict(image, label_id, selected, spatial, plane, full_volume, progress):
+        assert image.shape == (48, 64, 3) and image.dtype == np.float32
+        assert label_id == 1 and selected.id == model["id"]
+        assert spatial.points[0].coordinates == [12, 18]
+        assert not spatial.points[1].positive
+        assert plane is None and not full_volume
+        mask = np.zeros((48, 64), np.uint8)
+        mask[8:22, 12:30] = label_id
+        progress(1)
+        return Prediction(mask)
+
+    def track(source, width, height, seed, count, progress, output, seed_mask):
+        calls.append(count)
+        assert source.read_bytes() == service.artifacts.read(
+            service.store.get(VideoAsset, video["id"]).source_key
+        )
+        assert (width, height, output) == (64, 48, "polygon")
+        assert np.asarray(Image.open(io.BytesIO(seed_mask))).sum() == 14 * 18
+        return VideoTrackingResult(
+            [seed.model_copy(update={"frame": seed.frame + i}) for i in range(count)],
+            {seed.frame: seed_mask},
+            [],
+        )
+
+    monkeypatch.setattr(
+        service.models, "spatial_provider", lambda model: SimpleNamespace(predict_prompted=predict)
+    )
+    service.video_tracking.provider = SimpleNamespace(track=track)
+    request = {
+        "editor_id": editor["editor_id"],
+        "base_revision": 0,
+        "model_id": model["id"],
+        "label_id": 1,
+        "client_id": None,
+        "frame": 1,
+        "frame_count": 1,
+        "draft_signature": "a" * 64,
+        "spatial_prompt": {
+            "points": [{"coordinates": [12, 18]}, {"coordinates": [3, 5], "positive": False}]
+        },
+    }
+    for count in (1, 3):
+        response = http.post(prefix + "/interactive", json={**request, "frame_count": count})
+        assert response.status_code == 202, response.text
+        result = wait(http, response.json())
+        proposal = http.get(prefix + "/tracking-proposals/" + result["video_proposal_id"]).json()
+        assert proposal["provider"] == "sam2"
+        assert proposal["request"]["client_id"] is None
+        assert proposal["request"]["spatial_prompt"]["points"][0]["coordinates"] == [12, 18]
+        assert [k["frame"] for k in proposal["keyframes"]] == list(range(1, 1 + count))
+        assert proposal["masks_key"]
+    assert calls == [3]
+    assert http.get(prefix + "/tracks").json()["base_revision"] == 0
+    for invalid in (
+        {"frame_count": 9},
+        {"spatial_prompt": {"points": [{"coordinates": [48, 18]}]}},
+        {"spatial_prompt": {"points": [{"coordinates": [12, 18, 0]}]}},
+        {"spatial_prompt": {"points": [{"coordinates": [12, 18], "positive": False}]}},
+    ):
+        assert http.post(prefix + "/interactive", json={**request, **invalid}).status_code == 422
+    http.post(
+        prefix + "/review", json={"base_revision": 0, "document": document()}
+    ).raise_for_status()
+    assert http.post(prefix + "/interactive", json=request).status_code == 409

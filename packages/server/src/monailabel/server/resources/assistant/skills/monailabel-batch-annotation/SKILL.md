@@ -5,10 +5,12 @@ license: Apache-2.0
 compatibility: Requires the MONAI Label coordinator and its registered typed tools.
 allowed-tools: annotate_batch
 metadata:
-  monailabel-context: project
+  monailabel-context: project-workspace
 ---
 
 # Batch annotation
+
+Batch annotation runs from the main workspace. Viewer annotation acts on the current image or video.
 
 Use annotate_batch for segmentation of several existing images. Resolve the exact available model_name; omit it only when the user wants the current default. targets contains structure names, never numeric IDs. Honor the requested count through limit.
 

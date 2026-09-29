@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Regression coverage for model lineage, atomic job guards and scoped chat reviews."""
 
 import runpy
@@ -15,7 +26,7 @@ from monailabel.server.assistant_tools.base import ToolContext
 def test_exact_spleen_golden_workflow():
     script = Path(__file__).parents[1] / "examples/verify_spleen_workflow.py"
     report = runpy.run_path(str(script))["run_workflow"]()
-    assert len(report["steps"]) == 8
+    assert len(report["steps"]) == 7
     assert report["counts"] == {
         "annotation_images": 32,
         "evaluation_images": 9,

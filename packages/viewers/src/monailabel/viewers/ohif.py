@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """OHIF runtime adapter: reuse a prepared distribution or invoke the separate Node builder."""
 
 import hashlib
@@ -44,6 +55,7 @@ class OhifManager:
             if path.is_file():
                 digest.update(str(path.relative_to(resources)).encode())
                 digest.update(path.read_bytes())
+        digest.update((_RESOURCES / "interaction-icons.json").read_bytes())
         digest.update(build.read_bytes())
         digest.update((_RESOURCES / "installers/ohif.json").read_bytes())
         signature = digest.hexdigest()

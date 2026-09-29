@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Learning tools share immutable datasets, trainers and evaluation gates with the API."""
 
 from typing import Literal
@@ -22,18 +33,33 @@ from monailabel.core.models import (
     TrainRequest,
 )
 from monailabel.server.labels import resolve_labels
+from monailabel.server.models.anatomy import ANATOMY_MODELS
+from monailabel.totalsegmentator.catalog import MODELS as TOTAL_MODELS
 
 from .base import Empty, ToolContext, ToolRegistry, require
 
 
 class LearnerArgs(Contract):
-    recipe: Literal["monai-unet", "vista3d"]
-    targets: list[str] = Field(default_factory=list, max_length=31)
+    recipe: Literal[
+        "monai-unet", "nnunet-v2", "vista3d", "totalsegmentator-ct", "totalsegmentator-mr"
+    ]
+    modality: Literal["CT", "MRI"] | None = Field(
+        default=None,
+        description="Required for nnunet-v2: use the dataset's known modality, "
+        "or ask if unknown. Single-channel volumes only.",
+    )
+    targets: list[str] = Field(
+        default_factory=list,
+        max_length=31,
+        description="Foreground structure names. Background is included automatically; "
+        "never put Background in targets. All imported labels means all foreground names.",
+    )
     name: str | None = Field(default=None, max_length=120)
     parent_model_id: str | None = None
     initialization: Literal["scratch", "fine_tune"] | None = Field(
         default=None,
-        description="Omit for the recipe default: fine_tune for VISTA3D, scratch for U-Net.",
+        description="Omit for the recipe default: fine_tune for VISTA3D/TotalSegmentator, "
+        "scratch for U-Net and nnU-Net v2.",
     )
     start_now: bool = False
     validation_percentage: int | None = Field(
@@ -158,9 +184,11 @@ def register(registry: ToolRegistry) -> None:
         (
             "Create a separate trainable segmentation model. U-Net uses "
             "monai-unet from scratch for 2D RGB pathology/video or 3D radiology. "
+            "nnU-Net v2 uses nnunet-v2 for custom CT/MRI targets such as liver tumors; "
+            "set modality=CT or MRI explicitly. It plans a 3D network from training cases. "
             "VISTA3D fine_tune uses the read-only CT base; never overwrite it. "
             "VISTA3D targets are optional: omit them to inherit the base vocabulary "
-            "and choose organs at training time. U-Net requires targets. Set start_now "
+            "and choose organs at training time. U-Net and nnU-Net require targets. Set start_now "
             "only when training is requested."
         ),
         LearnerArgs,
@@ -230,28 +258,39 @@ def register(registry: ToolRegistry) -> None:
 
 def create_learner(ctx: ToolContext, args: LearnerArgs) -> AssistantReply:
     service, project = ctx.service, ctx.project
-    if not args.targets and args.recipe != "vista3d":
+    background = {label.name.casefold() for label in project.labels if label.id == 0}
+    if any(name.strip().casefold() in background for name in args.targets):
+        raise DomainError(
+            "Choose foreground training targets; Background is included automatically."
+        )
+    if args.recipe == "nnunet-v2" and args.modality is None:
+        raise DomainError("Specify CT or MRI when creating an nnU-Net v2 model.")
+    if args.recipe != "nnunet-v2" and args.modality is not None:
+        raise DomainError("Modality selection applies to the nnU-Net v2 recipe.")
+    if not args.targets and args.recipe not in ANATOMY_MODELS:
         foreground = [label for label in project.labels if label.id]
         if len(foreground) != 1:
             raise DomainError(
-                "Choose at least one target for a U-Net training setup.",
+                "Choose at least one target for this training setup.",
                 code="invalid_tool_arguments",
             )
         args = args.model_copy(update={"targets": [foreground[0].name]})
     parent = args.parent_model_id
-    initialization = args.initialization or ("fine_tune" if args.recipe == "vista3d" else "scratch")
-    if initialization == "fine_tune" and not parent and args.recipe == "vista3d":
+    initialization = args.initialization or (
+        "fine_tune" if args.recipe in ANATOMY_MODELS else "scratch"
+    )
+    if initialization == "fine_tune" and not parent and args.recipe in ANATOMY_MODELS:
         service.presets.ensure(project.id)
         parent = next(
             (
                 m.id
                 for m in service.store.list(ModelRecord, project.id)
-                if m.preset == "vista3d" and m.read_only
+                if m.preset == args.recipe and m.read_only
             ),
             None,
         )
         if not parent:
-            raise DomainError("Enable the preloaded VISTA3D model before creating a derived model.")
+            raise DomainError("Enable the preloaded base model before creating a derived model.")
     if initialization == "scratch" and parent:
         raise DomainError("Training from scratch cannot have initial pretrained weights.")
     if initialization == "fine_tune" and not parent:
@@ -265,10 +304,17 @@ def create_learner(ctx: ToolContext, args: LearnerArgs) -> AssistantReply:
         LearnerCreate(
             name=args.name
             or (
-                ("U-Net" if args.recipe == "monai-unet" else "VISTA3D")
+                (
+                    "U-Net"
+                    if args.recipe == "monai-unet"
+                    else "nnU-Net v2"
+                    if args.recipe == "nnunet-v2"
+                    else TOTAL_MODELS.get(args.recipe, ("VISTA3D", ""))[0]
+                )
                 + (" · " + ", ".join(names) if names else " project model")
             ),
             recipe=args.recipe,
+            config={"modality": args.modality} if args.modality else {},
             label_ids=[0] + ids,
             initial_model_id=parent,
             inherit_targets=not args.targets,

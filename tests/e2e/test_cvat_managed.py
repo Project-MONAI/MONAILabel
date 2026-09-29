@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """First-launch managed CVAT, native drafts and real local model assistance."""
 
 import os
@@ -91,7 +102,7 @@ def test_managed_install_launch_and_track(
     page.on("response", lambda r: failures.append((r.status, r.url)) if r.status >= 400 else None)
     login_workspace(page, stack)
     assert page.evaluate("isSecureContext") == (hostname == "127.0.0.1")
-    project_id = create_project(page, "Managed CVAT tool tracking")
+    project_id = create_project(page, "Managed CVAT tool tracking", labels=("Grasper", "Scissors"))
     video = import_video(page, stack, project_id, synthetic_clip)
     launched, page = open_editor(page, video_http, video["id"], keep_page=True)
     assert launched["url"].startswith("/cvat/editor/")
@@ -221,13 +232,14 @@ def wait_job(http, identifier):
     pytest.fail("Video operation timed out")
 
 
-def send_action(page, stack, prompt, tool, arguments):
-    stack.app.state.services.assistants.provider.queue.append(
-        ChatMessage(
-            role="assistant",
-            tool_calls=[ToolCall(id="video-action", name=tool, arguments=arguments)],
+def send_action(page, stack, prompt, tool=None, arguments=None):
+    if tool:
+        stack.app.state.services.assistants.provider.queue.append(
+            ChatMessage(
+                role="assistant",
+                tool_calls=[ToolCall(id="video-action", name=tool, arguments=arguments)],
+            )
         )
-    )
     page.locator("#prompt").fill(prompt)
     with page.expect_response(
         lambda r: r.url.endswith("/assistant") and r.request.method == "POST"
@@ -235,6 +247,78 @@ def send_action(page, stack, prompt, tool, arguments):
         page.locator("#send").click()
     assert response.value.status == 200, response.value.text()
     return response.value.json()
+
+
+def test_annotator_adds_video_labels_without_losing_drafts(
+    video_stack, browser_session, video_http, synthetic_clip, detection_endpoint
+):
+    stack = video_stack
+    context, errors = browser_session
+    page = context.new_page()
+    login_workspace(page, stack)
+    project = create_project(page, "Annotator-defined targets")
+    video = import_video(page, stack, project, synthetic_clip)
+    model = video_http.post(
+        f"/api/projects/{project}/models",
+        json={
+            "name": "Vision fixture",
+            "provider": "openai-chat-polygons",
+            "config": {"url": detection_endpoint.url, "model": "detection-fixture"},
+        },
+    )
+    model.raise_for_status()
+    _, page = open_editor(page, video_http, video["id"], keep_page=True)
+    native = page.frame_locator("#editor")
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
+    expect(native.locator(".cvat-spinner")).to_have_count(0)
+    assert page.frames[1].evaluate("async () => (await window.monaiVideo.context()).labels") == []
+
+    def annotate(label, box, count):
+        detection_endpoint.box = box
+        arguments = {
+            "label_name": label,
+            "model_id": model.json()["id"],
+            "scope": "current_frame",
+            "output": "box",
+        }
+        # The viewer repeats the prompt once after saving its draft and loading new labels.
+        stack.app.state.services.assistants.provider.queue.append(
+            ChatMessage(
+                role="assistant",
+                tool_calls=[
+                    ToolCall(id="new-target", name="find_and_track_video_tool", arguments=arguments)
+                ],
+            )
+        )
+        reply = send_action(
+            page, stack, f"Find {label} on this frame", "find_and_track_video_tool", arguments
+        )
+        assert reply["data"]["client_action"] == "refresh_video_labels"
+        expect(
+            page.locator("#messages .assistant").filter(has_text="Bounding box added")
+        ).to_have_count(count, timeout=60000)
+        expect(page.locator("#status")).to_contain_text("Annotation added to draft", timeout=60000)
+
+    annotate("Polyp", [40, 70, 120, 160], 1)
+    expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(1)
+    draw_rectangle(page.frames[1], "Polyp", [180, 50, 250, 130])
+    frame(page.frames[1], 2)
+    expect(page.locator("#selection")).to_contain_text("Frame 2 of")
+    annotate("Snare", [130, 70, 170, 110], 2)
+    expect(page.locator("#selection")).to_contain_text("Frame 2 of")
+    project_record = video_http.get(f"/api/projects/{project}").json()
+    assert [label["name"] for label in project_record["labels"]] == ["Background", "Polyp", "Snare"]
+    assert len(detection_endpoint.calls) == 2
+    assert video_http.get(f"/api/videos/{video['id']}/tracks").json()["base_revision"] == 0
+    page.locator("#submit").click()
+    expect(page.locator("#status")).to_contain_text("Tracks submitted", timeout=20000)
+    tracks = video_http.get(f"/api/videos/{video['id']}/tracks").json()["document"]["tracks"]
+    assert len(tracks) == 3
+    manual = next(track for track in tracks if track["keyframes"][0]["box"][0] > 175)
+    assert manual["label_id"] == 1
+    assert manual["keyframes"][0]["box"] == pytest.approx([180, 50, 250, 130], abs=1)
+    assert any(track["label_id"] == 2 and track["keyframes"][0]["frame"] == 2 for track in tracks)
+    assert not errors
 
 
 def ask_to_track(page, stack, *, workspace=False):
@@ -312,7 +396,19 @@ def test_managed_real_tool_tracking_sample(
     expect(page.locator("#detection-model")).to_have_value("")
     expect(page.locator("#options, #tracking-options, #track")).to_have_count(0)
     expect(page.locator("#send")).to_be_enabled()
-    detection_endpoint.polygon = [(420, 390), (445, 390), (600, 555), (580, 570)]
+    # Outline the visible shaft on frame 0 of the pinned HyperKvasir clip.
+    # A narrow diagonal extending into the background is an unreliable SAM seed.
+    detection_endpoint.polygon = [
+        (439, 410),
+        (443, 396),
+        (452, 384),
+        (465, 379),
+        (478, 380),
+        (623, 487),
+        (572, 552),
+        (519, 552),
+        (445, 425),
+    ]
     coordinator = stack.app.state.services.assistants.provider
     if endpoint := os.environ.get("MONAILABEL_E2E_COORDINATOR_URL"):
         from monailabel.providers.chat.config import CoordinatorConfig
@@ -412,6 +508,7 @@ def test_managed_real_tool_tracking_sample(
     expect(page.locator("#status")).to_contain_text("Annotation added to draft", timeout=10000)
     expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(1)
     assert [k["frame"] for k in proposal["keyframes"]] == list(range(16))
+    assert all(not key["outside"] for key in proposal["keyframes"])
     assert any(k["points"] != proposal["keyframes"][0]["points"] for k in proposal["keyframes"][1:])
     frame(cvat_frame, 4)
     expect(page.locator("#selection")).to_contain_text("Frame 4 of", timeout=10000)
@@ -439,7 +536,7 @@ def test_chat_clear_frames_preserves_tracks_and_supports_undo(
     context, errors = browser_session
     page = context.new_page()
     login_workspace(page, stack)
-    project = create_project(page, "Clear annotations through chat")
+    project = create_project(page, "Clear annotations through chat", labels=("Grasper", "Scissors"))
     video = import_video(page, stack, project, synthetic_clip)
     opened, page = open_editor(page, video_http, video["id"], keep_page=True)
     native = page.frame_locator("#editor")
@@ -502,13 +599,16 @@ def test_chat_clear_frames_preserves_tracks_and_supports_undo(
     expect(page.locator("#status")).to_have_text("CVAT draft saved.")
     cleared = video_http.get(task_path).json()
     assert {t["id"] for t in cleared["tracks"]} == {t["id"] for t in original["tracks"]}
-    send_action(page, stack, "Undo that.", "viewer_edit", {"operation": "undo"})
+    model_calls = len(stack.app.state.services.assistants.provider.calls)
+    send_action(page, stack, "Undo that.")
     expect(page.locator("#status")).to_have_text("Undid the last edit.")
     frame(cvat_frame, 2)
     expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(2)
-    send_action(page, stack, "Redo that.", "viewer_edit", {"operation": "redo"})
+    send_action(page, stack, "Redo that.")
     expect(page.locator("#status")).to_have_text("Redid the last edit.")
     expect(native.locator(".cvat_canvas_shape:visible")).to_have_count(1)
+    assert len(stack.app.state.services.assistants.provider.calls) == model_calls
+    assert not stack.app.state.services.assistants.provider.queue
     send_action(page, stack, "Save my draft.", "viewer_edit", {"operation": "save_draft"})
     expect(page.locator("#status")).to_have_text("CVAT draft saved.")
     saved = video_http.get(task_path).json()
@@ -613,7 +713,9 @@ def test_mixed_dataset_list(video_stack, browser_session, video_http, synthetic_
     context, errors = browser_session
     page = context.new_page()
     login_workspace(page, stack)
-    project_id = create_project(page, "Mixed image and video samples")
+    project_id = create_project(
+        page, "Mixed image and video samples", labels=("Grasper", "Scissors")
+    )
 
     def upload_image(index):
         content = BytesIO()
@@ -709,7 +811,9 @@ def test_cvat_launch_failure_closed_tab_and_popup_fallback(
     context, errors = browser_session
     page = context.new_page()
     login_workspace(page, stack)
-    project_id = create_project(page, "CVAT automatic launch controls")
+    project_id = create_project(
+        page, "CVAT automatic launch controls", labels=("Grasper", "Scissors")
+    )
     video = import_video(page, stack, project_id, synthetic_clip)
     endpoint = f"**/api/videos/{video['id']}/editor"
     page.route(
@@ -764,7 +868,7 @@ def test_find_track_preserves_drafts_and_honors_named_model(
     context, errors = browser_session
     page = context.new_page()
     login_workspace(page, stack)
-    project_id = create_project(page, "Vision seeded native tracks")
+    project_id = create_project(page, "Vision seeded native tracks", labels=("Grasper", "Scissors"))
     video = import_video(page, stack, project_id, synthetic_clip)
     models = []
     for name, remote in [("GPT-5.6 Sol", "sol-fixture"), ("GPT-6 Astra", "astra-fixture")]:
@@ -864,7 +968,7 @@ def test_polygon_annotation_and_whole_video_tracking(
     context, errors = browser_session
     page = context.new_page()
     login_workspace(page, stack)
-    project = create_project(page, "Polygon tracking across chunks")
+    project = create_project(page, "Polygon tracking across chunks", labels=("Grasper", "Scissors"))
     # Clearly synthetic moving L-shaped object; exercise geometry, not model accuracy.
     directory = stack.root / "polygon-frames"
     directory.mkdir()
@@ -1090,3 +1194,114 @@ def test_polygon_annotation_and_whole_video_tracking(
         "chat-focused panel, boxes and polygons on one frame, selected polygon "
         "tracking, whole-video chunk boundaries, source masks and mixed-shape review",
     )
+
+
+@pytest.mark.parametrize("real_model", [False, True])
+def test_sam_interactive_toolbar(
+    video_stack, browser_session, video_http, synthetic_clip, monkeypatch, real_model
+):
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from monailabel.core.ports import Prediction
+
+    stack = video_stack
+    context, errors = browser_session
+    page = context.new_page()
+    login_workspace(page, stack)
+    pid = create_project(page, "Interactive video", labels=("Grasper", "Scissors"))
+    model = ModelRecord(
+        project_id=pid, name="SAM 2.1", provider="sam2", label_ids=[0], preset="sam2"
+    )
+    vision = ModelRecord(
+        project_id=pid, name="Vision fixture", provider="openai-chat-polygons", label_ids=[0]
+    )
+    with stack.app.state.services.store.transaction() as session:
+        session.insert(model)
+        session.insert(vision)
+        session.insert(
+            ModelRecord(
+                project_id=pid,
+                name="My instrument model",
+                provider="threshold",
+                mode="from_scratch",
+                label_ids=[0, 1],
+                config={"thresholds": [0.5]},
+            )
+        )
+        session.insert(
+            ModelRecord(
+                project_id=pid, name="VISTA3D", provider="vista3d", label_ids=[0], read_only=True
+            )
+        )
+    video = import_video(page, stack, pid, synthetic_clip)
+    _, page = open_editor(page, video_http, video["id"], keep_page=True)
+    native = page.frame_locator("#editor")
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
+    page.wait_for_function("document.querySelector('#editor').contentWindow.monaiVideo?.ready()")
+    page.locator("#detection-model").select_option(model.id)
+    page.locator("#target-label").fill("Grasper")
+    toolbar = page.get_by_role("toolbar", name="Interaction toolbar")
+    expect(toolbar.get_by_role("button", name="+ Point", exact=True)).to_be_visible()
+    toolbar.get_by_role("button", name="+ Point", exact=True).click()
+    bounds = native.locator("#cvat_canvas_background").bounding_box()
+    assert bounds
+    page.mouse.click(bounds["x"] + bounds["width"] * 0.25, bounds["y"] + bounds["height"] * 0.4)
+    expect(native.locator(".monailabel-prompts circle")).to_have_count(1)
+    toolbar.get_by_role("button", name="− Point", exact=True).click()
+    page.mouse.click(bounds["x"] + bounds["width"] * 0.7, bounds["y"] + bounds["height"] * 0.4)
+    expect(native.locator(".monailabel-prompts circle")).to_have_count(2)
+    page.locator("#target-label").fill("Scissors")
+    expect(native.locator(".monailabel-prompts circle")).to_have_count(0)
+    page.locator("#target-label").fill("Grasper")
+    expect(native.locator(".monailabel-prompts circle")).to_have_count(2)
+    selector = page.locator("#detection-model")
+    assert selector.locator("optgroup").evaluate_all("nodes => nodes.map(n => n.label)") == [
+        "Interactive segmentation",
+        "Vision-language models",
+        "Trained models",
+    ]
+    assert "VISTA3D" not in selector.inner_text()
+    selector.select_option(vision.id)
+    expect(toolbar.get_by_role("button", name="+ Point", exact=True)).to_have_count(0)
+    expect(native.locator(".monailabel-prompts circle")).to_have_count(0)
+    selector.select_option(model.id)
+    expect(native.locator(".monailabel-prompts circle")).to_have_count(2)
+    page.screenshot(path=stack.artifacts / "sam-toolbar-inputs.png")
+    calls = []
+
+    def predict(image, label, model, spatial, plane, full, progress):
+        calls.append(spatial)
+        if real_model:
+            from monailabel.sam.runtime import SamSegmenter
+
+            return SamSegmenter().predict_prompted(
+                image, label, model, spatial, plane, full, progress
+            )
+        mask = np.zeros(image.shape[:2], np.uint8)
+        mask[40:140, 30:120] = label
+        return Prediction(mask)
+
+    monkeypatch.setattr(
+        stack.app.state.services.models,
+        "spatial_provider",
+        lambda model: SimpleNamespace(predict_prompted=predict),
+    )
+    page.locator("#update-frame").click()
+    expect(page.locator("#status")).to_contain_text("Annotation added to draft", timeout=30000)
+    assert len(calls) == 1 and len(calls[0].points) == 2
+    expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(1)
+    page.screenshot(
+        path=stack.artifacts
+        / ("sam-toolbar-real-mask.png" if real_model else "sam-toolbar-mask.png")
+    )
+    if real_model:
+        page.locator("#update-options summary").click()
+        page.locator("#track-count").fill("3")
+        page.locator("#track-range").click()
+        expect(page.locator("#status")).to_contain_text("Annotation added to draft", timeout=90000)
+        assert len(calls) == 2
+        expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(1)
+        page.screenshot(path=stack.artifacts / "sam-toolbar-tracked.png")
+    assert not errors

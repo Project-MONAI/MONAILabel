@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import io
 import json
 
@@ -49,20 +60,24 @@ def pair(
 
 @pytest.mark.parametrize("volume", [False, True])
 @pytest.mark.parametrize("reviewed", [False, True])
-def test_import_reserves_all_cases_maps_labels_and_requires_explicit_review(
-    client, http, volume, reviewed
+@pytest.mark.parametrize("endpoint", ["evaluation-imports", "label-imports"])
+def test_import_reserves_all_cases_maps_labels_and_is_evaluation_ready(
+    client, http, volume, reviewed, endpoint
 ):
     pid = client.post("/api/projects", {"name": "External truth"})["id"]
-    first = pair(http, pid, {"reviewed": reviewed}, volume=volume)
+    first = pair(
+        http, pid, {"split": "validation", "reviewed": reviewed}, volume=volume, endpoint=endpoint
+    )
     assert first.status_code == 201, first.text
     record = first.json()["evaluation_set"]
     request = {
+        "split": "validation",
         "evaluation_set_name": None,
         "evaluation_set_id": record["id"],
         "base_version": record["version"],
         "reviewed": reviewed,
     }
-    second = pair(http, pid, request, number=1, volume=volume)
+    second = pair(http, pid, request, number=1, volume=volume, endpoint=endpoint)
     assert second.status_code == 201, second.text
     result = second.json()
     prefix = f"/api/projects/{pid}"
@@ -76,14 +91,14 @@ def test_import_reserves_all_cases_maps_labels_and_requires_explicit_review(
     assert set(
         np.unique(client.get(f"/api/annotations/{result['annotation_id']}/mask")["mask"])
     ) == {0, 1}
-    assert len(client.get(prefix + "/decisions")) == (2 if reviewed else 0)
+    decisions = client.get(prefix + "/decisions")
+    assert len(decisions) == 2 and all(d["verdict"] == "accepted" for d in decisions)
     version = http.post(
         prefix + f"/evaluation-sets/{record['id']}/versions",
         json={"base_version": result["evaluation_set"]["version"], "label_ids": [0, 1]},
     )
-    assert version.status_code == (200 if reviewed else 422), version.text
-    if reviewed:
-        assert len(version.json()["samples"]) == 2
+    assert version.status_code == 200, version.text
+    assert len(version.json()["samples"]) == 2
     # A duplicate import under a new patient ID still cannot enter training.
     image = np.full((8, 8, 3), 91, np.uint8)
     if not volume:

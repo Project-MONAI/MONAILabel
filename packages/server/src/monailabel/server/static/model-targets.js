@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { paginationButton } from "./icons.js";
 import { escapeHTML, button, targetNames } from "./ui.js";
 
@@ -9,7 +22,9 @@ export function availableTargets(state, model) {
   )
     return null;
   if (
-    model.provider === "vista3d" &&
+    ["vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(
+      model.provider,
+    ) &&
     (model.read_only || model.inherit_targets)
   ) {
     return state.recipes.find((recipe) => recipe.id === model.provider)
@@ -21,12 +36,14 @@ export function availableTargets(state, model) {
 }
 
 export function targetSummary(state, model) {
-  if (["sam2", "medsam2"].includes(model.provider))
+  if (model.interaction)
     return (
-      '<p class="muted">Name a target and select its box or points in the viewer. One object per request; labels are not restricted to a fixed organ list. MedSAM2 propagates a seed through a medical volume. Inference only; fine-tuning is not integrated.</p><p><a href="https://github.com/' +
+      '<p class="muted">Name a target and select its box or points in the viewer. One object per request; labels are not restricted to a fixed organ list. MedSAM2 propagates a seed slice; nnInteractive uses prompts across a CT/MRI volume. Inference only; fine-tuning is not integrated.</p><p><a href="https://github.com/' +
       (model.provider === "sam2"
         ? "facebookresearch/sam2"
-        : "bowang-lab/MedSAM2") +
+        : model.provider === "nninteractive"
+          ? "MIC-DKFZ/nnInteractive"
+          : "bowang-lab/MedSAM2") +
       '" target="_blank" rel="noopener noreferrer">Original model documentation ↗</a></p>'
     );
 

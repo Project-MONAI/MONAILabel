@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Same-origin CVAT viewer with project-scoped access to its private service."""
 
 import re
@@ -10,7 +21,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from monailabel.core.errors import DomainError
-from monailabel.core.models import ModelRecord, Project, User
+from monailabel.core.models import Project, User
 from monailabel.core.video import VideoAsset
 from monailabel.server.access import Principal, Service
 from monailabel.server.service import Services
@@ -58,9 +69,10 @@ def editor_info(editor_id: str, service: Service, user: Principal) -> dict[str, 
         "project": project.model_dump(mode="json"),
         "roles": sorted(service.auth.roles(user, project.id)),
         "detection_models": [
-            {"id": model.id, "name": model.name}
-            for model in service.store.list(ModelRecord, project.id)
-            if not model.archived and service.video_tracking.supports(model)
+            model.model_dump(mode="json")
+            for model in service.models.available(project.id)
+            if service.video_tracking.supports(model)
+            or (model.interaction and model.interaction.video_scopes)
         ],
     }
 
@@ -90,7 +102,9 @@ def resource(path: str, service: Service) -> FileResponse:
 
 
 @router.api_route(
-    "/cvat-api/{path:path}", methods=["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE"]
+    "/cvat-api/{path:path}",
+    methods=["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE"],
+    include_in_schema=False,
 )
 async def proxy(path: str, request: Request, service: Service, user: Principal) -> Response:
     if not service.video_editors.managed:

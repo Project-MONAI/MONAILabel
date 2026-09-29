@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Append-only project labels resolved from explicit annotation targets."""
 
 from monailabel.core.colors import default_color, normalize
@@ -60,6 +71,13 @@ def resolve_labels(
     *,
     set_defaults: bool = True,
 ) -> tuple[Project, list[int]]:
+    unique: dict[str, str] = {}
+    for name in names:
+        clean = name.strip()
+        if not clean or len(clean) > 80:
+            raise DomainError("Structure names must contain 1 to 80 characters.")
+        unique.setdefault(clean.casefold(), clean)
+    names = list(unique.values())
     with store.transaction() as session:
         project = session.get(Project, project_id)
         existing = {label.name.casefold(): label for label in project.labels}

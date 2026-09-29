@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { videoButtons } from "./videos.js";
 import { paginationButton } from "./icons.js";
 import { reviewDecisionControl } from "./review-controls.js";
@@ -100,17 +113,13 @@ export function datasets(state, manage, statusOf) {
       state.datasetFilter,
       "Search samples, patients, slides or procedures",
     ) +
-    (manage && all.length
-      ? `<div class="selection-bar"><span>${selected ? `${selected} selected` : `${items.length} ${items.length === 1 ? "sample" : "samples"}`}</span>${selected ? button("Clear selection", "clear-selection") : ""}${items.length > PAGE_SIZES.datasets ? button(`Select all ${items.length} matching`, "select-filtered") : ""}${selected ? button("Delete selected files", "delete-files", "", "danger") : ""}</div>`
+    (all.length
+      ? `<div class="selection-bar"><span>${selected ? `${selected} selected` : `${items.length} ${items.length === 1 ? "sample" : "samples"}`}</span>${selected ? button("Clear selection", "clear-selection") : ""}${items.length > PAGE_SIZES.datasets ? button(`Select all ${items.length} matching`, "select-filtered") : ""}${selected ? button("Export selected", "export-dataset") : ""}${selected && manage ? button("Delete selected files", "delete-files", "", "danger") : ""}</div>`
       : "") +
     (rows.length
       ? table(
           [
-            ...(manage
-              ? [
-                  '<input type="checkbox" id="select-all-files" aria-label="Select files on this page">',
-                ]
-              : []),
+            '<input type="checkbox" id="select-all-files" aria-label="Select files on this page">',
             "Sample",
             "Type",
             "Status",
@@ -118,7 +127,7 @@ export function datasets(state, manage, statusOf) {
           ],
           rows.map(
             (a) =>
-              `<tr class="${a.id === state.context.asset_id ? "row-selected" : ""}">${manage ? `<td class="check-cell"><input type="checkbox" data-file-selection="${a.id}" aria-label="Select ${esc(a.name)}" ${state.selectedFiles.has(a.id) ? "checked" : ""}></td>` : ""}<td class="sample-cell">${button(esc(a.name), a.kind === "video" ? "sample-details" : "select", a.id, "link-button")}<small>${esc(sampleDimensions(a))} · Revision ${a.revision}</small></td><td>${esc(sampleType(a))}</td><td>${badge(sampleUse(a))} ${badge(statusOf(a))}</td><td><div class="row-actions">${viewerButtons(state, a)}${sampleActions(a)}</div></td></tr>`,
+              `<tr class="${a.id === state.context.asset_id ? "row-selected" : ""}"><td class="check-cell"><input type="checkbox" data-file-selection="${a.id}" aria-label="Select ${esc(a.name)}" ${state.selectedFiles.has(a.id) ? "checked" : ""}></td><td class="sample-cell">${button(esc(a.name), a.kind === "video" ? "sample-details" : "select", a.id, "link-button")}<small>${esc(sampleDimensions(a))} · Revision ${a.revision}</small></td><td>${esc(sampleType(a))}</td><td>${badge(sampleUse(a))} ${badge(statusOf(a))}</td><td><div class="row-actions">${viewerButtons(state, a)}${sampleActions(a)}</div></td></tr>`,
           ),
         )
       : empty(

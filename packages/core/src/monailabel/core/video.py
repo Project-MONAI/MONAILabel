@@ -1,10 +1,21 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Video and temporal annotation contracts, independent of a viewer or tracker."""
 
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from monailabel.core.models import Contract, DecisionRequest, Record, Split, new_id
+from monailabel.core.models import Contract, DecisionRequest, Record, SpatialPrompt, Split, new_id
 
 Coordinate = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
@@ -159,12 +170,29 @@ class VideoEditorRequest(VideoRevision):
 
 
 class VideoTrackingRequest(VideoRevision):
+    spatial_prompt: SpatialPrompt | None = None
     editor_id: str
     client_id: int | None = Field(ge=0)
     label_id: int = Field(gt=0, le=255)
     seed: VideoKeyframe
     output: Literal["box", "polygon"] = "box"
     frame_count: int = Field(default=16, ge=1, le=200_000)
+    draft_signature: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class VideoTargetRequest(VideoRevision):
+    model_id: str
+    target: str = Field(min_length=1, max_length=80)
+
+
+class VideoInteractiveRequest(VideoRevision):
+    editor_id: str
+    model_id: str
+    label_id: int = Field(gt=0, le=255)
+    client_id: int | None = Field(default=None, ge=0)
+    frame: int = Field(ge=0)
+    frame_count: int = Field(default=1, ge=1, le=200_000)
+    spatial_prompt: SpatialPrompt
     draft_signature: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
@@ -175,6 +203,21 @@ class VideoDraftAction(VideoRevision):
     video_id: str
     editor_id: str
     draft_signature: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class VideoInteractionAction(VideoDraftAction):
+    client_action: Literal["video_interaction"] = "video_interaction"
+    operation: Literal["mode", "clear"]
+    frame: int = Field(ge=0)
+    hint_revision: str
+    object_key: str
+    mode: Literal["positive", "negative", "box", "navigate"] = "navigate"
+    target: str = ""
+    model_id: str | None = None
+    scope: Literal["current_frame", "whole_video"] = "current_frame"
+    kind: Literal["all", "point", "box"] = "all"
+    polarity: Literal["all", "positive", "negative"] = "all"
+    all_objects: bool = False
 
 
 class ClearVideoAction(VideoDraftAction):

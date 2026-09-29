@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Atomic image/label imports with protected evaluation membership."""
 
 import io
@@ -239,7 +250,12 @@ class ReferenceImports:
                 for d in session.list(ReviewDecision, project_id)
                 if d.annotation_id == annotation.id
             ]
-            if request.reviewed and (not decisions or decisions[-1].verdict != "accepted"):
+            reviewed = request.reviewed
+            if record is not None:
+                # Evaluation retries may accept unchanged references from older imports,
+                # but must never override a user's subsequent review decision.
+                reviewed = not decisions or decisions[-1].verdict == "accepted"
+            if reviewed and (not decisions or decisions[-1].verdict != "accepted"):
                 session.insert(
                     ReviewDecision(
                         project_id=project_id,
@@ -248,7 +264,11 @@ class ReferenceImports:
                         revision=annotation.revision,
                         reviewer_id=user_id,
                         verdict="accepted",
-                        comment="External reference labels confirmed as reviewed during import.",
+                        comment=(
+                            "Reference labels accepted for evaluation during import."
+                            if record is not None
+                            else "External reference labels confirmed as reviewed during import."
+                        ),
                     )
                 )
                 refresh_percentage_sets(session, project_id)
@@ -262,7 +282,7 @@ class ReferenceImports:
                     label_name=label_name,
                     source_label_key=self.artifacts.put(label_content),
                     label_mapping=mapping,
-                    reviewed=request.reviewed,
+                    reviewed=reviewed,
                     imported_by=user_id,
                     source=request.source,
                 )

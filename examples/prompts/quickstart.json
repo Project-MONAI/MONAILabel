@@ -1,0 +1,596 @@
+{
+  "stories": [
+    {
+      "id": "spleen",
+      "name": "Radiology",
+      "recipe": "vista3d",
+      "labels": [
+        "Spleen"
+      ],
+      "template_id": "Task09_Spleen",
+      "modality": "CT",
+      "learner": "VISTA3D-Spleen",
+      "steps": [
+        {
+          "id": "project",
+          "tool": "create_project",
+          "arguments": {
+            "name": "Radiology",
+            "labels": []
+          },
+          "context": "workspace",
+          "prompt": "Create a project called \"Radiology\"."
+        },
+        {
+          "id": "import",
+          "tool": "import_dataset_split",
+          "arguments": {
+            "template_id": "Task09_Spleen",
+            "evaluation_percentage": 20,
+            "include_masks": false,
+            "limit": null,
+            "channel": 0
+          },
+          "context": "web",
+          "prompt": "Import Decathlon Spleen: 80% images only, 20% with evaluation labels."
+        },
+        {
+          "id": "batch",
+          "tool": "annotate_batch",
+          "arguments": {
+            "targets": [
+              "Spleen"
+            ],
+            "model_id": "vista",
+            "limit": 3,
+            "submit_for_review": true
+          },
+          "context": "web",
+          "prompt": "Annotate spleen in 3 images with VISTA3D; submit for review."
+        },
+        {
+          "id": "total-batch",
+          "tool": "annotate_batch",
+          "arguments": {
+            "targets": [
+              "Spleen"
+            ],
+            "model_id": "total",
+            "limit": 2,
+            "submit_for_review": true
+          },
+          "context": "web",
+          "prompt": "Annotate spleen in 2 images with TotalSegmentator CT; submit for review."
+        },
+        {
+          "id": "clear",
+          "tool": "clear_segments",
+          "arguments": {
+            "targets": [
+              "Spleen"
+            ],
+            "scope": "current_slice"
+          },
+          "context": "ohif",
+          "prompt": "Clear the spleen annotation on the current slice."
+        },
+        {
+          "id": "astra",
+          "tool": "annotate",
+          "arguments": {
+            "targets": [
+              "Spleen"
+            ],
+            "model_id": "astra",
+            "scope": "current_slice"
+          },
+          "context": "ohif",
+          "prompt": "Annotate the spleen on the current slice using GPT Astra."
+        },
+        {
+          "id": "correct",
+          "tool": "review_annotation",
+          "arguments": {
+            "verdict": "accepted"
+          },
+          "context": "ohif",
+          "prompt": "Accept my corrected segmentation."
+        },
+        {
+          "id": "nn-start-1",
+          "tool": "set_interaction_mode",
+          "arguments": {
+            "mode": "positive",
+            "target": "Spleen",
+            "model_name": "nnInteractive"
+          },
+          "context": "slicer",
+          "prompt": "Start nnInteractive for spleen."
+        },
+        {
+          "id": "nn-submit-1",
+          "tool": "viewer_edit",
+          "arguments": {
+            "operation": "submit"
+          },
+          "context": "slicer",
+          "prompt": "Submit this annotation for review."
+        },
+        {
+          "id": "nn-start-2",
+          "tool": "set_interaction_mode",
+          "arguments": {
+            "mode": "box",
+            "target": "Spleen",
+            "model_name": "nnInteractive"
+          },
+          "context": "slicer",
+          "prompt": "Draw a spleen box with nnInteractive."
+        },
+        {
+          "id": "nn-submit-2",
+          "tool": "viewer_edit",
+          "arguments": {
+            "operation": "submit"
+          },
+          "context": "slicer",
+          "prompt": "Submit this annotation for review."
+        },
+        {
+          "id": "review",
+          "tool": "review_saved_annotations",
+          "arguments": {
+            "scope": "pending",
+            "verdict": "accepted",
+            "dataset_use": "all"
+          },
+          "context": "web",
+          "prompt": "Accept all pending reviews."
+        },
+        {
+          "id": "recipes",
+          "tool": "inspect_workspace",
+          "arguments": {
+            "collection": "training_recipes"
+          },
+          "context": "web",
+          "prompt": "List all training recipes."
+        },
+        {
+          "id": "model",
+          "tool": "create_learner",
+          "arguments": {
+            "recipe": "vista3d",
+            "name": "VISTA3D-Spleen",
+            "targets": [
+              "Spleen"
+            ],
+            "start_now": false
+          },
+          "context": "web",
+          "prompt": "Based on VISTA3D, create model \"VISTA3D-Spleen\" for spleen."
+        },
+        {
+          "id": "train",
+          "tool": "start_training",
+          "arguments": {
+            "learner_name": "VISTA3D-Spleen",
+            "evaluation_set_name": "Fixed evaluation set"
+          },
+          "context": "web",
+          "prompt": "Fine-tune VISTA3D-Spleen on approved masks; use the fixed evaluation set."
+        },
+        {
+          "id": "compare",
+          "tool": "evaluate_candidate",
+          "arguments": {
+            "candidate_name": "VISTA3D-Spleen",
+            "baseline_name": "VISTA3D",
+            "evaluation_set_name": "Fixed evaluation set"
+          },
+          "context": "web",
+          "prompt": "Compare VISTA3D-Spleen with VISTA3D on the fixed evaluation set."
+        },
+        {
+          "id": "predict",
+          "tool": "annotate",
+          "arguments": {
+            "targets": [
+              "Spleen"
+            ],
+            "model_id": "trained",
+            "scope": "full"
+          },
+          "context": "ohif",
+          "prompt": "Segment the spleen in the whole volume using VISTA3D-Spleen."
+        }
+      ]
+    },
+    {
+      "id": "lung",
+      "name": "Lung tumors",
+      "recipe": "nnunet-v2",
+      "labels": [
+        "lung tumor"
+      ],
+      "template_id": "Task06_Lung",
+      "modality": "CT",
+      "learner": "Lung nnU-Net",
+      "steps": [
+        {
+          "id": "project",
+          "tool": "create_project",
+          "arguments": {
+            "name": "Lung tumors",
+            "labels": []
+          },
+          "context": "workspace",
+          "prompt": "Create a project called \"Lung tumors\"."
+        },
+        {
+          "id": "import",
+          "tool": "import_dataset_split",
+          "arguments": {
+            "template_id": "Task06_Lung",
+            "evaluation_percentage": 20,
+            "include_masks": true,
+            "limit": null,
+            "channel": 0
+          },
+          "context": "web",
+          "prompt": "Import all Decathlon Lung images with labels; reserve 20% for evaluation."
+        },
+        {
+          "id": "review",
+          "tool": "review_saved_annotations",
+          "arguments": {
+            "scope": "pending",
+            "verdict": "accepted",
+            "dataset_use": "all"
+          },
+          "context": "web",
+          "prompt": "Accept all pending reviews."
+        },
+        {
+          "id": "model",
+          "tool": "create_learner",
+          "arguments": {
+            "recipe": "nnunet-v2",
+            "name": "Lung nnU-Net",
+            "targets": [
+              "lung tumor"
+            ],
+            "start_now": false,
+            "modality": "CT"
+          },
+          "context": "web",
+          "prompt": "Create CT nnU-Net v2 model \"Lung nnU-Net\" for all imported labels."
+        },
+        {
+          "id": "train",
+          "tool": "start_training",
+          "arguments": {
+            "learner_name": "Lung nnU-Net",
+            "evaluation_set_name": "Fixed evaluation set",
+            "config": {
+              "epochs": 1000,
+              "steps_per_epoch": 250
+            }
+          },
+          "context": "web",
+          "prompt": "Train Lung nnU-Net for 1000 epochs, 250 steps each; use the fixed evaluation set."
+        },
+        {
+          "id": "compare",
+          "tool": "evaluate_candidate",
+          "arguments": {
+            "candidate_name": "Lung nnU-Net",
+            "baseline_name": "VISTA3D",
+            "evaluation_set_name": "Fixed evaluation set"
+          },
+          "context": "web",
+          "prompt": "Compare Lung nnU-Net with VISTA3D on the fixed evaluation set."
+        },
+        {
+          "id": "results",
+          "tool": "inspect_workspace",
+          "arguments": {
+            "collection": "evaluations"
+          },
+          "context": "web",
+          "prompt": "Show the comparison results."
+        }
+      ]
+    },
+    {
+      "id": "prostate",
+      "name": "Prostate zones",
+      "recipe": "nnunet-v2",
+      "labels": [
+        "PZ",
+        "TZ"
+      ],
+      "template_id": "Task05_Prostate",
+      "modality": "MRI",
+      "learner": "Prostate nnU-Net",
+      "steps": [
+        {
+          "id": "project",
+          "tool": "create_project",
+          "arguments": {
+            "name": "Prostate zones",
+            "labels": []
+          },
+          "context": "workspace",
+          "prompt": "Create a project called \"Prostate zones\"."
+        },
+        {
+          "id": "import",
+          "tool": "import_dataset_split",
+          "arguments": {
+            "template_id": "Task05_Prostate",
+            "evaluation_percentage": 20,
+            "include_masks": true,
+            "limit": null,
+            "channel": 0
+          },
+          "context": "web",
+          "prompt": "Import all Decathlon Prostate T2 images with labels; reserve 20% for evaluation."
+        },
+        {
+          "id": "review",
+          "tool": "review_saved_annotations",
+          "arguments": {
+            "scope": "pending",
+            "verdict": "accepted",
+            "dataset_use": "all"
+          },
+          "context": "web",
+          "prompt": "Accept all pending reviews."
+        },
+        {
+          "id": "model",
+          "tool": "create_learner",
+          "arguments": {
+            "recipe": "nnunet-v2",
+            "name": "Prostate nnU-Net",
+            "targets": [
+              "PZ",
+              "TZ"
+            ],
+            "start_now": false,
+            "modality": "MRI"
+          },
+          "context": "web",
+          "prompt": "Create MRI nnU-Net v2 model \"Prostate nnU-Net\" for all imported labels."
+        },
+        {
+          "id": "train",
+          "tool": "start_training",
+          "arguments": {
+            "learner_name": "Prostate nnU-Net",
+            "evaluation_set_name": "Fixed evaluation set",
+            "config": {
+              "epochs": 500,
+              "steps_per_epoch": 250
+            }
+          },
+          "context": "web",
+          "prompt": "Train Prostate nnU-Net for 500 epochs, 250 steps each; use the fixed evaluation set."
+        },
+        {
+          "id": "results",
+          "tool": "inspect_workspace",
+          "arguments": {
+            "collection": "evaluations"
+          },
+          "context": "web",
+          "prompt": "Show the evaluation results for Prostate nnU-Net."
+        }
+      ]
+    },
+    {
+      "id": "pathology",
+      "name": "Pathology",
+      "recipe": "monai-unet",
+      "labels": [
+        "Nuclei"
+      ],
+      "template_id": "openslide-cmu-small",
+      "modality": null,
+      "learner": "Nuclei U-Net",
+      "steps": [
+        {
+          "id": "project",
+          "tool": "create_project",
+          "arguments": {
+            "name": "Pathology",
+            "labels": []
+          },
+          "context": "workspace",
+          "prompt": "Create a project called \"Pathology\"."
+        },
+        {
+          "id": "import",
+          "tool": "import_dataset_template",
+          "arguments": {
+            "template_id": "openslide-cmu-small",
+            "include_masks": false
+          },
+          "context": "web",
+          "prompt": "Import the OpenSlide pathology sample."
+        },
+        {
+          "id": "astra",
+          "tool": "annotate",
+          "arguments": {
+            "targets": [
+              "Nuclei"
+            ],
+            "model_id": "astra",
+            "scope": "selected_region"
+          },
+          "context": "qupath",
+          "prompt": "Segment nuclei in the selected region using GPT Astra."
+        },
+        {
+          "id": "submit",
+          "tool": "viewer_edit",
+          "arguments": {
+            "operation": "submit"
+          },
+          "context": "qupath",
+          "prompt": "Submit this annotation for review."
+        },
+        {
+          "id": "review",
+          "tool": "review_saved_annotations",
+          "arguments": {
+            "scope": "pending",
+            "verdict": "accepted",
+            "dataset_use": "all"
+          },
+          "context": "web",
+          "prompt": "Accept all pending reviews."
+        },
+        {
+          "id": "model",
+          "tool": "create_learner",
+          "arguments": {
+            "recipe": "monai-unet",
+            "name": "Nuclei U-Net",
+            "targets": [
+              "Nuclei"
+            ],
+            "start_now": false
+          },
+          "context": "web",
+          "prompt": "Create a U-Net model named \"Nuclei U-Net\" for nuclei."
+        },
+        {
+          "id": "train",
+          "tool": "start_training",
+          "arguments": {
+            "learner_name": "Nuclei U-Net"
+          },
+          "context": "web",
+          "prompt": "Train Nuclei U-Net with approved samples."
+        },
+        {
+          "id": "predict",
+          "tool": "annotate",
+          "arguments": {
+            "targets": [
+              "Nuclei"
+            ],
+            "model_id": "trained",
+            "scope": "selected_region"
+          },
+          "context": "qupath",
+          "prompt": "Segment nuclei in the selected region using Nuclei U-Net."
+        }
+      ]
+    },
+    {
+      "id": "endoscopy",
+      "name": "Endoscopy",
+      "recipe": "monai-unet",
+      "labels": [
+        "Snare"
+      ],
+      "template_id": "hyperkvasir-tool-tracking",
+      "modality": null,
+      "learner": "Snare U-Net",
+      "steps": [
+        {
+          "id": "project",
+          "tool": "create_project",
+          "arguments": {
+            "name": "Endoscopy",
+            "labels": []
+          },
+          "context": "workspace",
+          "prompt": "Create a project called \"Endoscopy\"."
+        },
+        {
+          "id": "import",
+          "tool": "import_dataset_template",
+          "arguments": {
+            "template_id": "hyperkvasir-tool-tracking",
+            "include_masks": false
+          },
+          "context": "web",
+          "prompt": "Import the HyperKvasir tool-tracking sample."
+        },
+        {
+          "id": "track",
+          "tool": "find_and_track_video_tool",
+          "arguments": {
+            "model_id": "astra",
+            "label_name": "Snare",
+            "output": "polygon",
+            "scope": "frames",
+            "frame_count": 16
+          },
+          "context": "cvat",
+          "prompt": "Segment the snare and track it for 16 frames using GPT Astra."
+        },
+        {
+          "id": "submit",
+          "tool": "viewer_edit",
+          "arguments": {
+            "operation": "submit"
+          },
+          "context": "cvat",
+          "prompt": "Submit this annotation for review."
+        },
+        {
+          "id": "review",
+          "tool": "review_saved_annotations",
+          "arguments": {
+            "scope": "pending",
+            "verdict": "accepted",
+            "dataset_use": "all"
+          },
+          "context": "web",
+          "prompt": "Accept all pending reviews."
+        },
+        {
+          "id": "model",
+          "tool": "create_learner",
+          "arguments": {
+            "recipe": "monai-unet",
+            "name": "Snare U-Net",
+            "targets": [
+              "Snare"
+            ],
+            "start_now": false
+          },
+          "context": "web",
+          "prompt": "Create a U-Net model named \"Snare U-Net\" for snare."
+        },
+        {
+          "id": "train",
+          "tool": "start_training",
+          "arguments": {
+            "learner_name": "Snare U-Net"
+          },
+          "context": "web",
+          "prompt": "Train Snare U-Net with approved samples."
+        },
+        {
+          "id": "predict",
+          "tool": "find_and_track_video_tool",
+          "arguments": {
+            "model_id": "trained",
+            "label_name": "Snare",
+            "output": "polygon",
+            "scope": "current_frame"
+          },
+          "context": "cvat",
+          "prompt": "Segment the snare on this frame using Snare U-Net."
+        }
+      ]
+    }
+  ]
+}

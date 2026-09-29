@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Run inside 3D Slicer with --python-script. Uses Slicer's bundled Python only.
 
 Network work runs off the UI thread. Volume and segmentation operations run on the
@@ -10,6 +21,7 @@ import html
 import importlib
 import json
 import os
+import ssl
 import sys
 import tempfile
 import time
@@ -49,6 +61,7 @@ class AnnotationDock:
         self.url = settings["url"].rstrip("/")
         self.project_id = settings["project_id"]
         self.token = settings.get("token")
+        self.tls_context = ssl.create_default_context(cadata=settings.get("ca_certificate"))
         self.initial_asset = settings.get("asset_id")
         self.review_mode = settings.get("mode") == "review"
         self.shared_filesystem = settings.get("shared_filesystem", False)
@@ -68,6 +81,8 @@ class AnnotationDock:
         self.conversation_asset_id = None
         self.proposal_id = None
         self.region_nodes = []
+        self.interaction_mode = "navigate"
+        self.interaction_target = ""
         self.before_prediction = None
         self.temporary = tempfile.TemporaryDirectory(prefix="monailabel-slicer-")
 
@@ -125,28 +140,104 @@ class AnnotationDock:
 
         selectors = qt.QFormLayout()
         self.models = qt.QComboBox()
+        self.models.setMaxVisibleItems(24)
         self.models.setToolTip("Used unless your prompt names another registered model")
         selectors.addRow("Model", self.models)
-        self.views = qt.QComboBox()
-        self.views.addItems(["Red", "Yellow", "Green"])
-        self.views.setToolTip("View used by 'annotate this slice' and 'annotate all slices'")
-        selectors.addRow("Slice view", self.views)
-        self.spatial_hint = slicer.qMRMLNodeComboBox()
-        self.spatial_hint.nodeTypes = [
-            "vtkMRMLMarkupsROINode",
-            "vtkMRMLMarkupsClosedCurveNode",
-            "vtkMRMLMarkupsFiducialNode",
-        ]
-        self.spatial_hint.noneEnabled = True
-        self.spatial_hint.addEnabled = False
-        self.spatial_hint.removeEnabled = False
-        self.spatial_hint.setMRMLScene(slicer.mrmlScene)
-        self.spatial_hint.setToolTip(
-            "SAM combines this target’s box and points on the current slice. Use chat or Markups; "
-            "prefix an exclusion point's label with '-' or 'negative'."
-        )
-        selectors.addRow("SAM hint", self.spatial_hint)
+        self.slice_view = "Red"
+        self.views = qt.QToolButton()
+        self.views.setAccessibleName("Slice view")
+        self.views.setFixedSize(38, 30)
+        self.views.setPopupMode(qt.QToolButton.InstantPopup)
+        self.views.setIconSize(qt.QSize(22, 22))
+        self.view_menu = qt.QMenu(self.views)
+        self.views.setMenu(self.view_menu)
+        for name, color in (("Red", "#e74c3c"), ("Yellow", "#e2bd2a"), ("Green", "#33a86b")):
+            square = qt.QPixmap(12, 12)
+            square.fill(qt.QColor(color))
+            action = self.view_menu.addAction(qt.QIcon(square), name + " view")
+            action.setData(name)
+            action.setCheckable(True)
+            action.triggered.connect(lambda checked=False, v=name: self.select_slice_view(v))
+        self.select_slice_view("Red")
         self.layout.addLayout(selectors)
+        self.hint_panel = qt.QWidget()
+        self.hint_panel.setAccessibleName("Interaction toolbar")
+        self.hint_panel.setStyleSheet(
+            "QToolButton { padding: 3px; border-radius: 3px; } "
+            "QToolButton:checked { background: #d8edf3; border: 1px solid #176b86; }"
+        )
+        hint_layout = qt.QVBoxLayout(self.hint_panel)
+        hint_layout.setContentsMargins(0, 0, 0, 0)
+        hint_layout.setSpacing(4)
+        self.hint_target = qt.QComboBox()
+        self.hint_target.setEditable(True)
+        self.hint_target.completer().setCompletionMode(qt.QCompleter.PopupCompletion)
+        self.hint_target.completer().setCaseSensitivity(qt.Qt.CaseInsensitive)
+        self.hint_target.completer().setFilterMode(qt.Qt.MatchContains)
+        self.hint_target.lineEdit().setMaxLength(80)
+        self.hint_target.setInsertPolicy(qt.QComboBox.NoInsert)
+        self.hint_target.setAccessibleName("Target label")
+        self.hint_target.lineEdit().setPlaceholderText("Choose or type a target label")
+        self.hint_target.setToolTip("Choose an existing label or type a new label to annotate")
+        self.hint_target.editTextChanged.connect(self.set_interaction_target)
+        hint_layout.addWidget(self.hint_target)
+        hints = qt.QHBoxLayout()
+        hint_layout.addLayout(hints)
+        hints.setSpacing(3)
+        hints.addWidget(self.views)
+        self.hint_separator = qt.QFrame()
+        self.hint_separator.setFrameShape(qt.QFrame.VLine)
+        self.hint_separator.setFixedHeight(22)
+        hints.addWidget(self.hint_separator)
+        self.hint_buttons = {}
+        for title, kind, positive, icon in (
+            ("+ Point", "point", True, "positive"),
+            ("− Point", "point", False, "negative"),
+            ("Box", "box", True, "box"),
+        ):
+            button = self.hint_button(title, icon)
+            button.setCheckable(True)
+            self.hint_buttons[
+                "box" if kind == "box" else "positive_point" if positive else "negative_point"
+            ] = button
+            button.setToolTip(
+                "Box: click two opposite corners in the selected view"
+                if kind == "box"
+                else "Positive point: click tissue to include"
+                if positive
+                else "Negative point: click tissue to exclude"
+            )
+            button.clicked.connect(lambda checked=False, k=kind, p=positive: self.place_hint(k, p))
+            hints.addWidget(button)
+        separator = qt.QFrame()
+        separator.setFrameShape(qt.QFrame.VLine)
+        separator.setFixedHeight(22)
+        hints.addWidget(separator)
+        self.hint_scope_value = "current_slice"
+        self.update_hints = qt.QToolButton()
+        self.update_hints.setAccessibleName("Update")
+        self.update_hints.setFixedHeight(30)
+        self.update_hints.setToolButtonStyle(qt.Qt.ToolButtonTextBesideIcon)
+        self.update_hints.setPopupMode(qt.QToolButton.MenuButtonPopup)
+        self.update_hints.setIconSize(qt.QSize(14, 14))
+        self.update_hints.setIcon(self.hint_icon("update", accent=True))
+        self.update_hints.setStyleSheet(
+            "QToolButton { padding: 0 20px 0 6px; border-radius: 3px; font-weight: bold; } "
+            "QToolButton:enabled { background: #176b86; color: white; border: 1px solid #176b86; } "
+            "QToolButton:hover:enabled { background: #208aa5; }"
+        )
+        self.hint_scope_menu = qt.QMenu(self.update_hints)
+        self.update_hints.setMenu(self.hint_scope_menu)
+        self.update_hints.setToolTip("Update the selected target on this slice or the whole volume")
+        self.update_hints.clicked.connect(self.update_interaction)
+        hints.addWidget(self.update_hints)
+        hints.addStretch(1)
+        self.layout.addWidget(self.hint_panel)
+        self.hint_panel.hide()
+        self.models.currentIndexChanged.connect(self.select_interaction_model)
+        self.hint_escape = qt.QShortcut(qt.QKeySequence("Escape"), self.dock)
+        self.hint_escape.setContext(qt.Qt.WidgetWithChildrenShortcut)
+        self.hint_escape.activated.connect(lambda: spatial_hints.cancel_placement(self))
 
         self.conversation = qt.QSplitter(qt.Qt.Vertical)
         self.conversation.setChildrenCollapsible(False)
@@ -294,13 +385,18 @@ class AnnotationDock:
             },
         )
         try:
-            with urllib.request.urlopen(request, timeout=180) as response:
+            with urllib.request.urlopen(request, timeout=180, context=self.tls_context) as response:
                 result = response.read()
         except urllib.error.HTTPError as error:
             try:
                 detail = json.loads(error.read()).get("detail", f"HTTP {error.code}")
             except ValueError:
                 detail = f"HTTP {error.code}"
+            if error.code == 404 and path.endswith("/spatial-inference"):
+                detail = (
+                    "Restart MONAI Label and reopen the viewer to enable Update. "
+                    "Your draft is preserved."
+                )
             raise RuntimeError(str(detail)) from error
         return result if raw else json.loads(result)
 
@@ -334,6 +430,15 @@ class AnnotationDock:
         self.status.setVisible(busy)
         for widget in (self.load_button, self.send_button, self.refresh_button, self.reload_button):
             widget.setEnabled(not busy)
+        self.models.setEnabled(not busy)
+        self.hint_target.setEnabled(not busy and (self.can_annotate or self.can_review))
+        hint_ready = (
+            not busy and bool(self.interaction_target) and (self.can_annotate or self.can_review)
+        )
+        self.update_hints.setEnabled(hint_ready)
+        self.views.setEnabled(not busy)
+        for button in self.hint_buttons.values():
+            button.setEnabled(hint_ready)
         self.save_button.setEnabled(not busy and self.can_annotate)
         self.save_button.setVisible(self.can_annotate and not self.review_mode)
         review_ready = (
@@ -346,6 +451,14 @@ class AnnotationDock:
         self.cancel_button.setEnabled(bool(self.job_id) and not self.cancel_requested)
 
     def tick(self):
+        if getattr(self, "hint_placement", None):
+            interaction = slicer.app.applicationLogic().GetInteractionNode()
+            node, _, kind = self.hint_placement
+            # Escape exits native placement. Leave completed hints available for Update.
+            if interaction.GetCurrentInteractionMode() != interaction.Place and not (
+                kind == "box" and node.GetNumberOfDefinedControlPoints() == 2
+            ):
+                spatial_hints.cancel_placement(self)
         if self.future and not self.future.done():
             # Slicer's Qt loop otherwise holds the GIL between Python callbacks.
             # Yield briefly so background I/O can finish while the UI stays responsive.
@@ -385,6 +498,7 @@ class AnnotationDock:
 
     def refreshed(self, result):
         self.project, assets, models, permissions, user = result
+        self.available_models = models
         if self.segmentation and self.segmentation.GetScene():
             self.sync_labels(self.segmentation)
         self.can_annotate = bool(set(permissions["roles"]) & {"annotator", "manager"})
@@ -398,16 +512,37 @@ class AnnotationDock:
         for asset in assets:
             if asset["kind"] == "volume3d":
                 self.assets.addItem(f"{asset['name']} · {asset['split']}", asset["id"])
+        self.models.blockSignals(True)
         self.models.clear()
-        self.models.addItem("Project defaults", "")
-        for model in models:
-            self.models.addItem(model["name"], model["id"])
+        groups = list(dict.fromkeys(m.get("catalog_group", "Trained models") for m in models))
+        for index, group in enumerate(groups):
+            if index:
+                self.models.insertSeparator(self.models.count)
+            self.models.addItem(group)
+            heading = self.models.model().item(self.models.count - 1)
+            heading.setEnabled(False)
+            heading.setSelectable(False)
+            font = heading.font()
+            font.setBold(True)
+            heading.setFont(font)
+            for model in models:
+                if model.get("catalog_group", "Trained models") == group:
+                    self.models.addItem(model["name"], model["id"])
         asset_index = self.assets.findData(selected_asset)
         if asset_index >= 0:
             self.assets.setCurrentIndex(asset_index)
-        model_index = self.models.findData(selected_model)
-        if model_index >= 0:
-            self.models.setCurrentIndex(model_index)
+        model_index = self.models.findData(selected_model) if selected_model else -1
+        if model_index < 0:
+            default = self.project.get("annotation_model_id") or next(
+                iter(self.project.get("defaults", {}).values()), None
+            )
+            model_index = self.models.findData(default) if default else -1
+        if models:
+            self.models.setCurrentIndex(
+                model_index if model_index >= 0 else self.models.findData(models[0]["id"])
+            )
+        self.models.blockSignals(False)
+        self.configure_interaction()
         if not models:
             self.append_message(
                 "Assistant",
@@ -493,10 +628,13 @@ class AnnotationDock:
                     slicer.mrmlScene.RemoveNode(node)
             raise
         # Keep the previous case and its edits until the replacement is valid.
+        spatial_hints.cancel_placement(self)
         for node in (*self.region_nodes, self.segmentation, self.volume):
             if node:
                 slicer.mrmlScene.RemoveNode(node)
         self.region_nodes = []
+        self.interaction_target = ""
+        self.hint_target.setEditText("")
         self.asset, self.volume, self.segmentation = asset, volume, segmentation
         self.editor.setSegmentationNode(self.segmentation)
         self.editor.setSourceVolumeNode(self.volume)
@@ -507,6 +645,7 @@ class AnnotationDock:
         self.context["asset_id"] = self.asset["id"]
         self.proposal_id = None
         self.sample_name.setText(f"{name} · revision {self.asset['revision']}")
+        self.configure_interaction()
 
     @staticmethod
     def reverses_slices(volume, asset):
@@ -601,8 +740,12 @@ class AnnotationDock:
         except Exception as error:
             self.report_error(error)
 
-    def send_prompt(self):
-        message = self.prompt.toPlainText().strip()
+    def send_prompt(self, spatial_update=False):
+        message = (
+            "Update the selected target segmentation."
+            if spatial_update
+            else self.prompt.toPlainText().strip()
+        )
         if not message:
             return
         self.append_message("You", message)
@@ -610,7 +753,7 @@ class AnnotationDock:
             self.before_prediction = hashlib.sha256(self.current_mask().tobytes()).hexdigest()
         context = dict(self.context)
         context["viewer_actions"] = (
-            ["remove_regions", "roi", "box", "edit_spatial_prompts"]
+            ["remove_regions", "roi", "box", "edit_spatial_prompts", "set_interaction_mode"]
             + (["clear_segments", "undo", "redo"] if self.can_annotate or self.can_review else [])
             + (["submit"] if self.can_annotate and not self.review_mode else [])
             + (["review_annotation"] if self.can_review else [])
@@ -628,19 +771,19 @@ class AnnotationDock:
         context["spatial_objects"] = []
         if self.volume and scope:
             context["spatial_objects"], _ = spatial_hints.inventory(self)
+        context["interaction_mode"] = self.interaction_mode
+        context["interaction_target"] = self.interaction_target
         self.before_spatial = context["spatial_objects"]
         self.before_slice = scope
         if (
             self.volume
-            and self.spatial_hint.currentNode()
-            and (
-                not context["spatial_objects"]
-                or self.spatial_hint.currentNode().IsA("vtkMRMLMarkupsROINode")
-            )
+            and (not spatial_update or self.hint_specification)
+            and self.selected_hint()
+            and self.selected_hint().IsA("vtkMRMLMarkupsROINode")
         ):
             context["spatial_prompt"] = self.capture_spatial_hint()
         self.before_legacy_hint = context.get("spatial_prompt")
-        self.before_hint_node = self.spatial_hint.currentNode()
+        self.before_hint_node = self.selected_hint()
         selected_model = self.models.currentData
         if selected_model:
             context["model_id"] = selected_model
@@ -649,24 +792,210 @@ class AnnotationDock:
         defaults = self.project["defaults"]
         if defaults:
             context.setdefault("baseline_id", next(iter(defaults.values())))
-        self.prompt.clear()
-        self.run(
-            lambda: self.request(
-                f"/api/projects/{self.project_id}/assistant",
-                {
-                    "message": message,
-                    "context": context,
-                    "conversation_id": self.conversation_id,
-                },
-            ),
-            self.replied,
+        if not spatial_update:
+            self.prompt.clear()
+        route = "spatial-inference" if spatial_update else "assistant"
+        body = (
+            {"context": context, "scope": self.hint_scope_value}
+            if spatial_update
+            else {
+                "message": message,
+                "context": context,
+                "conversation_id": self.conversation_id,
+            }
         )
+        self.run(
+            lambda: self.request(f"/api/projects/{self.project_id}/{route}", body), self.replied
+        )
+
+    def selected_hint(self):
+        return slicer.mrmlScene.GetNodeByID(slicer.modules.markups.logic().GetActiveListID())
+
+    def select_hint(self, node):
+        spatial_hints.observe_selection(node)
+        slicer.modules.markups.logic().SetActiveListID(node)
+
+    def set_interaction_target(self, text):
+        target = str(text).strip()
+        if target != self.interaction_target:
+            spatial_hints.cancel_placement(self)
+            self.interaction_target = target
+        spatial_hints.show_target(self, target)
+        self.set_busy(bool(self.future or self.job_id))
+
+    def select_slice_view(self, name):
+        self.slice_view = name
+        self.views.setToolTip("Slice view: " + name)
+        color = {"Red": "#e74c3c", "Yellow": "#e2bd2a", "Green": "#33a86b"}[name]
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">'
+            '<path fill="none" stroke="' + color + '" stroke-width="1.8" stroke-linejoin="round" '
+            'd="M4 7l8-4 8 4-8 4Z M4 12l8 4 8-4 M4 17l8 4 8-4"/></svg>'
+        )
+        pixmap = qt.QPixmap()
+        pixmap.loadFromData(qt.QByteArray(svg), "SVG")
+        self.views.setIcon(qt.QIcon(pixmap))
+        for action in self.view_menu.actions():
+            action.setChecked(action.data() == name)
+        if hasattr(self, "interaction_mode") and hasattr(self, "hint_buttons"):
+            spatial_hints.cancel_placement(self)
+
+    def select_interaction_model(self, *args):
+        if not self.models.currentData:
+            index = self.models.findData(getattr(self, "hint_model_id", None))
+            if index >= 0:
+                self.models.blockSignals(True)
+                self.models.setCurrentIndex(index)
+                self.models.blockSignals(False)
+            return
+        spatial_hints.cancel_placement(self)
+        self.configure_interaction()
+        self.hint_panel.setVisible(bool(self.models.currentData))
+        spatial_hints.show_target(
+            self, self.interaction_target if self.hint_specification else None
+        )
+
+    def hint_icon(self, name, accent=False):
+        paths = json.loads((Path(__file__).parent / "interaction-icons.json").read_text())
+        icon = qt.QIcon()
+        for state, color in (
+            (
+                qt.QIcon.Off,
+                "#ffffff"
+                if accent
+                else self.hint_panel.palette.color(qt.QPalette.WindowText).name(),
+            ),
+            (qt.QIcon.On, "#176b86"),
+        ):
+            svg = (
+                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" '
+                'viewBox="0 0 24 24"><path fill="'
+                + (color if name == "update" else "none")
+                + '" stroke="'
+                + color
+                + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="'
+                + paths[name]
+                + '"/></svg>'
+            )
+            pixmap = qt.QPixmap()
+            pixmap.loadFromData(qt.QByteArray(svg), "SVG")
+            icon.addPixmap(pixmap, qt.QIcon.Normal, state)
+        return icon
+
+    def hint_button(self, title, icon):
+        button = qt.QToolButton()
+        button.setAccessibleName(title)
+        button.setToolTip(title)
+        button.setIcon(self.hint_icon(icon))
+        button.setIconSize(qt.QSize(20, 20))
+        button.setFixedSize(28, 30)
+        return button
+
+    def set_hint_scope(self, value, run=False):
+        self.hint_scope_value = value
+        self.update_hints.setText("Update volume" if value == "full" else "Update slice")
+        for action in self.hint_scope_menu.actions():
+            action.setChecked(action.data() == value)
+        if run:
+            self.update_interaction()
+
+    def configure_interaction(self, *args):
+        model = next(
+            (
+                m
+                for m in getattr(self, "available_models", [])
+                if m["id"] == self.models.currentData
+            ),
+            None,
+        )
+        specification = model.get("interaction") if model else None
+        self.hint_panel.setToolTip(
+            (model["name"] if model else "Spatial prompts")
+            + " · "
+            + (self.interaction_target or "no target")
+        )
+        if model is None:
+            self.hint_specification = None
+            spatial_hints.cancel_placement(self)
+            self.hint_panel.hide()
+            return
+        inputs = specification["inputs"] if specification else {}
+        mode = self.interaction_mode
+        kind = "box" if mode == "box" else mode + "_point"
+        if mode != "navigate" and kind not in inputs:
+            spatial_hints.cancel_placement(self)
+        for kind, button in self.hint_buttons.items():
+            button.setVisible(kind in inputs)
+        self.hint_separator.setVisible(bool(inputs))
+        scopes = (
+            model.get("annotation_scopes")
+            or (specification.get("output_scopes") if specification else None)
+            or ["current_slice", "full"]
+        )
+        self.update_hints.setPopupMode(
+            qt.QToolButton.MenuButtonPopup if len(scopes) > 1 else qt.QToolButton.DelayedPopup
+        )
+        self.update_hints.setMenu(self.hint_scope_menu if len(scopes) > 1 else None)
+        self.hint_scope_menu.clear()
+        for value in scopes:
+            action = self.hint_scope_menu.addAction(
+                "Update volume" if value == "full" else "Update slice"
+            )
+            action.setData(value)
+            action.setCheckable(True)
+            action.triggered.connect(
+                lambda checked=False, v=value: self.set_hint_scope(v, run=True)
+            )
+        changed = getattr(self, "hint_model_id", None) != model["id"]
+        self.hint_model_id = model["id"]
+        self.set_hint_scope(
+            (scopes[-1] if specification else scopes[0])
+            if changed or self.hint_scope_value not in scopes
+            else self.hint_scope_value
+        )
+        self.hint_specification = specification
+        self.hint_target.blockSignals(True)
+        self.hint_target.clear()
+        self.hint_target.addItem("")
+        targets = model.get("supported_targets")
+        if targets is None:
+            targets = [
+                label["name"] for label in (self.project or {}).get("labels", []) if label["id"]
+            ]
+        self.hint_target.addItems(targets)
+        self.hint_target.setEditText(self.interaction_target)
+        self.hint_target.blockSignals(False)
+        self.hint_panel.show()
+        self.set_busy(bool(self.future or self.job_id))
+
+    def stop_interaction(self):
+        spatial_hints.cancel_placement(self)
+        if self.job_id:
+            self.cancel()
+
+    def update_interaction(self):
+        if self.future or self.job_id or self.loading:
+            return
+        try:
+            self.send_prompt(spatial_update=True)
+        except Exception as exc:
+            self.report_error(exc)
+
+    def place_hint(self, kind, positive):
+        try:
+            mode = "box" if kind == "box" else "positive" if positive else "negative"
+            if self.interaction_mode == mode:
+                spatial_hints.cancel_placement(self)
+            else:
+                spatial_hints.place(self, kind, positive)
+        except Exception as exc:
+            slicer.util.errorDisplay(str(exc))
 
     def current_slice(self):
         if not self.volume or self.volume.GetParentTransformNode():
             return None
         matrix = self.source_matrix(inverse=True)
-        view = slicer.app.layoutManager().sliceWidget(self.views.currentText).mrmlSliceNode()
+        view = slicer.app.layoutManager().sliceWidget(self.slice_view).mrmlSliceNode()
 
         def array(m):
             return np.array([[m.GetElement(i, j) for j in range(4)] for i in range(4)])
@@ -683,8 +1012,11 @@ class AnnotationDock:
         return None
 
     def replied(self, reply):
-        self.conversation_id = reply.get("conversation_id")
-        if reply["data"].get("model_id"):
+        self.conversation_id = reply.get("conversation_id") or self.conversation_id
+        if (
+            reply["data"].get("model_id")
+            and reply["data"].get("client_action") != "set_interaction_mode"
+        ):
             index = self.models.findData(reply["data"]["model_id"])
             if index >= 0:
                 self.models.setCurrentIndex(index)
@@ -712,6 +1044,30 @@ class AnnotationDock:
                 self.append_message("Assistant", text)
             else:
                 raise RuntimeError("This viewer operation is not supported.")
+            return
+        if reply["data"].get("client_action") == "set_interaction_mode":
+            action = reply["data"]
+            self.checked_edit_mask(action)
+            spatial_hints.check(self, action["expected"], action["slice"])
+            self.interaction_target = action["target"]
+            self.hint_target.blockSignals(True)
+            self.hint_target.setEditText(self.interaction_target)
+            self.hint_target.blockSignals(False)
+            if action.get("model_id"):
+                index = self.models.findData(action["model_id"])
+                if index < 0:
+                    raise RuntimeError("Refresh the viewer to load the selected model.")
+                self.models.setCurrentIndex(index)
+                self.configure_interaction()
+            if action["mode"] == "navigate":
+                self.stop_interaction()
+            else:
+                spatial_hints.place(
+                    self,
+                    "box" if action["mode"] == "box" else "point",
+                    action["mode"] != "negative",
+                )
+            self.append_message("Assistant", reply["message"])
             return
         if reply["data"].get("client_action") == "edit_spatial_prompts":
             text = spatial_hints.apply(self, reply["data"])
@@ -853,7 +1209,7 @@ class AnnotationDock:
             node.GetDisplayNode().SetSelectedColor(1.0, 0.78, 0.34)
             node.GetDisplayNode().SetPropertiesLabelVisibility(False)
             self.region_nodes.append(node)
-            self.spatial_hint.setCurrentNode(node)
+            self.select_hint(node)
             text = (
                 f"Added an editable {region['target']} box on the requested slice. "
                 "Drag its corners to adjust it. Box edits stay in the Slicer scene; "
@@ -890,7 +1246,7 @@ class AnnotationDock:
             node.GetDisplayNode().SetPropertiesLabelVisibility(False)
             node.GetDisplayNode().SetHandlesInteractive(True)
             self.region_nodes.append(node)
-            self.spatial_hint.setCurrentNode(node)
+            self.select_hint(node)
             text = (
                 f"Added an editable {region['target']} ROI spanning slices {first}–{last} "
                 f"(numbered from 1). Target detected on {region['detected_slices']} of "
@@ -900,11 +1256,11 @@ class AnnotationDock:
         self.append_message("Assistant", text)
 
     def capture_spatial_hint(self):
-        node = self.spatial_hint.currentNode()
+        node = self.selected_hint()
         if self.volume.GetParentTransformNode() or node.GetParentTransformNode():
-            raise ValueError("Harden volume and markup transforms before using a SAM hint.")
+            raise ValueError("Harden volume and markup transforms before using a spatial hint.")
         if node.GetAttribute("MONAILabel.AssetID") not in (None, self.asset["id"]):
-            raise ValueError("Select a SAM hint belonging to the current sample.")
+            raise ValueError("Select a spatial hint belonging to the current sample.")
         matrix = self.source_matrix(inverse=True)
         if node.IsA("vtkMRMLMarkupsROINode"):
             transform = node.GetObjectToWorldMatrix()
@@ -919,14 +1275,16 @@ class AnnotationDock:
             ]
         else:
             points = []
+            point_indices = []
             for index in range(node.GetNumberOfControlPoints()):
                 if node.GetNthControlPointPositionStatus(index) != node.PositionDefined:
                     continue
                 position = [0.0, 0.0, 0.0]
                 node.GetNthControlPointPositionWorld(index, position)
                 points.append(list(matrix.MultiplyPoint(position + [1]))[:3])
+                point_indices.append(index)
         if not points:
-            raise ValueError("Place a point or box before using SAM.")
+            raise ValueError("Place a point or box before running segmentation.")
         shape = np.array(self.asset["spatial_shape"])
         coords = np.clip(np.asarray(points), 0, shape - 1)
         if node.IsA("vtkMRMLMarkupsFiducialNode"):
@@ -938,7 +1296,7 @@ class AnnotationDock:
                         .lower()
                         .startswith(("-", "negative")),
                     }
-                    for i, point in enumerate(coords)
+                    for i, point in zip(point_indices, coords, strict=True)
                 ]
             }
         return {"box": [coords.min(axis=0).tolist(), coords.max(axis=0).tolist()]}
@@ -1006,10 +1364,10 @@ class AnnotationDock:
         if proposal.get("spatial_prompt") and getattr(self, "before_slice", None):
             spatial_hints.check(self, self.before_spatial, self.before_slice)
             if getattr(self, "before_legacy_hint", None) and (
-                self.spatial_hint.currentNode() != self.before_hint_node
+                self.selected_hint() != self.before_hint_node
                 or self.capture_spatial_hint() != self.before_legacy_hint
             ):
-                raise RuntimeError("The selected SAM hint changed during inference. Retry it.")
+                raise RuntimeError("The selected spatial hint changed during inference. Retry it.")
         signature = hashlib.sha256(self.current_mask().tobytes()).hexdigest()
         if signature != self.before_prediction:
             raise RuntimeError(

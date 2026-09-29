@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Dataset catalog and import choices, independent of download or storage mechanisms."""
 
 from typing import Any, Literal
@@ -10,11 +21,15 @@ from monailabel.core.models import Contract, Split
 class DatasetTemplate(Contract):
     id: str
     name: str
-    category: Literal["Radiology", "Pathology", "Video"]
+    category: Literal["Radiology", "Pathology", "Endoscopy", "Video"]
     kind: Literal["image", "video"] = "image"
     description: str
     source_url: str
+    labels_url: str = ""
     license: str
+    license_url: str = ""
+    citation: str = ""
+    grouping: str = ""
     download_bytes: int = 0
     has_masks: bool = False
     targets: list[str] = Field(default_factory=list)

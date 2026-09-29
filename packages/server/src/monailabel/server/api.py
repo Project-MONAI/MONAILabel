@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Versioned HTTP transport. Business rules live in application services."""
 
 import gzip
@@ -8,10 +19,11 @@ from typing import Annotated
 
 import numpy as np
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import Field, JsonValue, ValidationError
 from starlette.concurrency import run_in_threadpool
 
+from monailabel.core import __version__
 from monailabel.core.dataset_templates import DatasetTemplate, DatasetTemplateImport
 from monailabel.core.errors import Conflict, DomainError
 from monailabel.core.models import (
@@ -62,9 +74,13 @@ from monailabel.core.models import (
     TrainingReport,
     TrainingSource,
     TrainRequest,
+    ViewerInferenceRequest,
 )
 from monailabel.server.access import Principal, Service, authorize
+from monailabel.server.assistant_tools.base import ToolContext
+from monailabel.server.assistant_tools.interaction import update as update_viewer
 from monailabel.server.data import decode_image, nifti_bytes
+from monailabel.server.dataset_exports import ExportRequest
 from monailabel.server.demo import create_demo
 from monailabel.server.training_samples import training_sources
 from monailabel.server.uploads import read_upload
@@ -80,7 +96,7 @@ def classification_proposal(classification_id: str, service: Service) -> Classif
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "version": "0.1.0", "mode": "local"}
+    return {"status": "ok", "version": __version__, "mode": "local"}
 
 
 @router.post("/projects", status_code=201)
@@ -491,9 +507,38 @@ def assistant(
     return service.assistants.run(project_id, body, user)
 
 
+@router.post("/projects/{project_id}/spatial-inference", include_in_schema=False)
+@router.post("/projects/{project_id}/viewer-inference")
+def viewer_inference(
+    project_id: str, body: ViewerInferenceRequest, service: Service, user: Principal
+) -> AssistantReply:
+    return update_viewer(
+        ToolContext(
+            service, project_id, user, body.context, "Update the selected target segmentation."
+        ),
+        body.scope,
+    )
+
+
 @router.get("/projects/{project_id}/jobs")
 def jobs(project_id: str, service: Service) -> list[Job]:
     return service.store.list(Job, project_id)
+
+
+@router.post("/projects/{project_id}/exports", status_code=202)
+def export_dataset(
+    project_id: str,
+    body: ExportRequest,
+    service: Service,
+    idempotency_key: Annotated[str | None, Header()] = None,
+) -> Job:
+    return service.dataset_exports.start(project_id, body, idempotency_key)
+
+
+@router.get("/jobs/{job_id}/export")
+def download_export(job_id: str, service: Service) -> FileResponse:
+    path, filename = service.dataset_exports.download(job_id)
+    return FileResponse(path, filename=filename, media_type="application/zip")
 
 
 @router.get("/jobs/{job_id}")

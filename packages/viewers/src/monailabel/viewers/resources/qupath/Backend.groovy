@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package org.monailabel.qupath
 
 import com.google.gson.GsonBuilder
@@ -8,19 +21,37 @@ import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.security.KeyStore
+import java.security.cert.CertificateFactory
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
 
 /** Session credentials are read once from a private file and never logged. */
 class Backend {
     static final json = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create()
     final Map settings
-    final HttpClient http = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
-        .connectTimeout(Duration.ofSeconds(20)).build()
+    final HttpClient http
     Backend() {
         def location = System.getenv('MONAILABEL_VIEWER_SESSION')
         if (!location) throw new IllegalStateException('Open a sample in QuPath from the MONAI Label web page.')
         def file = Path.of(location)
         settings = (Map)json.fromJson(Files.readString(file), Map)
         Files.delete(file)
+        def builder = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(20))
+        if (settings.ca_certificate) {
+            def certificate = CertificateFactory.getInstance('X.509').generateCertificate(
+                new ByteArrayInputStream(settings.ca_certificate.getBytes('UTF-8')))
+            def store = KeyStore.getInstance(KeyStore.getDefaultType())
+            store.load(null, null)
+            store.setCertificateEntry('monailabel', certificate)
+            def trust = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+            trust.init(store)
+            def context = SSLContext.getInstance('TLS')
+            context.init(null, trust.trustManagers, null)
+            builder.sslContext(context)
+        }
+        http = builder.build()
     }
     Object request(String path, Object body = null, boolean binary = false, Map extraHeaders = [:]) {
         def builder = HttpRequest.newBuilder(URI.create(settings.url + path))

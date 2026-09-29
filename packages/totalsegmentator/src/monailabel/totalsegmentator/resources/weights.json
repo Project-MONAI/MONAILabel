@@ -1,0 +1,36 @@
+{
+  "total": {
+    "task": "total",
+    "version": "v2.0.0-weights",
+    "folder": "Dataset297_TotalSegmentator_total_3mm_1559subj",
+    "url": "https://github.com/wasserth/TotalSegmentator/releases/download/v2.0.0-weights/Dataset297_TotalSegmentator_total_3mm_1559subj.zip",
+    "bytes": 135386075,
+    "sha256": "0baa2c8de2975600eb31801dd5c1825cd2b356f794498659cf3348714c073394",
+    "files": {
+      "Dataset297_TotalSegmentator_total_3mm_1559subj/.DS_Store": "51c0efba9ce60b004a2e65e37ff39395ed9771a5bde878a37fa9aebcc6b059f5",
+      "Dataset297_TotalSegmentator_total_3mm_1559subj/._.DS_Store": "e15affcd4ff2dea5d20b1474c37374e5a318e29f0cae477580b0d5438b082f64",
+      "Dataset297_TotalSegmentator_total_3mm_1559subj/nnUNetTrainer_4000epochs_NoMirroring__nnUNetPlans__3d_fullres/fold_0/debug.json": "43567a34b1bc755d66ce2cbbf171f1d18d0da44067e7c38810774da781ddd7f4",
+      "Dataset297_TotalSegmentator_total_3mm_1559subj/nnUNetTrainer_4000epochs_NoMirroring__nnUNetPlans__3d_fullres/fold_0/progress.png": "69eb4c93cd35411d39763d0759e29cbf83cfa1fca880c5c0de988f1caea1199e",
+      "Dataset297_TotalSegmentator_total_3mm_1559subj/nnUNetTrainer_4000epochs_NoMirroring__nnUNetPlans__3d_fullres/fold_0/checkpoint_final.pth": "1e38e40356adc2706a662e365405a97f862d62a7da65f6bf81d025aee1b979ac",
+      "Dataset297_TotalSegmentator_total_3mm_1559subj/nnUNetTrainer_4000epochs_NoMirroring__nnUNetPlans__3d_fullres/plans.json": "d1cb3c15f53dc36fdb618e0f9082573d1f50b74a9b5fa73094ac8680845839f1",
+      "Dataset297_TotalSegmentator_total_3mm_1559subj/nnUNetTrainer_4000epochs_NoMirroring__nnUNetPlans__3d_fullres/dataset.json": "e804e08ad8912e3a6f541741c8c78799d75acbd3f4f3f18ff5f211bbd3da961a",
+      "Dataset297_TotalSegmentator_total_3mm_1559subj/nnUNetTrainer_4000epochs_NoMirroring__nnUNetPlans__3d_fullres/dataset_fingerprint.json": "f1336cd0df44e0eeecfa69143226c05b246c550e690b7b12929f65ca9843260f"
+    }
+  },
+  "total_mr": {
+    "task": "total_mr",
+    "version": "v2.5.0-weights",
+    "folder": "Dataset852_TotalSegMRI_total_3mm_1088subj",
+    "url": "https://github.com/wasserth/TotalSegmentator/releases/download/v2.5.0-weights/Dataset852_TotalSegMRI_total_3mm_1088subj.zip",
+    "bytes": 126399352,
+    "sha256": "6d0d0691e5b09c9faf3a70198ce0d0ccbb8ee1271a72af8f9452565c8df6461b",
+    "files": {
+      "Dataset852_TotalSegMRI_total_3mm_1088subj/nnUNetTrainer_2000epochs_NoMirroring__nnUNetPlans__3d_fullres/dataset.json": "bffca65d47dba5c992162f1d2d06cb6f6f3e1b5b433162c034f5d5c834fc9e05",
+      "Dataset852_TotalSegMRI_total_3mm_1088subj/nnUNetTrainer_2000epochs_NoMirroring__nnUNetPlans__3d_fullres/plans.json": "7aecce88df8c6d25164a7c9995868cc82bbee03942e9be165f6a658def9984c1",
+      "Dataset852_TotalSegMRI_total_3mm_1088subj/nnUNetTrainer_2000epochs_NoMirroring__nnUNetPlans__3d_fullres/dataset_fingerprint.json": "caa0a0fed7cf2c55a49b00ef4ec2a9040bf10e15e30e04e832d305f23af67c7e",
+      "Dataset852_TotalSegMRI_total_3mm_1088subj/nnUNetTrainer_2000epochs_NoMirroring__nnUNetPlans__3d_fullres/fold_0/debug.json": "b7f9137666a937125223166e4240f5710bdceacce9cc82cbbd98833eaa656ac3",
+      "Dataset852_TotalSegMRI_total_3mm_1088subj/nnUNetTrainer_2000epochs_NoMirroring__nnUNetPlans__3d_fullres/fold_0/progress.png": "7fc40b10f6600bb5db34bbbb1880dd1246a2dbb7b3c1669363ae954edefd6789",
+      "Dataset852_TotalSegMRI_total_3mm_1088subj/nnUNetTrainer_2000epochs_NoMirroring__nnUNetPlans__3d_fullres/fold_0/checkpoint_final.pth": "8357596afa397d8ac128cf7121b5cc882a140f47d6b7d8740b01a9d18c037d8d"
+    }
+  }
+}

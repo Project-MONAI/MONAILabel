@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Immutable training inputs, independent evaluation, and scoped model promotion."""
 
 from pydantic import JsonValue
@@ -27,12 +38,13 @@ from monailabel.core.models import (
 )
 from monailabel.core.ports import TrainingProgress, TrainingVolume, Volume, VolumeTrainer
 from monailabel.core.video import VideoAsset
-from monailabel.providers.vista3d import mapping as vista_mapping
 from monailabel.server.data import Datasets
 from monailabel.server.deletion import Deletion
 from monailabel.server.evaluation_sets import EvaluationSets, check_training
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.models import Models
+from monailabel.server.models.anatomy import ANATOMY_MODELS
+from monailabel.server.models.anatomy import mapping as anatomy_mapping
 from monailabel.server.scoring import ValidationScorer
 from monailabel.server.storage import Artifacts, Session, Store
 from monailabel.server.training_reports import TrainingReports
@@ -64,7 +76,8 @@ class Learning:
         )
         inherited = bool(
             parent
-            and parent.provider == request.recipe == "vista3d"
+            and parent.provider == request.recipe
+            and request.recipe in ANATOMY_MODELS
             and (parent.read_only or parent.inherit_targets)
         )
         if request.inherit_targets and not inherited:
@@ -77,7 +90,11 @@ class Learning:
             raise DomainError("Choose project labels, including background once.")
         if len(ids) < 2 and not inherited:
             raise DomainError("Choose at least one foreground target for this training setup.")
+        if request.recipe in ANATOMY_MODELS - {"vista3d"} and parent is None:
+            raise DomainError("Select TotalSegmentator base weights for fine-tuning.")
         settings = dict(request.config)
+        if request.recipe == "nnunet-v2" and parent:
+            settings = parent.config | settings
         if request.recipe == "monai-unet":
             if request.initial_model_id:
                 parent = self.models.get(project_id, request.initial_model_id)
@@ -97,13 +114,13 @@ class Learning:
                     dims, channels = layouts.pop()
                     settings.setdefault("spatial_dims", dims)
                     settings.setdefault("in_channels", channels)
-        if request.recipe == "vista3d":
+        if request.recipe in ANATOMY_MODELS:
             if parent:
                 settings = parent.config | settings
             settings["label_mapping"] = {
                 str(key): value
-                for key, value in vista_mapping(
-                    [label for label in project.labels if label.id in ids]
+                for key, value in anatomy_mapping(
+                    request.recipe, [label for label in project.labels if label.id in ids]
                 ).items()
             }
         config = self.recipes.validate(request.recipe, settings)
@@ -225,7 +242,7 @@ class Learning:
             raise DomainError(
                 "Choose annotated organs for this training run, including background."
             )
-        if learner.recipe != "vista3d":
+        if learner.recipe not in ANATOMY_MODELS:
             if label_ids != learner.label_ids:
                 raise DomainError(
                     "This network requires the training setup's fixed target mapping."
@@ -236,8 +253,8 @@ class Learning:
         settings: dict[str, JsonValue] = learner.config | {
             "label_mapping": {
                 str(key): value
-                for key, value in vista_mapping(
-                    [label for label in project.labels if label.id in label_ids]
+                for key, value in anatomy_mapping(
+                    learner.recipe, [label for label in project.labels if label.id in label_ids]
                 ).items()
             }
         }
@@ -465,18 +482,18 @@ class Learning:
         parent = None
         if request.parent_model_id:
             parent = self.models.get(project.id, request.parent_model_id)
-            base_vista = parent.provider == "vista3d" and parent.read_only
-            inherited_vista = (
-                parent.provider == "vista3d"
+            pretrained_base = parent.provider in ANATOMY_MODELS and parent.read_only
+            inherited_targets = (
+                parent.provider in ANATOMY_MODELS
                 and parent.inherit_targets
                 and request.mode == TrainingMode.FINE_TUNE
             )
             if parent.provider != request.recipe or (
-                not (base_vista or inherited_vista) and parent.label_ids != label_ids
+                not (pretrained_base or inherited_targets) and parent.label_ids != label_ids
             ):
                 raise DomainError("Parent must use this recipe and the same ordered label mapping.")
-            if base_vista and request.mode != TrainingMode.FINE_TUNE:
-                raise DomainError("Fine-tune the read-only VISTA3D base into a new project model.")
+            if pretrained_base and request.mode != TrainingMode.FINE_TUNE:
+                raise DomainError("Fine-tune the read-only base into a new project model.")
             for sample in samples:
                 if (
                     request.recipe == "pixel-gaussian"
@@ -509,14 +526,18 @@ class Learning:
             if config:
                 context.log(
                     f"{config.get('epochs')} epochs × {config.get('steps_per_epoch')} steps · "
-                    f"batch size {config.get('batch_size', 1)} · "
-                    f"learning rate {config.get('learning_rate')}."
+                    + (
+                        "automatic batch and patch sizes · "
+                        if request.recipe == "nnunet-v2"
+                        else f"batch size {config.get('batch_size', 1)} · "
+                    )
+                    + f"learning rate {config.get('learning_rate')}."
                 )
             progress = TrainingProgress(lambda value: context.progress(0.8 * value), context.log)
             context.log("Preparing training data and model weights.")
             state = self.artifacts.json(parent.state_key) if parent and parent.state_key else None
-            if parent and parent.provider == "vista3d" and parent.read_only:
-                state = {"format": "vista3d-base-v1"}
+            if parent and parent.provider in ANATOMY_MODELS and parent.read_only:
+                state = {"format": f"{parent.provider}-base-v1"}
             trainer = self.recipes.trainer(request.recipe, config)
             if isinstance(trainer, VolumeTrainer):
                 volumes = []
@@ -560,7 +581,7 @@ class Learning:
                 | {s.asset_id: s.revision for s in samples},
                 mode=request.mode,
                 inherit_targets=bool(
-                    request.recipe == "vista3d"
+                    request.recipe in ANATOMY_MODELS
                     and parent
                     and (parent.read_only or parent.inherit_targets)
                 ),

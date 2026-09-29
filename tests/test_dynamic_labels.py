@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import gzip
 
 import nibabel as nib
@@ -69,7 +80,7 @@ def test_empty_project_adds_targets_without_changing_existing_masks_or_models(cl
     assert current["defaults"] == {"1": model["id"], "2": model["id"]}
     assert client.get(prefix + "/models")[0]["label_ids"] == [0]
     service = http.app.state.services
-    reused, ids = resolve_labels(service.store, project["id"], ["SPLEEN"], model["id"])
+    reused, ids = resolve_labels(service.store, project["id"], ["SPLEEN", " spleen "], model["id"])
     assert ids == [1] and reused.version == current["version"]
     assert (
         client.request(
@@ -117,3 +128,25 @@ def test_label_scoped_snapshot_keeps_existing_accepted_work_eligible(client, htt
     scoped = service.datasets.snapshot(project_id, [0, 1, 2])
     assert scoped.samples == old.samples and scoped.labels == old.labels
     assert service.store.get(Snapshot, old.id) == old
+
+
+def test_duplicate_new_targets_preserve_unique_project_labels(client, http):
+    project = client.post("/api/projects", {"name": "Unique targets"})
+    model = client.post(
+        f"/api/projects/{project['id']}/models",
+        {
+            "name": "Promptable",
+            "provider": "openai-chat-polygons",
+            "config": {"url": "https://unused.test/chat/completions", "model": "fixture"},
+        },
+    )
+    store = http.app.state.services.store
+    updated, identifiers = resolve_labels(
+        store, project["id"], ["Kidney", "kidney", " Kidney ", "Liver"], model["id"]
+    )
+    assert identifiers == [1, 2]
+    assert [label.name for label in updated.labels] == ["Background", "Kidney", "Liver"]
+    assert store.get(Project, project["id"]) == updated
+    with pytest.raises(DomainError, match="Structure names"):
+        resolve_labels(store, project["id"], ["Spleen", " "], model["id"])
+    assert store.get(Project, project["id"]) == updated

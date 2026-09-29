@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Versioned data contracts shared by the API, workers, and clients."""
 
 from datetime import UTC, datetime
@@ -134,6 +145,28 @@ class DicomSeries(Record):
     source_group_id: str | None = None
 
 
+InteractionInput = Literal["positive_point", "negative_point", "box"]
+
+
+class InteractionCapabilities(Contract):
+    """Provider-declared input geometry and supported annotation scopes."""
+
+    inputs: dict[InteractionInput, Literal["slice", "volume"]]
+    output_scopes: list[Literal["current_slice", "full"]] = Field(min_length=1, max_length=2)
+    video_scopes: list[Literal["frame", "range"]] = Field(default_factory=list)
+    prompt_scope: Literal["slice", "volume"] = "slice"
+    volume_only: bool = False
+    intensity_window: bool = True
+
+    @model_validator(mode="after")
+    def usable(self) -> Self:
+        if not ({"positive_point", "box"} & self.inputs.keys()):
+            raise ValueError("An interactive model needs a positive point or box input.")
+        if len(set(self.output_scopes)) != len(self.output_scopes):
+            raise ValueError("Annotation scopes must be unique.")
+        return self
+
+
 class ModelRecord(Record):
     project_id: str | None = None
     name: str
@@ -153,6 +186,12 @@ class ModelRecord(Record):
     read_only: bool = False
     inherit_targets: bool = False
     unreviewed_training: bool = False
+    catalog_group: str = "Other models"
+    supported_targets: list[str] | None = None
+    interaction: InteractionCapabilities | None = None
+    annotation_scopes: list[Literal["current_slice", "full"]] = Field(
+        default=["current_slice", "full"], min_length=1, max_length=2
+    )
     version: int = 0
     archived: bool = False
 
@@ -230,7 +269,9 @@ class SpatialObject(Contract):
     id: str = Field(min_length=1, max_length=160)
     target: str = Field(default="", max_length=80)
     kind: Literal["box", "point"]
-    coordinates: list[list[Annotated[float, Field(allow_inf_nan=False, ge=0)]]] = Field(
+    # Native dragging can leave the image. Keep these hints addressable for removal;
+    # SpatialPrompt and provider validation enforce inference bounds separately.
+    coordinates: list[list[Annotated[float, Field(allow_inf_nan=False)]]] = Field(
         min_length=1, max_length=2
     )
     positive: bool = True
@@ -238,8 +279,11 @@ class SpatialObject(Contract):
 
     @model_validator(mode="after")
     def geometry(self) -> Self:
-        if any(len(point) != 3 for point in self.coordinates):
-            raise ValueError("Viewer hints require source IJK coordinates.")
+        if len({len(point) for point in self.coordinates}) != 1 or len(self.coordinates[0]) not in {
+            2,
+            3,
+        }:
+            raise ValueError("Viewer hints require source row/column or IJK coordinates.")
         if len(self.coordinates) != (2 if self.kind == "box" else 1):
             raise ValueError("Provide one point or two box corners.")
         if self.kind == "box" and any(a > b for a, b in zip(*self.coordinates, strict=True)):
@@ -247,12 +291,27 @@ class SpatialObject(Contract):
         return self
 
 
+InteractionMode = Literal["positive", "negative", "box", "navigate"]
+
+
+class SpatialInteractionAction(Contract):
+    client_action: Literal["set_interaction_mode"] = "set_interaction_mode"
+    project_id: str
+    asset_id: str
+    base_revision: int = Field(ge=0)
+    slice: SliceScope | None
+    expected: list[SpatialObject] = Field(max_length=128)
+    mode: InteractionMode
+    target: str = Field(default="", max_length=80)
+    model_id: str | None = None
+
+
 class SpatialEditAction(Contract):
     client_action: Literal["edit_spatial_prompts"] = "edit_spatial_prompts"
     project_id: str
     asset_id: str
     base_revision: int = Field(ge=0)
-    slice: SliceScope
+    slice: SliceScope | None
     expected: list[SpatialObject] = Field(max_length=128)
     upsert: list[SpatialObject] = Field(default_factory=list, max_length=128)
     remove: list[str] = Field(default_factory=list, max_length=128)
@@ -725,11 +784,14 @@ class WorkItem(Contract):
 
 
 class VideoPrompt(Contract):
+    hint_revision: str | None = Field(default=None, max_length=64)
+    object_key: str | None = Field(default=None, max_length=100)
     video_id: str
     editor_id: str
     frame: int = Field(ge=0)
     client_id: int | None = Field(default=None, ge=0)
     label_id: int | None = Field(default=None, gt=0, le=255)
+    available_label_ids: list[int] | None = Field(default=None, max_length=31)
     box: list[float] | None = Field(default=None, min_length=4, max_length=4)
     points: list[float] | None = Field(default=None, min_length=6, max_length=4096)
     occluded: bool = False
@@ -752,9 +814,16 @@ class AssistantContext(Contract):
     image_tiling: ImageTiling | None = None
     spatial_prompt: SpatialPrompt | None = None
     spatial_objects: list[SpatialObject] = Field(default_factory=list, max_length=128)
+    interaction_mode: InteractionMode = "navigate"
+    interaction_target: str = Field(default="", max_length=80)
     label_ids: list[int] | None = None
     classification: ClassificationRequest | None = None
     base_revision: int | None = Field(default=None, ge=0)
+
+
+class ViewerInferenceRequest(Contract):
+    context: AssistantContext
+    scope: Literal["full", "current_slice", "selected_region"] = "full"
 
 
 class AssistantRequest(Contract):

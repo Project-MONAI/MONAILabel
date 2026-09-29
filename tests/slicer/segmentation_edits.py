@@ -1,8 +1,20 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Run inside a disposable Slicer process with --python-script, without a server."""
 
 import ast
 import hashlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import slicer
@@ -78,6 +90,21 @@ def run():
             np.testing.assert_array_equal(dock.current_mask(), expected)
             dock.editor.undo()
         print("SLICER_SCOPED_CLEAR_AND_NATIVE_UNDO_OK", flush=True)
+        hints = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode")
+        for point in [(1, 2, 3), (4, 5, 6), (7, 8, 9)]:
+            hints.AddControlPoint(*point)
+        hints.SetNthControlPointLabel(0, "positive")
+        hints.UnsetNthControlPointPosition(0)
+        hints.SetNthControlPointLabel(1, "negative spleen")
+        hints.SetNthControlPointLabel(2, "positive spleen")
+        dock.spatial_hint = SimpleNamespace(currentNode=lambda: hints)
+        assert dock.capture_spatial_hint() == {
+            "points": [
+                {"coordinates": [4.0, 5.0, 6.0], "positive": False},
+                {"coordinates": [7.0, 8.0, 9.0], "positive": True},
+            ]
+        }
+        print("SLICER_UNDEFINED_HINT_PRESERVES_POINT_LABELS_OK", flush=True)
         slicer.util.exit(0)
     except Exception:
         import traceback

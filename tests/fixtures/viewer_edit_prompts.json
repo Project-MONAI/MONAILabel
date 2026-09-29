@@ -1,29 +1,47 @@
 [
   {
     "context": "cvat",
-    "context_overrides": { "model_id": "sol" },
+    "context_overrides": {
+      "model_id": "sol"
+    },
     "prompt": "segment tool in this frame using GPT astra",
     "tool": "find_and_track_video_tool",
-    "arguments": { "output": "polygon", "scope": "current_frame", "model_name": "GPT-6 Astra" }
+    "arguments": {
+      "output": "polygon",
+      "scope": "current_frame",
+      "model_name": "GPT-6 Astra"
+    }
   },
   {
     "context": "slicer",
     "prompt": "Clear the current slice for spleen.",
     "tool": "clear_segments",
-    "arguments": { "targets": ["spleen"], "scope": "current_slice" }
+    "arguments": {
+      "targets": [
+        "spleen"
+      ],
+      "scope": "current_slice"
+    }
   },
   {
     "context": "ohif",
     "prompt": "Clear the spleen annotation on the current slice.",
     "tool": "clear_segments",
-    "arguments": { "targets": ["spleen"], "scope": "current_slice" }
+    "arguments": {
+      "targets": [
+        "spleen"
+      ],
+      "scope": "current_slice"
+    }
   },
   {
     "context": "ohif",
     "prompt": "Annotate the spleen on the current slice using GPT Astra.",
     "tool": "annotate",
     "arguments": {
-      "targets": ["spleen"],
+      "targets": [
+        "spleen"
+      ],
       "scope": "current_slice",
       "model_id": "astra"
     }
@@ -32,42 +50,253 @@
     "context": "qupath",
     "prompt": "Clear all annotations in the selected region.",
     "tool": "clear_segments",
-    "arguments": { "all_targets": true, "scope": "selected_region" }
+    "arguments": {
+      "all_targets": true,
+      "scope": "selected_region"
+    }
   },
   {
     "context": "qupath",
     "prompt": "Clear the nuclei in this region.",
     "tool": "clear_segments",
-    "arguments": { "targets": ["nuclei"], "scope": "selected_region" }
+    "arguments": {
+      "targets": [
+        "nuclei"
+      ],
+      "scope": "selected_region"
+    }
   },
   {
     "context": "qupath",
     "prompt": "Undo that.",
     "tool": "viewer_edit",
-    "arguments": { "operation": "undo" }
+    "arguments": {
+      "operation": "undo"
+    }
   },
   {
     "context": "cvat",
     "prompt": "Clear the snare annotations for 16 frames.",
     "tool": "clear_video_annotations",
-    "arguments": { "targets": ["snare"], "scope": "frames", "frame_count": 16 }
+    "arguments": {
+      "targets": [
+        "snare"
+      ],
+      "scope": "frames",
+      "frame_count": 16
+    }
   },
   {
     "context": "cvat",
     "prompt": "Clear all annotations on this frame.",
     "tool": "clear_video_annotations",
-    "arguments": { "all_targets": true, "scope": "current_frame" }
+    "arguments": {
+      "all_targets": true,
+      "scope": "current_frame"
+    }
   },
   {
     "context": "cvat",
     "prompt": "Clear all annotations in the whole video.",
     "tool": "clear_video_annotations",
-    "arguments": { "all_targets": true, "scope": "whole_video" }
+    "arguments": {
+      "all_targets": true,
+      "scope": "whole_video"
+    }
   },
   {
     "context": "cvat",
     "prompt": "Undo that.",
     "tool": "viewer_edit",
-    "arguments": { "operation": "undo" }
+    "arguments": {
+      "operation": "undo"
+    }
+  },
+  {
+    "id": "start-nninteractive",
+    "context": "slicer",
+    "context_overrides": {
+      "model_id": "nninteractive",
+      "interaction_mode": "positive",
+      "interaction_target": "Spleen"
+    },
+    "prompt": "Start nnInteractive for spleen.",
+    "tool": "set_interaction_mode",
+    "arguments": {
+      "model_name": "nnInteractive",
+      "target": "Spleen",
+      "mode": "positive"
+    }
+  },
+  {
+    "id": "negative-mode",
+    "context": "ohif",
+    "context_overrides": {
+      "model_id": "nninteractive",
+      "interaction_mode": "positive",
+      "interaction_target": "Spleen"
+    },
+    "prompt": "Switch to negative points.",
+    "tool": "set_interaction_mode",
+    "arguments": {
+      "mode": "negative"
+    }
+  },
+  {
+    "id": "box-mode",
+    "context": "slicer",
+    "context_overrides": {
+      "model_id": "nninteractive",
+      "interaction_mode": "positive",
+      "interaction_target": "Spleen"
+    },
+    "prompt": "Draw a spleen box.",
+    "tool": "set_interaction_mode",
+    "arguments": {
+      "mode": "box",
+      "target": "Spleen"
+    }
+  },
+  {
+    "id": "stop-mode",
+    "context": "ohif",
+    "context_overrides": {
+      "model_id": "nninteractive",
+      "interaction_mode": "positive",
+      "interaction_target": "Spleen"
+    },
+    "prompt": "Stop interaction mode.",
+    "tool": "set_interaction_mode",
+    "arguments": {
+      "mode": "navigate"
+    }
+  },
+  {
+    "id": "clear-all-hints",
+    "context": "slicer",
+    "context_overrides": {
+      "model_id": "nninteractive",
+      "interaction_mode": "positive",
+      "interaction_target": "Spleen"
+    },
+    "prompt": "Clear all spatial hints.",
+    "tool": "edit_spatial_prompts",
+    "arguments": {
+      "operation": "clear",
+      "kind": "all",
+      "polarity": "all",
+      "scope": "full",
+      "all_targets": true
+    }
+  },
+  {
+    "id": "clear-negative-slice",
+    "context": "ohif",
+    "context_overrides": {
+      "model_id": "nninteractive",
+      "interaction_mode": "positive",
+      "interaction_target": "Spleen"
+    },
+    "prompt": "Clear negative points on this slice.",
+    "tool": "edit_spatial_prompts",
+    "arguments": {
+      "operation": "clear",
+      "kind": "point",
+      "polarity": "negative",
+      "scope": "current_slice",
+      "all_targets": true
+    }
+  },
+  {
+    "id": "clear-spleen-boxes",
+    "context": "slicer",
+    "context_overrides": {
+      "model_id": "nninteractive",
+      "interaction_mode": "positive",
+      "interaction_target": "Spleen"
+    },
+    "prompt": "Clear spleen boxes in the whole volume.",
+    "tool": "edit_spatial_prompts",
+    "arguments": {
+      "operation": "clear",
+      "kind": "box",
+      "polarity": "all",
+      "scope": "full",
+      "target": "Spleen"
+    }
+  },
+  {
+    "id": "clear-positive-volume",
+    "context": "ohif",
+    "context_overrides": {
+      "model_id": "nninteractive",
+      "interaction_mode": "positive",
+      "interaction_target": "Spleen"
+    },
+    "prompt": "Clear positive spleen points in the whole volume.",
+    "tool": "edit_spatial_prompts",
+    "arguments": {
+      "operation": "clear",
+      "kind": "point",
+      "polarity": "positive",
+      "scope": "full",
+      "target": "Spleen"
+    }
+  },
+  {
+    "id": "qupath-start-sam",
+    "context": "qupath",
+    "prompt": "Start SAM 2.1 for nuclei.",
+    "tool": "set_interaction_mode",
+    "arguments": {
+      "model_name": "SAM 2.1",
+      "target": "Nuclei",
+      "mode": "positive"
+    }
+  },
+  {
+    "id": "qupath-clear-inputs",
+    "context": "qupath",
+    "context_overrides": {
+      "model_id": "sam2",
+      "interaction_target": "Nuclei",
+      "interaction_mode": "positive"
+    },
+    "prompt": "Clear all input points and boxes.",
+    "tool": "edit_spatial_prompts",
+    "arguments": {
+      "operation": "clear",
+      "kind": "all",
+      "polarity": "all",
+      "scope": "full",
+      "all_targets": true
+    }
+  },
+  {
+    "id": "cvat-start-sam",
+    "context": "cvat",
+    "prompt": "Start SAM 2.1 for snare.",
+    "tool": "set_interaction_mode",
+    "arguments": {
+      "model_name": "SAM 2.1",
+      "target": "Snare",
+      "mode": "positive"
+    }
+  },
+  {
+    "id": "cvat-clear-inputs",
+    "context": "cvat",
+    "context_overrides": {
+      "model_id": "sam2",
+      "interaction_target": "Snare",
+      "interaction_mode": "positive"
+    },
+    "prompt": "Clear negative points on this frame.",
+    "tool": "clear_video_inputs",
+    "arguments": {
+      "kind": "point",
+      "polarity": "negative",
+      "scope": "current_frame"
+    }
   }
 ]

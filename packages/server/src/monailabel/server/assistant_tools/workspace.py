@@ -1,13 +1,27 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Workspace navigation and configuration tools; secrets are entered in protected forms."""
 
 from typing import Literal
+from uuid import uuid4
 
 from pydantic import Field, JsonValue
 
+from monailabel.core.chat import ToolCall
 from monailabel.core.errors import DomainError
 from monailabel.core.evaluation import EvaluationSet, EvaluationSetVersion, ModelSplit
 from monailabel.core.models import (
     Asset,
+    AssistantContext,
     AssistantReply,
     Contract,
     Evaluation,
@@ -20,6 +34,7 @@ from monailabel.core.models import (
     ReviewDecision,
     Role,
 )
+from monailabel.providers.spatial import capabilities
 from monailabel.server.training_samples import training_sources
 
 from .base import ToolContext, ToolRegistry
@@ -67,11 +82,17 @@ class InspectArgs(Contract):
         "dataset_templates",
         "model_splits",
         "training_sources",
+        "training_recipes",
     ]
     offset: int = Field(default=0, ge=0)
     template_id: str | None = Field(
         default=None,
         description="For dataset_templates, inspect one template and all its structures.",
+    )
+    recipe_id: str | None = Field(
+        default=None,
+        description="For training_recipes, select vista3d, nnunet-v2, monai-unet, "
+        "totalsegmentator-ct or totalsegmentator-mr to inspect actual training defaults.",
     )
 
 
@@ -97,17 +118,19 @@ class CancelArgs(Contract):
 
 
 def model_summary(model: ModelRecord) -> dict[str, JsonValue]:
+    interaction = capabilities(model)
     return {
+        "interaction": interaction.model_dump(mode="json") if interaction else None,
         "id": model.id,
         "name": model.name,
         "provider": model.provider,
         "label_ids": list[JsonValue](model.label_ids),
         "read_only": model.read_only,
-        "spatial_prompts_required": model.provider in {"sam2", "medsam2"},
+        "spatial_prompts_required": interaction is not None,
         "annotation_scope": "medical volume or slice"
-        if model.provider == "medsam2"
+        if interaction and interaction.volume_only
         else "2D image or selected slice"
-        if model.provider == "sam2"
+        if interaction
         else None,
         "inherit_targets": model.inherit_targets,
         "preset": model.preset,
@@ -165,6 +188,8 @@ def register(registry: ToolRegistry) -> None:
             "trainable learners, jobs, held-out evaluations, pending review queue, or "
             "dataset_templates (available sample/public datasets, IDs, masks, source sections, "
             "modalities and download sizes). Inspect dataset_templates before importing one. "
+            "training_recipes returns actual default hyperparameters; use recipe_id to select "
+            "a recipe. learners includes saved configuration for each project training setup. "
             "IDs from results "
             "can be used in later tools. Pagination is 50 items."
         ),
@@ -269,6 +294,47 @@ def create_project(ctx: ToolContext, args: ProjectArgs) -> AssistantReply:
 def inspect(ctx: ToolContext, args: InspectArgs) -> AssistantReply:
     store = ctx.service.store
     items: list[JsonValue]
+    if args.collection == "training_recipes":
+        recipes = [
+            recipe
+            for recipe in ctx.service.learning.recipes.list()
+            if not args.recipe_id or recipe.id == args.recipe_id
+        ]
+        if not recipes:
+            raise DomainError(
+                "Unknown training recipe. Inspect training_recipes for available IDs."
+            )
+        items = [
+            recipe.model_dump(mode="json", exclude={"supported_targets", "target_class_ids"})
+            for recipe in recipes
+        ]
+        sections = []
+        for recipe in recipes[args.offset : args.offset + 50]:
+            rows = [
+                f"**{recipe.name} — training defaults**",
+                "",
+                "| Parameter | Default |",
+                "| --- | --- |",
+            ]
+            for key, value in recipe.default_config.items():
+                display = (
+                    "Set from selected targets"
+                    if key == "label_mapping" and not value
+                    else str(value)
+                    if value is not None
+                    else "Automatic"
+                )
+                rows.append(f"| {key.replace('_', ' ').capitalize()} | {display} |")
+            if not recipe.default_config:
+                rows = [f"**{recipe.name}**", "No default hyperparameters are available."]
+            if recipe.id == "nnunet-v2":
+                rows.extend(["", "Choose CT or MRI when creating the model."])
+            sections.append("\n".join(rows))
+        return AssistantReply(
+            assistant="coordinator",
+            message="\n\n".join(sections),
+            data={args.collection: items[args.offset : args.offset + 50], "total": len(items)},
+        )
     if args.collection == "projects":
         items = [
             {"id": p.id, "name": p.name}
@@ -322,6 +388,7 @@ def inspect(ctx: ToolContext, args: InspectArgs) -> AssistantReply:
                     "recipe": x.recipe,
                     "label_ids": list[JsonValue](x.label_ids),
                     "inherit_targets": x.inherit_targets,
+                    "config": x.config,
                 }
                 for x in store.list(Learner, project_id)
                 if not x.archived
@@ -393,6 +460,18 @@ def open_viewer(ctx: ToolContext, args: ViewerArgs) -> AssistantReply:
             "asset_id": ctx.context.asset_id,
         },
     )
+
+
+def native_viewer_command(message: str, context: AssistantContext) -> ToolCall | None:
+    """Dispatch exact undo/redo commands through the same authenticated tool path."""
+    operation = message.strip().rstrip(".!").casefold().removesuffix(" that")
+    if (
+        operation not in {"undo", "redo"}
+        or operation not in context.viewer_actions
+        or not (context.asset_id or context.video)
+    ):
+        return None
+    return ToolCall(id=uuid4().hex, name="viewer_edit", arguments={"operation": operation})
 
 
 def viewer_edit(ctx: ToolContext, args: ViewerEditArgs) -> AssistantReply:

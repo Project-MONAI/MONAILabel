@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Managed local model serving; reuse cached weights and healthy local runtimes."""
 
 import hashlib
@@ -41,9 +52,9 @@ class CoordinatorRuntime:
             Path(os.environ.get("MONAILABEL_CACHE_DIR", str(Path.home() / ".cache/monailabel")))
             / "coordinator"
         )
-        self.state = "configured" if config.provider != "local" else "starting"
+        self.state = "starting"
         self.detail = (
-            "Hosted coordinator configured."
+            "Checking hosted coordinator tool calling."
             if config.provider != "local"
             else "Preparing local Nemotron."
         )
@@ -54,11 +65,8 @@ class CoordinatorRuntime:
         self.http = HttpChat(config, key=self.local_key if config.provider == "local" else None)
 
     def start(self) -> None:
-        if self.config.provider == "local":
-            self.thread = threading.Thread(
-                target=self.prepare, name="coordinator-setup", daemon=True
-            )
-            self.thread.start()
+        self.thread = threading.Thread(target=self.prepare, name="coordinator-setup", daemon=True)
+        self.thread.start()
 
     def close(self) -> None:
         self.stopping.set()
@@ -82,7 +90,7 @@ class CoordinatorRuntime:
         *,
         require_tool: bool = False,
     ) -> ChatMessage:
-        if self.config.provider == "local" and self.state != "ready":
+        if self.state != "ready":
             raise DomainError(self.detail, code="coordinator_unavailable", status=503)
         return self.http.complete(messages, tools, require_tool=require_tool)
 
@@ -152,8 +160,14 @@ class CoordinatorRuntime:
     def prepare(self) -> None:
         """Prepare synchronously for CLI checks; server startup uses a background thread."""
         try:
+            if self.config.provider != "local":
+                self._verify_tool_calling()
+                self.state, self.detail = "ready", f"{self.config.model_name} is ready."
+                return
             if self._reuse_lightning():
-                self.state = "ready"
+                detail = self.detail
+                self._verify_tool_calling()
+                self.state, self.detail = "ready", detail
                 return
             if not shutil.which("docker"):
                 raise RuntimeError(
@@ -169,16 +183,77 @@ class CoordinatorRuntime:
                         key_path.chmod(0o600)
                         stream.write(secrets.token_urlsafe(48))
                 self._provision()
+                self._verify_tool_calling()
                 self.state, self.detail = "ready", f"Local Nemotron {self.config.variant} is ready."
                 log.info(self.detail)
         except Exception as error:
             self.state = "error"
             self.detail = (
                 str(error)
-                if isinstance(error, RuntimeError)
+                if isinstance(error, (RuntimeError, DomainError))
                 else "Local coordinator setup failed. See " + str(self.cache / "setup.log")
             )
             log.error(self.detail)
+
+    def _verify_tool_calling(self) -> None:
+        """Exercise generation and structured output without executing a workspace tool."""
+        self.detail = "Checking coordinator tool calling."
+        probe = HttpChat(
+            self.http.config.model_copy(
+                update={
+                    "max_tokens": 512 if self.config.provider == "openai" else 256,
+                    "thinking": False,
+                    "temperature": 0,
+                }
+            ),
+            key=self.http.key,
+            transport=self.http.transport,
+        )
+        definition = ToolDefinition(
+            name="readiness_probe",
+            description="Report that tool calling is available. This performs no action.",
+            parameters={
+                "type": "object",
+                "properties": {"status": {"type": "string", "enum": ["ready"]}},
+                "required": ["status"],
+                "additionalProperties": False,
+            },
+        )
+        messages = [
+            ChatMessage(
+                role="system", content="Call the requested tool. Do not reason or explain."
+            ),
+            ChatMessage(role="user", content='Call readiness_probe with status "ready".'),
+        ]
+        deadline = time.monotonic() + self.config.timeout + 60
+        while not self.stopping.is_set():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            probe.config = probe.config.model_copy(update={"timeout": min(60, remaining)})
+            try:
+                response = probe.complete(messages, [definition], require_tool=True)
+                if (
+                    len(response.tool_calls) == 1
+                    and response.tool_calls[0].name == definition.name
+                    and response.tool_calls[0].arguments == {"status": "ready"}
+                ):
+                    return
+                if self.config.provider != "local":
+                    raise RuntimeError(
+                        "Coordinator did not return the required readiness tool call."
+                    )
+            except DomainError:
+                if self.config.provider != "local":
+                    raise
+                # A restarting service can expose metadata before generation recovers.
+                pass
+            if self.stopping.wait(2):
+                break
+        raise RuntimeError(
+            "Local coordinator did not pass its tool-calling readiness check. "
+            "Check the model service's health and runtime logs, then restart MONAI Label."
+        )
 
     def _hub(self) -> Path:
         global_hub = Path(os.environ.get("HF_HOME", str(Path.home() / ".cache/huggingface")))
@@ -349,7 +424,7 @@ class CoordinatorRuntime:
                     self.profile.revision,
                     self.config.gpu,
                     self.memory_fraction,
-                    "bounded-serving-v3",
+                    "bounded-serving-v4",
                 ]
             ).encode()
         ).hexdigest()
@@ -396,11 +471,19 @@ class CoordinatorRuntime:
                     "--env",
                     "HOME=/cache",
                     "--env",
+                    "USER=monailabel",
+                    "--env",
+                    "LOGNAME=monailabel",
+                    "--env",
                     "HF_HOME=/cache",
                     "--env",
                     "HF_HUB_OFFLINE=1",
                     "--env",
                     "VLLM_CACHE_ROOT=/cache/vllm",
+                    "--env",
+                    "TORCHINDUCTOR_CACHE_DIR=/cache/torchinductor",
+                    "--env",
+                    "TRITON_CACHE_DIR=/cache/triton",
                     "--env",
                     "VLLM_FLASHINFER_ALLREDUCE_BACKEND=trtllm",
                     "--entrypoint",

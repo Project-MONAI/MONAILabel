@@ -1,0 +1,16 @@
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!packages/
+!packages/**
+**/__pycache__/
+**/*.pyc
+**/dist/
+**/build/
+!README.md
+!LICENSE
+!THIRD_PARTY_NOTICES.md
+!scripts/
+!scripts/build_package.py
+!scripts/check_dependencies.py

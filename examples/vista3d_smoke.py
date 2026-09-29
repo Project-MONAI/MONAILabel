@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """GPU workflow check with synthetic labels, isolated from the user's workspace.
 
 uv run python examples/vista3d_smoke.py
@@ -139,7 +150,7 @@ def main() -> None:
         continued = service.store.get(ModelRecord, continued_result["model_id"])
         continued_state = service.artifacts.json(continued.state_key)
         assert continued_state["steps"] == 2 and continued.parent_id == child.id
-        assert service.store.get(ModelRecord, base["id"]).model_dump(mode="json") == base
+        assert service.models.get(base["project_id"], base["id"]).model_dump(mode="json") == base
         with weights.open("rb") as stream:
             assert hashlib.file_digest(stream, "sha256").hexdigest() == checksum
         assert not weights.stat().st_mode & 0o222

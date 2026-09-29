@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Provider registry and validated execution; explicit model choices never fall back."""
 
 import os
@@ -29,15 +40,26 @@ from monailabel.providers.catalog.presets import DEFAULT_HOSTED_PRESET, HOSTED_P
 from monailabel.providers.classification import RemoteClassifier
 from monailabel.providers.local import ThresholdSegmenter
 from monailabel.providers.remote import RemoteSegmenter, parse_config
-from monailabel.providers.sam import MODELS as SAM_MODELS
+from monailabel.providers.spatial import MODELS as SPATIAL_MODELS
+from monailabel.providers.spatial import capabilities
 from monailabel.providers.vision import VISION_PROVIDERS
-from monailabel.providers.vista3d import targets as vista_targets
 from monailabel.server.deletion import Deletion
+from monailabel.server.models.anatomy import ANATOMY_MODELS, inherited
+from monailabel.server.models.anatomy import supports as supports_target
+from monailabel.server.models.anatomy import targets as anatomy_targets
 from monailabel.server.recipes import Recipes
 from monailabel.server.storage import Artifacts, Store
 
 
 class Models:
+    CATALOG_GROUPS = (
+        "Radiology segmentation",
+        "Interactive segmentation",
+        "Vision-language models",
+        "Other models",
+        "Trained models",
+    )
+
     def __init__(self, store: Store, artifacts: Artifacts, credentials: Callable[[str, str], str]):
         self.store, self.artifacts = store, artifacts
         self.credentials = credentials
@@ -58,29 +80,59 @@ class Models:
             raise DomainError("Model belongs to another project.", status=403)
         if model.archived:
             raise DomainError("This model has been deleted from the active catalog.")
-        return model
+        return self.with_capabilities(model)
+
+    def with_capabilities(self, model: ModelRecord, project: Project | None = None) -> ModelRecord:
+        spec = capabilities(model)
+        group = "Trained models"
+        if not (model.snapshot_id or model.learner_id or model.mode):
+            if model.provider in ANATOMY_MODELS:
+                group = "Radiology segmentation"
+            elif spec:
+                group = "Interactive segmentation"
+            elif model.provider in VISION_PROVIDERS:
+                group = "Vision-language models"
+            else:
+                group = "Other models"
+        targets = None
+        if inherited(model):
+            targets = sorted(anatomy_targets(model.provider))
+        elif not self.promptable(model):
+            project = project or self.store.get(Project, str(model.project_id))
+            targets = [
+                label.name for label in project.labels if label.id and label.id in model.label_ids
+            ]
+        return model.model_copy(
+            update={
+                "supported_targets": targets,
+                "catalog_group": group,
+                "interaction": spec,
+                "annotation_scopes": spec.output_scopes if spec else model.annotation_scopes,
+            }
+        )
 
     @classmethod
     def compatible(cls, model: ModelRecord, asset: Asset | VideoAsset) -> bool:
         if asset.kind == "video" and cls.requires_spatial(model):
-            return False  # Video localization needs an automatic seed, not spatial prompts.
-        return asset.kind == "volume3d" or not (
-            cls.requires_3d(model) or model.provider == "medsam2"
-        )
+            spec = capabilities(model)
+            return bool(spec and spec.video_scopes)
+        return asset.kind == "volume3d" or not (cls.requires_3d(model))
 
     def available(self, project_id: str, asset_id: str | None = None) -> list[ModelRecord]:
         asset = self.store.get(Asset, asset_id) if asset_id else None
         if asset and asset.project_id != project_id:
             raise DomainError("Selected asset belongs to another project.")
-        return [
-            model
+        project = self.store.get(Project, project_id)
+        models = [
+            self.with_capabilities(model, project)
             for model in self.store.list(ModelRecord, project_id)
             if not model.archived and (asset is None or self.compatible(model, asset))
         ]
+        return sorted(models, key=lambda model: self.CATALOG_GROUPS.index(model.catalog_group))
 
     def configured(self, model: ModelRecord) -> bool:
         if model.provider in {recipe.id for recipe in self.recipes.list()}:
-            return bool(model.state_key) or (model.provider == "vista3d" and model.read_only)
+            return bool(model.state_key) or (model.provider in ANATOMY_MODELS and model.read_only)
         if model.provider not in {
             "http-mask",
             "huggingface",
@@ -114,8 +166,8 @@ class Models:
         labels = {label.id: label.name.casefold() for label in project.labels if label.id}
 
         def supports(model: ModelRecord, requested: set[str]) -> bool:
-            if model.provider == "vista3d" and (model.read_only or model.inherit_targets):
-                return requested <= set(vista_targets())
+            if inherited(model):
+                return all(supports_target(model.provider, name) for name in requested)
             return self.promptable(model) or requested <= {
                 labels[identifier] for identifier in model.label_ids if identifier in labels
             }
@@ -152,7 +204,7 @@ class Models:
             return specialized[0].id
         if not specialized:
             defaults = (
-                ("vista3d", DEFAULT_HOSTED_PRESET)
+                (DEFAULT_HOSTED_PRESET, "vista3d")
                 if asset.kind == "volume3d"
                 else (DEFAULT_HOSTED_PRESET,)
             )
@@ -259,17 +311,15 @@ class Models:
             for label in project.labels
             if label.id
             and (
-                label.name.casefold() in vista_targets()
-                if model.provider == "vista3d" and (model.read_only or model.inherit_targets)
+                supports_target(model.provider, label.name)
+                if inherited(model)
                 else cls.promptable(model) or label.id in model.label_ids
             )
         }
 
     @staticmethod
     def promptable(model: ModelRecord) -> bool:
-        return model.provider in {*VISION_PROVIDERS, *SAM_MODELS} or (
-            model.provider == "vista3d" and (model.read_only or model.inherit_targets)
-        )
+        return model.provider in {*VISION_PROVIDERS, *SPATIAL_MODELS} or inherited(model)
 
     @classmethod
     def validate_targets(cls, model: ModelRecord, names: list[str]) -> None:
@@ -278,16 +328,14 @@ class Models:
                 "This model has fixed targets. Select a promptable model "
                 "to annotate a new structure."
             )
-        if model.provider == "vista3d":
-            missing = [name for name in names if name.casefold() not in vista_targets()]
+        if model.provider in ANATOMY_MODELS:
+            missing = [name for name in names if not supports_target(model.provider, name)]
             if missing:
-                raise DomainError(
-                    "VISTA3D automatic CT segmentation does not support: " + ", ".join(missing)
-                )
+                raise DomainError(f"{model.name} does not support: " + ", ".join(missing))
 
     @classmethod
     def for_labels(cls, model: ModelRecord, label_ids: list[int]) -> ModelRecord:
-        if cls.promptable(model) or model.provider == "vista3d":
+        if cls.promptable(model) or model.provider in ANATOMY_MODELS:
             return model.model_copy(update={"label_ids": [0] + label_ids})
         return model
 
@@ -299,23 +347,25 @@ class Models:
 
     @staticmethod
     def requires_3d(model: ModelRecord) -> bool:
-        return model.provider == "vista3d" or (
-            model.provider == "monai-unet" and model.config.get("spatial_dims", 3) == 3
+        interaction = capabilities(model)
+        return (
+            bool(interaction and interaction.volume_only)
+            or model.provider in {*ANATOMY_MODELS, "nnunet-v2"}
+            or (model.provider == "monai-unet" and model.config.get("spatial_dims", 3) == 3)
         )
 
     @staticmethod
     def requires_spatial(model: ModelRecord) -> bool:
-        return model.provider in SAM_MODELS
+        return model.provider in SPATIAL_MODELS
 
     @staticmethod
-    def spatial_provider() -> PromptedSegmenter:
-        try:
-            from monailabel.sam.runtime import SamSegmenter
-        except ImportError as exc:
-            raise DomainError(
-                "The local SAM runtime could not be loaded. Start from the repository "
-                "with uv run monailabel-server to install the required dependencies."
-            ) from exc
+    def spatial_provider(model: ModelRecord) -> PromptedSegmenter:
+        if model.provider == "nninteractive":
+            from monailabel.nninteractive.runtime import NNInteractiveSegmenter
+
+            return NNInteractiveSegmenter()
+        from monailabel.sam.runtime import SamSegmenter
+
         return SamSegmenter()
 
     def register(self, project_id: str, request: ModelRegister) -> ModelRecord:
@@ -355,11 +405,13 @@ class Models:
     ) -> Mask:
         if self.requires_spatial(model):
             raise DomainError(
-                "SAM requires viewer spatial prompts; "
+                f"{model.name} requires viewer spatial prompts; "
                 "automatic unprompted evaluation is unavailable."
             )
         if model.provider in {recipe.id for recipe in self.recipes.list()}:
-            if model.state_key is None and not (model.provider == "vista3d" and model.read_only):
+            if model.state_key is None and not (
+                model.provider in ANATOMY_MODELS and model.read_only
+            ):
                 raise DomainError("Model has no trained state.")
             provider: Segmenter | VolumeSegmenter = self.recipes.segmenter(
                 model.provider, self.artifacts.json(model.state_key) if model.state_key else {}

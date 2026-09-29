@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Annotation tools accept structured intent; geometry comes only from the viewer."""
 
 from typing import Annotated, Literal
@@ -17,6 +28,7 @@ from monailabel.core.models import (
     RoiRequest,
 )
 from monailabel.core.tiling import image_tiles
+from monailabel.providers.spatial import capabilities
 from monailabel.server.labels import resolve_labels, update_colors
 
 from .base import ToolContext, ToolRegistry
@@ -148,17 +160,18 @@ def register(registry: ToolRegistry) -> None:
         requires_asset=True,
         action="annotate",
     )
-    registry.add(
-        "annotate_batch",
-        "Run segmentation on the first N unannotated images in dataset order, skipping "
-        "evaluation-only data and existing annotations/proposals. Use for 'run segmentation "
-        "for first 5 images and submit them for review', with submit_for_review=true. "
-        "Runs full images/volumes without opening a viewer; needs no current sample. "
-        "This job performs inference and optional submission together, never accepts reviews.",
-        BatchAnnotationArgs,
-        lambda a: annotate_batch(ctx, a),
-        action="annotate",
-    )
+    if not ctx.context.viewer_actions and not ctx.context.video:
+        registry.add(
+            "annotate_batch",
+            "Run segmentation on the first N unannotated images in dataset order, skipping "
+            "evaluation-only data and existing annotations/proposals. Use for 'run segmentation "
+            "for first 5 images and submit them for review', with submit_for_review=true. "
+            "Runs full images/volumes without opening a viewer; needs no current sample. "
+            "This job performs inference and optional submission together, never accepts reviews.",
+            BatchAnnotationArgs,
+            lambda a: annotate_batch(ctx, a),
+            action="annotate",
+        )
     registry.add(
         "locate_region",
         (
@@ -175,7 +188,8 @@ def register(registry: ToolRegistry) -> None:
     registry.add(
         "remove_regions",
         (
-            "Remove named bounding boxes/ROIs from the current Slicer scene. "
+            "Remove legacy localization ROIs from the current Slicer scene. "
+            "For interactive input boxes or points, use edit_spatial_prompts instead. "
             "Does not clear segmentation masks."
         ),
         RemoveRegionArgs,
@@ -186,7 +200,8 @@ def register(registry: ToolRegistry) -> None:
     registry.add(
         "clear_segments",
         (
-            "Clear segmentation labels locally in a supported viewer, with undo. "
+            "Clear segmentation mask pixels/voxels locally in a supported viewer, with undo. "
+            "Never use this for boxes, points or input hints; those use edit_spatial_prompts. "
             "Choose named targets or explicitly all_targets. Full means the whole "
             "image/volume; current_slice requires a viewer slice; selected_region clears "
             "only inside the actual QuPath selection. Does not delete "
@@ -282,14 +297,22 @@ def annotate(ctx: ToolContext, args: AnnotationArgs) -> AssistantReply:
             "Select a slice/view and intensity window in Slicer before annotating slices."
         )
     tiling = None
-    if scope == "full" and asset.kind == "image2d":
+    if scope == "full" and asset.kind == "image2d" and not spatial:
         tiling = ImageTiling(tile_size=args.tile_size) if args.tile_size else context.image_tiling
-    spatial_prompt = context.spatial_prompt
+    spatial_prompt = context.spatial_prompt if spatial else None
     if spatial and context.spatial_objects and spatial_prompt is None:
-        if len(labels) != 1 or context.slice is None:
-            raise DomainError("Choose one target and a source slice for SAM.")
+        if len(labels) != 1 or (asset.kind == "volume3d" and context.slice is None):
+            raise DomainError("Choose one target and a source slice for spatial annotation.")
         target = next(label.name for label in project.labels if label.id == labels[0])
-        spatial_prompt = prompt_for(context.spatial_objects, context.slice, target)
+        specification = capabilities(models[0])
+        spatial_prompt = prompt_for(
+            context.spatial_objects,
+            context.slice,
+            target,
+            inputs=specification.inputs if specification else None,
+            full_volume=scope == "full"
+            and all((cap := capabilities(m)) and cap.prompt_scope == "volume" for m in models),
+        )
     job = service.annotations.annotate(
         asset.id,
         AnnotateRequest(
@@ -306,7 +329,7 @@ def annotate(ctx: ToolContext, args: AnnotationArgs) -> AssistantReply:
     description = (
         f"the selected {region.width} × {region.height} pixel region as one crop, without tiling"
         if region
-        else "the volume by propagating your spatial prompt in both directions"
+        else "the volume using your spatial prompts"
         if slice_volume and spatial
         else f"all {asset.spatial_shape[context.slice.axis]} slices, one request per slice"
         if slice_volume and context.slice

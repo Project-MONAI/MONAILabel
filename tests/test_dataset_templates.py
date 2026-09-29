@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Public template imports keep label identity, source separation and review gates."""
 
 import gzip
@@ -11,6 +22,7 @@ import numpy as np
 import pytest
 
 from monailabel.core.errors import DomainError
+from monailabel.core.reference_imports import ReferenceImport
 from monailabel.server.dataset_downloads import Archive
 from monailabel.server.dataset_templates import select_channel
 
@@ -75,7 +87,7 @@ def test_catalog_and_images_only(client, http, template_fixture):
     prefix, _, _, _, _ = template_fixture
     catalog = client.get(prefix + "/dataset-templates")
     assert len([x for x in catalog if x["id"].startswith("Task")]) == 10
-    assert {x["category"] for x in catalog} == {"Radiology", "Pathology", "Video"}
+    assert {x["category"] for x in catalog} == {"Radiology", "Pathology", "Endoscopy", "Video"}
     assert "url" not in catalog[0] and "checksum" not in catalog[0]
     before = client.get(prefix)["labels"]
     result = imported(client, prefix)
@@ -129,6 +141,115 @@ def test_masks_remapped_pending_review_and_retry_preserves_edits(client, http, t
     assert client.get("/api/assets/" + second["asset_ids"][0])["group_id"] != before[0]["group_id"]
 
 
+def test_lung_template_trains_and_compares_vista_on_fixed_references(
+    client, http, template_fixture, monkeypatch
+):
+    from monailabel.providers.vista3d import mapping
+
+    prefix, _, _, write, mask = template_fixture
+    entries = {
+        "Task06_Lung/dataset.json": json.dumps(
+            {"labels": {"0": "background", "1": "cancer"}}
+        ).encode()
+    }
+    affine = np.diag([-1.2, 1.5, 2.4, 1])
+    for i in range(5):
+        entries[f"Task06_Lung/imagesTr/lung_{i}.nii.gz"] = nifti(
+            mask.astype(np.float32) * 100 + i, affine
+        )
+        entries[f"Task06_Lung/labelsTr/lung_{i}.nii.gz"] = nifti(mask, affine)
+    write(entries)
+    choices = dict(
+        template_id="Task06_Lung", limit=None, include_masks=True, evaluation_percentage=20
+    )
+    result = imported(client, prefix, **choices)
+    assert not result["failed"]
+    assert len(result["annotation_asset_ids"]) == 4 and len(result["evaluation_asset_ids"]) == 1
+    project = client.get(prefix)
+    target = next(label for label in project["labels"] if label["name"].casefold() == "lung tumor")
+    assert not any(label["name"] == "cancer" for label in project["labels"])
+    expected = mask * target["id"]
+    for asset in client.get(prefix + "/assets"):
+        actual = np.frombuffer(
+            http.get(f"/api/annotations/{asset['annotation_id']}/mask.bin").content, np.uint8
+        ).reshape(mask.shape)
+        np.testing.assert_array_equal(actual, expected)
+        np.testing.assert_allclose(asset["affine"], affine)
+    decisions = client.get(prefix + "/decisions")
+    assert {d["asset_id"] for d in decisions} == set(result["evaluation_asset_ids"])
+    assert all(d["verdict"] == "accepted" for d in decisions)
+    for asset_id in result["annotation_asset_ids"]:
+        asset = client.get("/api/assets/" + asset_id)
+        client.post(
+            "/api/annotations/" + asset["annotation_id"] + "/decision", {"verdict": "accepted"}
+        )
+    before = client.get(prefix + "/assets")
+    imported(client, prefix, **choices)
+    assert client.get(prefix + "/assets") == before
+
+    service = http.app.state.services
+    service.presets.enabled = True
+    service.presets.ensure(project["id"])
+    base = next(m for m in client.get(prefix + "/models") if m["preset"] == "vista3d")
+    predicted = []
+
+    class Trainer:
+        def train_volumes(self, examples, label_ids, mode, parent_state, progress):
+            assert len(examples) == 4 and label_ids == [0, target["id"]]
+            # The first sorted case is reserved for evaluation, excluded from training.
+            assert all(example.volume.image.min() > 0 for example in examples)
+            return {"format": "fixture"}
+
+    def predict(project, model, image, instructions, source_affine):
+        predicted.append(model.provider)
+        assert image.min() == 0
+        np.testing.assert_allclose(source_affine, affine)
+        if model.provider == "vista3d":
+            assert mapping([label for label in project.labels if label.id in model.label_ids]) == {
+                target["id"]: 23
+            }
+        return expected
+
+    monkeypatch.setattr(service.learning.recipes, "trainer", lambda *args: Trainer())
+    monkeypatch.setattr(service.models, "predict", predict)
+    learner = client.post(
+        prefix + "/learners",
+        {
+            "name": "Lung nnU-Net",
+            "recipe": "nnunet-v2",
+            "config": {"modality": "CT"},
+            "label_ids": [0, target["id"]],
+        },
+    )
+    trained = client.wait(
+        client.post(
+            prefix + "/learners/" + learner["id"] + "/train",
+            {"evaluation_set_id": result["evaluation_set_id"]},
+        )["id"]
+    )
+    service.assistants.provider.queue = [
+        chat_tool(
+            "evaluate_candidate",
+            candidate_name="Lung nnU-Net",
+            baseline_name="VISTA3D",
+            evaluation_set_id=result["evaluation_set_id"],
+        )
+    ]
+    reply = client.post(
+        prefix + "/assistant",
+        {"message": "Compare Lung nnU-Net with VISTA3D on the fixed evaluation set."},
+    )
+    client.wait(reply["job_id"])
+    comparison = client.get(prefix + "/evaluations")[0]
+    assert (
+        comparison["candidate_id"] == trained["model_id"]
+        and comparison["baseline_id"] == base["id"]
+    )
+    assert comparison["candidate"]["mean_dice"] == comparison["baseline"]["mean_dice"] == 1
+    assert predicted == ["nnunet-v2", "nnunet-v2", "vista3d"]
+    assert service.models.get(base["project_id"], base["id"]).model_dump(mode="json") == base
+
+
 @pytest.mark.parametrize("include_masks", [False, True])
 def test_recreated_project_import_does_not_restore_deleted_annotations(
     client, http, template_fixture, include_masks
@@ -180,7 +301,8 @@ def test_recreated_project_import_does_not_restore_deleted_annotations(
 
 
 @pytest.mark.parametrize("broken", ["affine", "missing", "fractional", "unknown_id"])
-def test_bad_reference_never_publishes_annotation(client, http, template_fixture, broken):
+@pytest.mark.parametrize("split", ["pool", "validation"])
+def test_bad_reference_never_publishes_annotation(client, http, template_fixture, broken, split):
     prefix, _, entries, write, mask = template_fixture
     name = "Task09_Spleen/labelsTr/spleen_1.nii.gz"
     if broken == "affine":
@@ -192,10 +314,11 @@ def test_bad_reference_never_publishes_annotation(client, http, template_fixture
     else:
         entries[name] = nifti(mask * 9)
     write(entries)
-    result = imported(client, prefix, include_masks=True)
+    result = imported(client, prefix, include_masks=True, split=split)
     assert result["asset_ids"] == []
     assert len(result["failed"]) == 1
     assert client.get(prefix + "/assets") == []
+    assert client.get(prefix + "/decisions") == []
 
 
 def test_totalsegmentator_subset_and_anatomical_colors(client, http, template_fixture):
@@ -441,11 +564,24 @@ def test_chat_evaluation_import_includes_five_labels_reserves_and_reuses_set(
     record = client.get(prefix + "/evaluation-sets")[0]
     assert len(record["member_groups"]) == 5 and not record["auto_update"]
     assert result["evaluation_set_id"] == record["id"]
-    assert client.get(prefix + "/decisions") == []  # Never manufacture acceptance.
+    decisions = client.get(prefix + "/decisions")
+    assert {d["annotation_id"] for d in decisions} == set(result["annotation_ids"])
+    assert len(decisions) == 5 and all(d["verdict"] == "accepted" for d in decisions)
+    assert all("accepted for evaluation during import" in d["comment"] for d in decisions)
+    sources = http.app.state.services.store.list(ReferenceImport, assets[0]["project_id"])
+    assert len(sources) == 5 and all(s.reviewed and s.source for s in sources)
+    version = client.post(
+        prefix + "/evaluation-sets/" + record["id"] + "/versions",
+        {"base_version": record["version"], "label_ids": [0, 4]},
+    )
+    assert len(version["samples"]) == 5
+    assert {sample["decision_id"] for sample in version["samples"]} == {d["id"] for d in decisions}
+    record = client.get(prefix + "/evaluation-sets")[0]
     again = imported(client, prefix, split="validation", limit=5, include_masks=False)
     assert again["asset_ids"] == result["asset_ids"]
     assert client.get(prefix + "/evaluation-sets") == [record]
     assert client.get(prefix + "/assets") == assets
+    assert client.get(prefix + "/decisions") == decisions
     added = imported(client, prefix, split="validation", offset=5, limit=1)
     assert added["evaluation_set_id"] == record["id"]
     assert len(client.get(prefix + "/evaluation-sets")[0]["member_groups"]) == 6
@@ -471,8 +607,9 @@ def test_evaluation_template_rejects_unlabeled_sources_before_download(
     assert client.get(prefix + "/jobs") == []
 
 
+@pytest.mark.parametrize("selection", [{}, {"all_samples": "True", "limit": 5}])
 def test_chat_combined_import_completes_both_portions_and_preserves_existing_evaluation(
-    client, http, template_fixture
+    client, http, template_fixture, selection
 ):
     from uuid import uuid4
 
@@ -487,7 +624,12 @@ def test_chat_combined_import_completes_both_portions_and_preserves_existing_eva
     before = client.get(prefix + "/assets")
     http.app.state.services.assistants.provider.queue = [
         chat_tool("inspect_workspace", collection="dataset_templates"),
-        chat_tool("import_dataset_split", template_id="Task09_Spleen", evaluation_percentage=20),
+        chat_tool(
+            "import_dataset_split",
+            template_id="Task09_Spleen",
+            evaluation_percentage=20,
+            **selection,
+        ),
     ]
     body = {
         "message": "From Medical Decathlon Speen Dataset import 80% images only for annotation "
@@ -500,6 +642,7 @@ def test_chat_combined_import_completes_both_portions_and_preserves_existing_eva
     assert "20% images with labels" in reply["message"]
     job = client.get("/api/jobs/" + reply["job_id"])
     assert job["request"]["limit"] is None
+    assert "all_samples" not in job["request"]
     result = client.wait(job["id"])
     assert not result["failed"]
     assert len(result["asset_ids"]) == 41
@@ -512,7 +655,9 @@ def test_chat_combined_import_completes_both_portions_and_preserves_existing_eva
     assert all(a in assets for a in before)
     assert all(a["annotation_id"] is None for a in assets if a["split"] == "pool")
     assert all(a["annotation_id"] for a in assets if a["split"] == "validation")
-    assert client.get(prefix + "/decisions") == []
+    decisions = client.get(prefix + "/decisions")
+    assert len(decisions) == 9 and all(d["verdict"] == "accepted" for d in decisions)
+    assert {d["asset_id"] for d in decisions} == set(result["evaluation_asset_ids"])
     record = client.get(prefix + "/evaluation-sets")[0]
     assert result["evaluation_set_id"] == record["id"] == existing["evaluation_set_id"]
     assert len(record["member_groups"]) == 9
@@ -522,6 +667,7 @@ def test_chat_combined_import_completes_both_portions_and_preserves_existing_eva
     again = imported(client, prefix, evaluation_percentage=20, limit=None)
     assert again == result
     assert client.get(prefix + "/assets") == assets
+    assert client.get(prefix + "/decisions") == decisions
 
 
 def test_combined_import_honors_total_limit_offset_and_annotation_label_choice(
@@ -541,9 +687,93 @@ def test_combined_import_honors_total_limit_offset_and_annotation_label_choice(
     assert len(result["asset_ids"]) == len(result["annotation_ids"]) == 5
     assert len(result["annotation_asset_ids"]) == 4
     assert len(result["evaluation_asset_ids"]) == 1
+    decisions = client.get(prefix + "/decisions")
+    assert len(decisions) == 1 and decisions[0]["verdict"] == "accepted"
+    assert decisions[0]["asset_id"] == result["evaluation_asset_ids"][0]
     assert {a["name"] for a in client.get(prefix + "/assets")} == {
         f"spleen_{i}.nii.gz" for i in range(3, 8)
     }
+
+
+@pytest.mark.parametrize("verdict", ["pending", "changes_requested"])
+def test_evaluation_template_retry_preserves_review_decisions_and_edits(
+    client, http, template_fixture, verdict
+):
+    prefix, _, _, _, mask = template_fixture
+    result = imported(client, prefix, split="validation")
+    annotation = result["annotation_ids"][0]
+    client.post("/api/annotations/" + annotation + "/decision", {"verdict": verdict})
+    before = client.get(prefix + "/decisions")
+    assert imported(client, prefix, split="validation") == result
+    assert client.get(prefix + "/decisions") == before
+    record = client.get(prefix + "/evaluation-sets")[0]
+    assert (
+        http.post(
+            prefix + "/evaluation-sets/" + record["id"] + "/versions",
+            json={"base_version": record["version"], "label_ids": [0, 4]},
+        ).status_code
+        == 422
+    )
+    asset_id = result["asset_ids"][0]
+    asset = client.get("/api/assets/" + asset_id)
+    edited = client.post(
+        "/api/assets/" + asset_id + "/review",
+        {
+            "base_revision": asset["revision"],
+            "mask": np.full(mask.shape, 4, dtype=np.uint8).tolist(),
+            "covered_labels": [0, 4],
+        },
+    )
+    retry = imported(client, prefix, split="validation")
+    assert not retry["asset_ids"] and len(retry["failed"]) == 1
+    assert client.get("/api/assets/" + asset_id)["annotation_id"] == edited["id"]
+    assert client.get(prefix + "/decisions") == before
+
+
+def test_evaluation_template_retry_accepts_unchanged_legacy_references(
+    client, http, template_fixture
+):
+    prefix, _, entries, _, _ = template_fixture
+    # The old template importer saved published masks without a review decision.
+    template = next(
+        t for t in client.get(prefix + "/dataset-templates") if t["id"] == "Task09_Spleen"
+    )
+    legacy = http.post(
+        prefix + "/evaluation-imports",
+        data={
+            "metadata": json.dumps(
+                {
+                    "evaluation_set_name": template["name"] + " evaluation",
+                    "labels": {1: "Spleen"},
+                    "source": template["source_url"],
+                }
+            )
+        },
+        files={
+            "image": ("spleen_1.nii.gz", entries["Task09_Spleen/imagesTr/spleen_1.nii.gz"]),
+            "labels": ("spleen_1.nii.gz", entries["Task09_Spleen/labelsTr/spleen_1.nii.gz"]),
+        },
+    )
+    assert legacy.status_code == 201, legacy.text
+    # Recreate the persisted state produced by the old evaluation importer.
+    store = http.app.state.services.store
+    project_id = client.get(prefix)["id"]
+    with store.transaction() as session:
+        session.connection.execute(
+            "DELETE FROM records WHERE kind='ReviewDecision' AND project_id=?",
+            (project_id,),
+        )
+        for source in session.list(ReferenceImport, project_id):
+            session.update(source.model_copy(update={"reviewed": False}))
+    assert client.get(prefix + "/decisions") == []
+    before = client.get(prefix + "/assets")
+    result = imported(client, prefix, split="validation")
+    assert not result["failed"]
+    assert result["annotation_ids"] == [legacy.json()["annotation_id"]]
+    assert result["evaluation_set_id"] == legacy.json()["evaluation_set"]["id"]
+    assert client.get(prefix + "/assets") == before
+    decisions = client.get(prefix + "/decisions")
+    assert len(decisions) == 1 and decisions[0]["verdict"] == "accepted"
 
 
 @pytest.mark.parametrize(
@@ -645,3 +875,69 @@ def test_deleting_unused_evaluation_alias_keeps_remaining_case_reserved(
     assert http.post("/api/assets/" + alias["id"] + "/assign-train").status_code == 409
     assert http.delete("/api/assets/" + alias["id"]).status_code == 200
     assert not http.app.state.services.store.list(EvaluationReservation, asset["project_id"])
+
+
+def test_totalsegmentator_mri_preserves_geometry_and_separates_ct_source_groups(
+    client, http, template_fixture
+):
+    prefix, _, _, write, _ = template_fixture
+    image = np.ones((5, 6, 7), np.int16)
+    affine = np.diag([-1.2, 2.1, 3.4, 1])
+    mask = np.zeros(image.shape, np.uint8)
+    mask[1:3, 2:4, 1:5] = 1
+    write(
+        {
+            "dataset/s001/mri.nii.gz": nifti(image, affine),
+            "dataset/s001/segmentations/liver.nii.gz": nifti(mask, affine),
+        }
+    )
+    result = imported(
+        client, prefix, template_id="totalsegmentator-mr", include_masks=True, targets=["liver"]
+    )
+    assert not result["failed"] and len(result["annotation_ids"]) == 1
+    asset = client.get(prefix + "/assets")[0]
+    assert asset["group_id"] == "totalsegmentator-mr:s001"
+    np.testing.assert_allclose(asset["affine"], affine)
+    saved = np.frombuffer(
+        http.get(f"/api/annotations/{result['annotation_ids'][0]}/mask.bin").content, np.uint8
+    ).reshape(mask.shape)
+    np.testing.assert_array_equal(saved, mask)
+
+
+def test_prostate_template_combines_zones_and_reuses_source_identity(
+    client, http, template_fixture
+):
+    from monailabel.server.dataset_downloads import sources
+
+    prefix, _, _, write, _ = template_fixture
+    image = np.arange(6 * 7 * 8 * 2, dtype=np.float32).reshape(6, 7, 8, 2)
+    zones = np.zeros((6, 7, 8), np.uint8)
+    zones[1:3, 1:4, 2:5] = 1
+    zones[3:5, 2:5, 3:6] = 2
+    write(
+        {
+            "Task05_Prostate/dataset.json": json.dumps(
+                {"labels": {"0": "background", "1": "PZ", "2": "TZ"}}
+            ).encode(),
+            "Task05_Prostate/imagesTr/prostate_01.nii.gz": nifti(image),
+            "Task05_Prostate/labelsTr/prostate_01.nii.gz": nifti(zones),
+        }
+    )
+    result = imported(client, prefix, template_id="prostate-mri", include_masks=True)
+    assert not result["failed"]
+    label = next(
+        label for label in client.get(prefix)["labels"] if label["name"].casefold() == "prostate"
+    )
+    saved = np.frombuffer(
+        http.get(f"/api/annotations/{result['annotation_ids'][0]}/mask.bin").content, np.uint8
+    ).reshape(zones.shape)
+    np.testing.assert_array_equal(saved, np.where(zones > 0, label["id"], 0))
+    asset = client.get(prefix + "/assets")[0]
+    assert asset["group_id"] == "msd:Task05_Prostate:prostate_01.nii.gz"
+    catalog = {s.id: s for s in sources()}
+    downloads = http.app.state.services.dataset_templates.downloads
+    assert downloads.path(catalog["prostate-mri"]) == downloads.path(catalog["Task05_Prostate"])
+    # Other channels must retain the same group even though the decoded pixels differ.
+    other = imported(client, prefix, template_id="Task05_Prostate", channel=1)
+    assert len(other["asset_ids"]) == 1
+    assert {a["group_id"] for a in client.get(prefix + "/assets")} == {asset["group_id"]}

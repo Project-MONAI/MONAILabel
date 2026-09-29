@@ -1,9 +1,20 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 [project]
 name = "monailabel-workspace"
-version = "0.1.0"
+version = "1.0.0rc1"
 description = "Assistants for annotation and model learning"
 requires-python = ">=3.12"
-dependencies = ["monailabel-server", "monailabel-client"]
+dependencies = ["monailabel==1.0.0rc1"]
 
 [tool.uv]
 package = false
@@ -12,21 +23,18 @@ package = false
 members = ["packages/*"]
 
 [tool.uv.sources]
+monailabel = { workspace = true }
+monailabel-sam-runtime = { workspace = true }
 monailabel-monai = { workspace = true }
 monailabel-sam = { workspace = true }
+monailabel-nninteractive = { workspace = true }
+monailabel-totalsegmentator = { workspace = true }
 monailabel-dicom = { workspace = true }
 monailabel-core = { workspace = true }
 monailabel-providers = { workspace = true }
 monailabel-server = { workspace = true }
 monailabel-client = { workspace = true }
 monailabel-viewers = { workspace = true }
-torch = { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" }
-torchvision = { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" }
-
-[[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
-explicit = true
 
 [dependency-groups]
 dev = [
@@ -56,11 +64,14 @@ markers = [
 ]
 filterwarnings = [
   "error",
-  # Torch 2.10 reports its 12.0 build ceiling for GB10 (12.1); keep the warning
-  # visible without preventing real CUDA kernel/inference tests from running.
+  # Report device capability warnings without preventing execution checks.
   'default:\s*Found GPU\d+ NVIDIA GB10 which is of cuda capability 12\.1\.:UserWarning:torch.cuda',
-  # MONAI 1.5.2 uses list indexing in its sliding-window utility; checked with Torch 2.10.
+  # MONAI 1.5.2 uses list indexing in its sliding-window utility.
   "ignore:Using a non-tuple sequence for multidimensional indexing is deprecated.*:UserWarning:monai.inferers.utils",
+  # MONAI imports its DINTS TorchScript interface, deprecated in Torch 2.11.
+  'ignore:`torch.jit.interface` is deprecated.*:DeprecationWarning:torch.jit._script',
+  # SAM 2.1 scripts its image transforms; Torch 2.11 deprecates this entry point.
+  'ignore:`torch.jit.script` is deprecated.*:DeprecationWarning:torch.jit._script',
   # The pinned SAM runtime uses this Torch context; real tracking is checked in video E2E.
   "ignore:.*torch.backends.cuda.sdp_kernel.*deprecated.*:FutureWarning",
   # Starlette 1.6 still imports this compatibility alias from AnyIO.
@@ -70,6 +81,8 @@ filterwarnings = [
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+extend-exclude = ["packages/sam-runtime/src"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -78,24 +91,25 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 profile = "black"
 line_length = 100
 skip_gitignore = true
+extend_skip = ["packages/sam-runtime/src"]
 known_third_party = ["monai"]
-known_first_party = ["monailabel.core", "monailabel.providers", "monailabel.server", "monailabel.client", "monailabel.viewers", "monailabel.monai", "monailabel.dicom", "monailabel.sam"]
+known_first_party = ["monailabel.core", "monailabel.providers", "monailabel.server", "monailabel.client", "monailabel.viewers", "monailabel.monai", "monailabel.dicom", "monailabel.sam", "monailabel.totalsegmentator", "monailabel.nninteractive"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["monai"]
-known-first-party = ["monailabel.core", "monailabel.providers", "monailabel.server", "monailabel.client", "monailabel.viewers", "monailabel.monai", "monailabel.dicom", "monailabel.sam"]
+known-first-party = ["monailabel.core", "monailabel.providers", "monailabel.server", "monailabel.client", "monailabel.viewers", "monailabel.monai", "monailabel.dicom", "monailabel.sam", "monailabel.totalsegmentator", "monailabel.nninteractive"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = ["$MYPY_CONFIG_FILE_DIR/packages/core/src", "$MYPY_CONFIG_FILE_DIR/packages/providers/src", "$MYPY_CONFIG_FILE_DIR/packages/server/src", "$MYPY_CONFIG_FILE_DIR/packages/client/src", "$MYPY_CONFIG_FILE_DIR/packages/viewers/src", "$MYPY_CONFIG_FILE_DIR/packages/monai/src", "$MYPY_CONFIG_FILE_DIR/packages/sam/src", "$MYPY_CONFIG_FILE_DIR/packages/dicom/src"]
-exclude = ["tests"]
+mypy_path = ["$MYPY_CONFIG_FILE_DIR/packages/monailabel/src", "$MYPY_CONFIG_FILE_DIR/packages/core/src", "$MYPY_CONFIG_FILE_DIR/packages/providers/src", "$MYPY_CONFIG_FILE_DIR/packages/server/src", "$MYPY_CONFIG_FILE_DIR/packages/client/src", "$MYPY_CONFIG_FILE_DIR/packages/viewers/src", "$MYPY_CONFIG_FILE_DIR/packages/monai/src", "$MYPY_CONFIG_FILE_DIR/packages/sam/src", "$MYPY_CONFIG_FILE_DIR/packages/dicom/src", "$MYPY_CONFIG_FILE_DIR/packages/totalsegmentator/src", "$MYPY_CONFIG_FILE_DIR/packages/nninteractive/src"]
+exclude = ["tests", "packages/sam-runtime/src"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["nibabel.*", "sam2.*"]
+module = ["nibabel.*", "sam2.*", "totalsegmentator.*", "nnunetv2.*", "nnInteractive.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

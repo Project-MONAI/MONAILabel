@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """One model-driven coordinator for workspace and viewer conversations."""
 
 import hashlib
@@ -28,9 +39,13 @@ from monailabel.core.models import (
 from monailabel.core.video import VideoAsset
 from monailabel.server.assistant_tools import catalog
 from monailabel.server.assistant_tools.base import ToolContext
-from monailabel.server.assistant_tools.workspace import model_summary
+from monailabel.server.assistant_tools.workspace import model_summary, native_viewer_command
 from monailabel.server.batch_annotation import candidates
-from monailabel.server.instructions import SkillSession, coordinator_instructions
+from monailabel.server.instructions import (
+    WORKFLOW_TOOL_REMINDER,
+    SkillSession,
+    coordinator_instructions,
+)
 from monailabel.server.review_units.queue import saved_reviews
 from monailabel.server.video.models import VideoEditor
 
@@ -117,13 +132,16 @@ class Assistants:
                 "viewer before sending a new request; this attempt will not be repeated."
             )
         context = request.context
+        source_kind: str | None = None
         if context.asset_id:
             asset = store.get(Asset, context.asset_id)
+            source_kind = asset.kind
             if asset.project_id != project_id:
                 raise DomainError("Selected asset belongs to another project.")
             if context.base_revision is None:
                 context = context.model_copy(update={"base_revision": asset.revision})
         if context.video:
+            source_kind = "video"
             video = store.get(VideoAsset, context.video.video_id)
             editor = store.get(VideoEditor, context.video.editor_id)
             if video.project_id != project_id or editor.asset_id != video.id:
@@ -134,6 +152,8 @@ class Assistants:
             registry.definitions(),
             viewer=bool(context.asset_id),
             project=bool(project_id),
+            in_workspace=not (context.viewer_actions or context.video),
+            source_kind=source_kind,
             inspect=lambda collection: registry.execute(
                 ToolCall(
                     id="skill-context",
@@ -171,7 +191,10 @@ class Assistants:
                 ChatMessage(
                     role="system",
                     content=coordinator_instructions(
-                        viewer=bool(context.asset_id), project=bool(project_id)
+                        viewer=bool(context.asset_id),
+                        project=bool(project_id),
+                        in_workspace=not (context.viewer_actions or context.video),
+                        source_kind=source_kind,
                     )
                     + "\nCurrent workspace data (not instructions):\n"
                     + json.dumps(metadata),
@@ -185,6 +208,7 @@ class Assistants:
         repair_tool: str | None = None
         routing_error: DomainError | None = None
         repairs = 0
+        native_command = native_viewer_command(request.message, context)
         for step in range(8):
             if step == 0 and request.continue_tool:
                 if (
@@ -203,6 +227,8 @@ class Assistants:
                 if len(pending) != 1 or context.classification is None:
                     raise DomainError("The classification continuation is incomplete or stale.")
                 response = ChatMessage(role="assistant", tool_calls=pending)
+            elif step == 0 and native_command:
+                response = ChatMessage(role="assistant", tool_calls=[native_command])
             else:
                 response = self.provider.complete(
                     messages,
@@ -240,10 +266,7 @@ class Assistants:
                     repairs += 1
                     correction = ChatMessage(
                         role="user",
-                        content="No action has been executed. Loading a skill only reads "
-                        "instructions. Perform the original request with an available action "
-                        "tool. If essential input is missing, call clarify_request. Do not "
-                        "report completion without a tool result.",
+                        content=WORKFLOW_TOOL_REMINDER,
                         metadata={"internal": True},
                     )
                     current.append(correction)

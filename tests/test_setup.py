@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Exercise installer failure/reuse paths without changing the host or using the network."""
 
 import os
@@ -23,6 +34,7 @@ MONAILABEL_TOOLS_DIR="$SETUP_TEST_ROOT/workspace/.cache/tools"
 SETUP_TEMP="$SETUP_TEST_ROOT/staging"
 as_root() {{ printf '%s\\n' "$*" >> "$SETUP_TEST_ROOT/root-commands"; }}
 fetch() {{ echo 'Unexpected download' >&2; exit 90; }}
+needs_nvidia_default() {{ return 1; }}
 {script}
 """,
         ],
@@ -114,6 +126,45 @@ def test_setup_reuses_configured_docker_without_system_changes(tmp_path):
         """
 docker() { [[ "$1" == info ]] || exit 92; printf ready; }
 ensure_container_gpu
+ensure_container_gpu
+""",
+    )
+    assert result.returncode == 0, result.stderr
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("running", ["active-container", ""])
+def test_setup_configures_jetson_default_without_interrupting_containers(tmp_path, running):
+    result = run_setup(
+        tmp_path,
+        f"""
+needs_nvidia_default() {{ return 0; }}
+nvidia-ctk() {{ :; }}
+docker() {{
+    if [[ "$1" == ps ]]; then printf '%s' {shlex.quote(running)};
+    elif [[ "$*" == *DefaultRuntime* ]]; then printf runc;
+    else printf ready; fi
+}}
+if docker_gpu_ready; then exit 92; fi
+ensure_container_gpu
+""",
+    )
+    assert result.returncode == 0, result.stderr
+    commands = (tmp_path / "root-commands").read_text()
+    assert "nvidia-ctk runtime configure --runtime=docker --set-as-default" in commands
+    assert ("systemctl restart docker" in commands) == (not running)
+
+
+def test_setup_reuses_jetson_with_nvidia_default(tmp_path):
+    result = run_setup(
+        tmp_path,
+        """
+needs_nvidia_default() { return 0; }
+docker() {
+    [[ "$1" == info ]] || exit 92
+    if [[ "$*" == *DefaultRuntime* ]]; then printf nvidia; else printf ready; fi
+}
+docker_gpu_ready
 ensure_container_gpu
 """,
     )

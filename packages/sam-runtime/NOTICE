@@ -1,0 +1,8 @@
+MedSAM2 inference runtime
+Source: https://github.com/bowang-lab/MedSAM2
+Revision: 332f30d420f1d1b08e2a79b3ae6a602458808383
+
+MedSAM2 is adapted by WangLab from SAM 2 by Meta Platforms, Inc. and affiliates.
+Copyright notices and Apache-2.0 source headers are retained in each upstream file.
+MONAI Label supplies distribution metadata; the included Python and YAML sources are unmodified.
+The upstream prebuilt CUDA binary and optional CUDA extension sources are not distributed.

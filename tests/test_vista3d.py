@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import gzip
 
 import nibabel as nib
@@ -14,7 +25,7 @@ pytestmark = pytest.mark.filterwarnings(
 
 
 @pytest.mark.parametrize("hosted_key", [False, True])
-def test_presets_default_to_vista_without_overriding_user_choices(
+def test_presets_default_to_astra_when_available_without_overriding_user_choices(
     client, http, monkeypatch, hosted_key, hosted_presets
 ):
     if hosted_key:
@@ -37,7 +48,7 @@ def test_presets_default_to_vista_without_overriding_user_choices(
     )
     prefix = f"/api/projects/{project['id']}"
     first = client.get(prefix + "/models")
-    assert len(first) == (6 if hosted_key else 3)
+    assert len(first) == (9 if hosted_key else 6)
     base = next(m for m in first if m["preset"] == "vista3d")
     assert base["read_only"] and base["state_key"] is None and base["label_ids"] == [0]
     selected_model = next(
@@ -49,8 +60,8 @@ def test_presets_default_to_vista_without_overriding_user_choices(
         assert claude["config"]["model"] == "gateway/provider/claude-opus-5"
         assert claude["config"]["token_env"] == "NV_INFERENCE_API_KEY"
         assert "reasoning_effort" not in claude["config"]
-    assert project["annotation_model_id"] == base["id"]
-    assert project["defaults"] == {"1": base["id"]}
+    assert project["annotation_model_id"] == (selected_model["id"] if hosted_key else base["id"])
+    assert project["defaults"] == {}
     assert "test-key-never-sent" not in str(first)
     service.presets.ensure(project["id"])
     assert client.get(prefix + "/models") == first
@@ -75,11 +86,14 @@ def test_preset_title_update_preserves_configuration_and_custom_names(client, ht
     before = service.store.list(ModelRecord, project["id"])
     assert {m.name for m in before} == {
         "VISTA3D",
+        "TotalSegmentator CT",
+        "TotalSegmentator MRI",
         "GPT-6 Astra",
         "Claude Opus 5",
-        "Gemini 3.5 Flash",
+        "Gemini 3.8 Flash",
         "SAM 2.1",
         "MedSAM2",
+        "nnInteractive",
     }
     with service.store.transaction() as session:
         for model in before:
@@ -105,7 +119,7 @@ def test_vista_default_vocabulary_is_available_without_framework_imports(client)
     recipe = next(
         r for r in client.get(f"/api/projects/{project['id']}/recipes") if r["id"] == "vista3d"
     )
-    assert len(recipe["supported_targets"]) == 117
+    assert len(recipe["supported_targets"]) == 118
     assert recipe["target_class_ids"] == targets()
     assert recipe["target_class_ids"]["liver"] == 1
     assert recipe["target_class_ids"]["spleen"] == 3
@@ -115,7 +129,6 @@ def test_vista_default_vocabulary_is_available_without_framework_imports(client)
         18,
         20,
         21,
-        23,
         24,
         25,
         26,
@@ -127,6 +140,9 @@ def test_vista_default_vocabulary_is_available_without_framework_imports(client)
         132,
     }
     assert mapping([Label(id=1, name="Vertebrae L5", color="#ffffff")]) == {1: 33}
+    assert mapping([Label(id=5, name="Lung tumor", color="#ffffff")]) == {5: 23}
+    with pytest.raises(DomainError, match="does not support"):
+        mapping([Label(id=5, name="cancer", color="#ffffff")])
     assert "c6dbe159632a4767696e09f91d74d729b82e73e6" in recipe["documentation_url"]
 
 
@@ -234,7 +250,7 @@ def test_compare_inherited_model_and_base_resolves_trained_targets(
     assert response.status_code == 422
     assert len(client.get(prefix + "/jobs")) == before
     assert service.store.get(ModelRecord, child.id) == child
-    assert service.store.get(ModelRecord, base["id"]).model_dump(mode="json") == base
+    assert service.models.get(base["project_id"], base["id"]).model_dump(mode="json") == base
 
 
 def test_missing_reviewed_organs_prepares_setup_without_launching_training(
@@ -299,7 +315,7 @@ def test_training_filters_labels_preserves_geometry_and_forks_base(
         http.get(f"/api/annotations/{annotations[0]['id']}/mask.bin").content, np.uint8
     )
     assert 12 in original
-    assert service.store.get(ModelRecord, base["id"]).model_dump(mode="json") == base
+    assert service.models.get(base["project_id"], base["id"]).model_dump(mode="json") == base
     job_count = len(client.get(prefix + "/jobs"))
     response = http.post(
         prefix + "/learners/" + child["learner_id"] + "/train",
@@ -404,10 +420,13 @@ def test_inherited_setup_chooses_organs_per_run_and_keeps_base_vocabulary(
         assert response.status_code == 422
     assert len(client.get(prefix + "/jobs")) == count
     assert client.get(prefix + "/learners")[0] == learner
-    assert service.store.get(ModelRecord, base["id"]).model_dump(mode="json") == base
+    assert service.models.get(base["project_id"], base["id"]).model_dump(mode="json") == base
 
 
-def test_vista_geometry_and_project_id_mapping_with_native_monai_transforms(tmp_path, monkeypatch):
+@pytest.mark.parametrize("target,class_id", [("Spleen", 3), ("Lung tumor", 23)])
+def test_vista_geometry_and_project_id_mapping_with_native_monai_transforms(
+    tmp_path, monkeypatch, target, class_id
+):
     pytest.importorskip("monailabel.monai")
     import torch
 
@@ -418,7 +437,7 @@ def test_vista_geometry_and_project_id_mapping_with_native_monai_transforms(tmp_
 
     class Network(torch.nn.Module):
         def forward(self, x, class_vector, transpose):
-            assert class_vector.tolist() == [[3], [1]]
+            assert class_vector.tolist() == [[class_id], [1]]
             return torch.cat([(x - 0.65) * 20, (0.35 - x) * 20], dim=1)
 
     monkeypatch.setattr(runtime, "vista3d132", Network)
@@ -435,7 +454,7 @@ def test_vista_geometry_and_project_id_mapping_with_native_monai_transforms(tmp_
         config={"device": "cpu", "patch_size": 32},
     )
     labels = [
-        Label(id=5, name="Spleen", color="#00ff00"),
+        Label(id=5, name=target, color="#00ff00"),
         Label(id=9, name="Liver", color="#ff0000"),
     ]
     volume = Volume(image, np.diag([-1.5, 1.5, 3.0, 1.0]).tolist())
@@ -450,7 +469,7 @@ def test_vista_geometry_and_project_id_mapping_with_native_monai_transforms(tmp_
         update={
             "read_only": False,
             "inherit_targets": True,
-            "config": model.config | {"label_mapping": {"5": 3}},
+            "config": model.config | {"label_mapping": {"5": class_id}},
         }
     )
     np.testing.assert_array_equal(

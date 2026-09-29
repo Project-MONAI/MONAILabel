@@ -1,11 +1,27 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import React, { useEffect, useRef, useState } from "react";
 import { createSpeech } from "./speech";
 import { panelSession, usePanelState } from "./panel-session";
 import { api } from "./api";
 import { randomId } from "./random-id";
 import "./panel.css";
+import interactionIcons from "./interaction-icons.json";
 import {
   drawHint,
+  navigateHints,
+  showHintTarget,
   spatialObjects,
   applySpatial,
   applyRegion,
@@ -15,6 +31,27 @@ import { mergeMask } from "./masks";
 import { clearMask } from "./segmentation-edits";
 import { initializeAnnotation } from "./initialize";
 import SubmissionComplete from "./SubmissionComplete";
+
+function InteractionIcon({ name }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d={interactionIcons[name]}
+        fill={name === "update" ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function Panel({ servicesManager }) {
   const assetId = new URLSearchParams(location.search).get("assetId");
@@ -41,6 +78,15 @@ export default function Panel({ servicesManager }) {
     session,
     "reviewComment",
     "",
+  );
+  const [interaction, setInteraction] = usePanelState(session, "interaction", {
+    mode: "navigate",
+    target: "",
+  });
+  const [hintScope, setHintScope] = usePanelState(
+    session,
+    "hintScope",
+    "current_slice",
   );
   const [voiceState, setVoiceState] = useState("idle");
   const [voiceNote, setVoiceNote] = useState("");
@@ -69,7 +115,25 @@ export default function Panel({ servicesManager }) {
       speech.dispose();
       voice.current = null;
     };
-  }, []);
+  }, [session]);
+  useEffect(
+    () => () => {
+      navigateHints(servicesManager.services);
+      const current = session.get("interaction", { target: "" });
+      session.set("interaction", { ...current, mode: "navigate" });
+    },
+    [assetId],
+  );
+  useEffect(() => {
+    const stop = (event) => {
+      if (event.key !== "Escape") return;
+      navigateHints(servicesManager.services);
+      const current = session.get("interaction", { target: "" });
+      session.set("interaction", { ...current, mode: "navigate" });
+    };
+    window.addEventListener("keydown", stop, true);
+    return () => window.removeEventListener("keydown", stop, true);
+  }, [session, servicesManager]);
   const messagesEnd = useRef(null);
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ block: "nearest" });
@@ -91,6 +155,37 @@ export default function Panel({ servicesManager }) {
       setBusy(false);
     }
   };
+  const updateScopes = (model) =>
+    model?.annotation_scopes ||
+    model?.interaction?.output_scopes || ["current_slice", "full"];
+  const selectedModel = models.find((m) => m.id === selected);
+  const specification = selectedModel?.interaction;
+  const activateMode = (
+    mode,
+    target = interaction.target,
+    model = selectedModel,
+  ) => {
+    const kind = mode === "box" ? "box" : mode + "_point";
+    if (mode !== "navigate" && !target.trim())
+      throw new Error("Choose or type a target label before placing hints.");
+    if (mode !== "navigate" && !model?.interaction?.inputs?.[kind])
+      throw new Error("The selected model does not accept this input.");
+    if (mode === "navigate") navigateHints(servicesManager.services);
+    else
+      drawHint(
+        servicesManager.services,
+        mode === "box" ? "RectangleROI" : "Probe",
+        state.current.asset,
+        mode !== "negative",
+        target,
+      );
+    showHintTarget(
+      servicesManager.services,
+      state.current.asset,
+      model?.interaction ? target : null,
+    );
+    setInteraction({ mode, target });
+  };
   const initialize = async () => {
     if (!(await initializeAnnotation(state.current, api)))
       throw new Error("Wait for the source image to finish loading.");
@@ -105,12 +200,15 @@ export default function Panel({ servicesManager }) {
     )
       s.undo.shift();
   };
-  const send = () =>
+  const send = (spatial = false, outputScope = hintScope) =>
     run(async () => {
       voice.current?.cancel();
-      const text = prompt.trim();
+      const spatialUpdate = spatial === true;
+      const text = spatialUpdate
+        ? "Update the selected target segmentation."
+        : prompt.trim();
       if (!text) return;
-      setPrompt("");
+      if (!spatialUpdate) setPrompt("");
       log("You: " + text);
       const s = state.current;
       if (!permission && !canReview)
@@ -129,10 +227,13 @@ export default function Panel({ servicesManager }) {
       const context = {
         asset_id: s.asset.id,
         base_revision: s.asset.revision,
+        interaction_mode: interaction.mode,
+        interaction_target: interaction.target,
         slice: s.transfer.scope(),
         viewer_actions: [
           "box",
           "edit_spatial_prompts",
+          "set_interaction_mode",
           "clear_segments",
           "undo",
           "redo",
@@ -145,17 +246,70 @@ export default function Panel({ servicesManager }) {
         s.asset,
       );
       if (selected) context.model_id = selected;
-      const reply = await api("/projects/" + s.project.id + "/assistant", {
-        message: text,
-        context,
-        conversation_id: s.conversationId || null,
-        request_id: randomId(),
-      });
-      s.conversationId = reply.conversation_id;
+      const reply = await api(
+        "/projects/" +
+          s.project.id +
+          (spatialUpdate ? "/spatial-inference" : "/assistant"),
+        spatialUpdate
+          ? {
+              context,
+              scope: outputScope,
+            }
+          : {
+              message: text,
+              context,
+              conversation_id: s.conversationId || null,
+              request_id: randomId(),
+            },
+      );
+      s.conversationId = reply.conversation_id || s.conversationId;
       log(reply.message);
-      if (reply.data?.model_id) setSelected(reply.data.model_id);
+      if (
+        reply.data?.model_id &&
+        reply.data?.client_action !== "set_interaction_mode"
+      )
+        setSelected(reply.data.model_id);
       if (s.closed || state.current !== s)
         throw new Error("The viewer session changed. Retry the prompt.");
+      if (reply.data?.client_action === "set_interaction_mode") {
+        const action = reply.data;
+        if (
+          action.asset_id !== s.asset.id ||
+          action.project_id !== s.project.id ||
+          action.base_revision !== s.asset.revision
+        )
+          throw new Error(
+            "Interaction mode belongs to another sample or revision.",
+          );
+        checkDraft(
+          s.transfer.read(),
+          "Your mask changed while interpreting the prompt. Retry it.",
+        );
+        checkSpatial(
+          servicesManager.services,
+          s.asset,
+          action.expected,
+          action.slice,
+          s.transfer.scope(),
+        );
+        if (action.model_id) {
+          setSelected(action.model_id);
+          const scopes = updateScopes(
+            models.find((m) => m.id === action.model_id),
+          );
+          setHintScope(
+            selected === action.model_id && scopes.includes(hintScope)
+              ? hintScope
+              : scopes[scopes.length - 1],
+          );
+        }
+        activateMode(
+          action.mode,
+          action.target,
+          models.find((m) => m.id === action.model_id) || selectedModel,
+        );
+        return;
+      }
       if (reply.data?.client_action === "edit_spatial_prompts") {
         applySpatial(
           servicesManager.services,
@@ -164,7 +318,16 @@ export default function Panel({ servicesManager }) {
           reply.data,
           s.transfer.scope(),
         );
-        log("SAM hints updated. Drag them to refine; segmentation unchanged.");
+        navigateHints(servicesManager.services);
+        setInteraction({ ...interaction, mode: "navigate" });
+        showHintTarget(
+          servicesManager.services,
+          s.asset,
+          specification ? interaction.target : null,
+        );
+        log(
+          "Spatial hints updated. Drag them to refine; segmentation unchanged.",
+        );
         return;
       }
       if (reply.data?.client_action === "viewer_edit") {
@@ -434,46 +597,227 @@ export default function Panel({ servicesManager }) {
       <select
         aria-label="Annotation model"
         value={selected}
-        onChange={(e) => setSelected(e.target.value)}
+        disabled={busy || !ready}
+        onChange={(e) => {
+          const model = models.find((m) => m.id === e.target.value);
+          navigateHints(servicesManager.services);
+          setSelected(e.target.value);
+          showHintTarget(
+            servicesManager.services,
+            state.current.asset,
+            model?.interaction ? interaction.target : null,
+          );
+          setInteraction({
+            ...interaction,
+            mode: "navigate",
+          });
+          const scopes = updateScopes(model);
+          if (scopes.length)
+            setHintScope(
+              model.interaction ? scopes[scopes.length - 1] : scopes[0],
+            );
+        }}
       >
-        <option value="">Project defaults</option>
-        {models.map((model) => (
-          <option key={model.id} value={model.id}>
-            {model.name}
-          </option>
-        ))}
+        {[
+          ...new Set(
+            models.map((model) => model.catalog_group || "Trained models"),
+          ),
+        ].map((group, index) => [
+          index > 0 ? <hr key={group + "-separator"} /> : null,
+          <optgroup key={group} label={group}>
+            {models
+              .filter(
+                (model) => (model.catalog_group || "Trained models") === group,
+              )
+              .map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+          </optgroup>,
+        ])}
       </select>
-      {["sam2", "medsam2"].includes(
-        models.find((m) => m.id === selected)?.provider,
-      ) && (
-        <details className="monailabel-review" open>
-          <summary>Spatial prompt</summary>
-          <p>
-            Create a box or positive/negative points through chat using source
-            voxel coordinates, then drag to refine. One target’s box and points
-            are combined; select a box when several match.
-          </p>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button
-              disabled={busy || !ready}
-              onClick={() =>
-                run(async () =>
-                  drawHint(servicesManager.services, "RectangleROI"),
-                )
-              }
-            >
-              Box
-            </button>
-            <button
-              disabled={busy || !ready}
-              onClick={() =>
-                run(async () => drawHint(servicesManager.services, "Probe"))
-              }
-            >
-              Point
-            </button>
+      {selectedModel && (
+        <section
+          className="monailabel-interaction"
+          aria-label="Interaction toolbar"
+        >
+          <input
+            aria-label="Target label"
+            list="monailabel-interaction-labels"
+            placeholder="Choose or type a target label"
+            value={interaction.target}
+            disabled={busy || !ready || !(permission || canReview)}
+            maxLength={80}
+            onChange={(e) => {
+              navigateHints(servicesManager.services);
+              showHintTarget(
+                servicesManager.services,
+                state.current.asset,
+                e.target.value,
+              );
+              setInteraction({
+                ...interaction,
+                mode: "navigate",
+                target: e.target.value,
+              });
+            }}
+          />
+          <datalist id="monailabel-interaction-labels">
+            {(
+              selectedModel.supported_targets ??
+              (state.current.project?.labels || [])
+                .filter((label) => label.id)
+                .map((label) => label.name)
+            ).map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+          <div
+            role="toolbar"
+            aria-label={"Spatial prompts for " + interaction.target}
+            title={
+              (selectedModel?.name || "Spatial prompts") +
+              " · " +
+              interaction.target
+            }
+            className="monailabel-interaction-tools"
+          >
+            {[
+              ["+ Point", "positive"],
+              ["− Point", "negative"],
+              ["Box", "box"],
+            ]
+              .filter(
+                ([, mode]) =>
+                  specification?.inputs?.[
+                    mode === "box" ? "box" : mode + "_point"
+                  ],
+              )
+              .map(([label, mode]) => (
+                <button
+                  key={label}
+                  aria-label={label}
+                  disabled={
+                    busy ||
+                    !ready ||
+                    !(permission || canReview) ||
+                    !interaction.target.trim()
+                  }
+                  aria-pressed={interaction.mode === mode}
+                  title={
+                    mode === "box"
+                      ? "Box: draw around the target"
+                      : mode === "positive"
+                        ? "Positive point: click tissue to include"
+                        : "Negative point: click tissue to exclude"
+                  }
+                  onClick={() =>
+                    run(async () =>
+                      activateMode(
+                        interaction.mode === mode ? "navigate" : mode,
+                      ),
+                    )
+                  }
+                >
+                  <InteractionIcon name={mode} />
+                </button>
+              ))}
+            {Object.keys(specification?.inputs || {}).length > 0 && (
+              <span
+                className="monailabel-interaction-divider"
+                aria-hidden="true"
+              />
+            )}
+            <div className="monailabel-update-action">
+              <button
+                className="monailabel-interaction-primary"
+                aria-label="Update"
+                title="Run the selected model for the target label"
+                disabled={
+                  busy ||
+                  !ready ||
+                  !(permission || canReview) ||
+                  !interaction.target.trim() ||
+                  !selected
+                }
+                onClick={() => send(true)}
+              >
+                <InteractionIcon name="update" />
+                <span>
+                  {hintScope === "full" ? "Update volume" : "Update slice"}
+                </span>
+              </button>
+              {updateScopes(selectedModel).length > 1 && (
+                <details
+                  className="monailabel-update-menu"
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget))
+                      event.currentTarget.open = false;
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape")
+                      event.currentTarget.open = false;
+                  }}
+                >
+                  <summary
+                    aria-label="Update options"
+                    aria-disabled={
+                      busy ||
+                      !ready ||
+                      !(permission || canReview) ||
+                      !interaction.target.trim()
+                    }
+                    onClick={(event) => {
+                      if (
+                        busy ||
+                        !ready ||
+                        !(permission || canReview) ||
+                        !interaction.target.trim()
+                      )
+                        event.preventDefault();
+                    }}
+                    title="Choose slice or volume"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m3 4 3 3 3-3"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+                  </summary>
+                  <div>
+                    {updateScopes(selectedModel).map((scope) => (
+                      <button
+                        key={scope}
+                        disabled={
+                          busy ||
+                          !ready ||
+                          !(permission || canReview) ||
+                          !interaction.target.trim()
+                        }
+                        onClick={(event) => {
+                          event.currentTarget.closest("details").open = false;
+                          setHintScope(scope);
+                          send(true, scope);
+                        }}
+                      >
+                        {scope === "full" ? "Update volume" : "Update slice"}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
           </div>
-        </details>
+        </section>
       )}
       {!ready && (
         <div
@@ -596,7 +940,7 @@ export default function Panel({ servicesManager }) {
                   viewBox="0 0 24 24"
                   width="20"
                   height="20"
-                  fill="none"
+                  fill={name === "update" ? "currentColor" : "none"}
                   stroke="currentColor"
                   strokeWidth="1.8"
                   strokeLinecap="round"
@@ -629,7 +973,7 @@ export default function Panel({ servicesManager }) {
                 viewBox="0 0 24 24"
                 width="20"
                 height="20"
-                fill="none"
+                fill={name === "update" ? "currentColor" : "none"}
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"

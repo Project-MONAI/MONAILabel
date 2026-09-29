@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Revision-bound proposals; inference never writes a CVAT draft."""
 
 import io
@@ -16,6 +27,7 @@ from monailabel.core.video import (
     VideoAsset,
     VideoDetectionProvenance,
     VideoFindTrackingRequest,
+    VideoInteractiveRequest,
     VideoKeyframe,
     VideoTrackingProposal,
     VideoTrackingRequest,
@@ -45,7 +57,9 @@ class VideoTracking:
         )
 
     def validate(
-        self, video_id: str, request: VideoTrackingRequest | VideoFindTrackingRequest
+        self,
+        video_id: str,
+        request: VideoTrackingRequest | VideoFindTrackingRequest | VideoInteractiveRequest,
     ) -> VideoAsset:
         asset = self.store.get(VideoAsset, video_id)
         editor = self.store.get(VideoEditor, request.editor_id)
@@ -73,6 +87,122 @@ class VideoTracking:
                 raise DomainError("The tool annotation extends beyond the source image.")
         return asset
 
+    def frame(self, asset: VideoAsset, frame: int) -> np.ndarray:
+        try:
+            decoded = subprocess.run(
+                [
+                    "ffmpeg",
+                    "-v",
+                    "error",
+                    "-fflags",
+                    "+genpts",
+                    "-i",
+                    str(self.artifacts.path(asset.source_key)),
+                    "-map",
+                    "0:v:0",
+                    "-vf",
+                    f"select=eq(n\\,{frame})",
+                    "-frames:v",
+                    "1",
+                    "-fps_mode",
+                    "passthrough",
+                    "-f",
+                    "rawvideo",
+                    "-pix_fmt",
+                    "rgb24",
+                    "pipe:1",
+                ],
+                capture_output=True,
+                check=True,
+                timeout=120,
+            )
+            return np.frombuffer(decoded.stdout, dtype=np.uint8).reshape(
+                asset.height, asset.width, 3
+            )
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            raise DomainError("Could not decode the selected source video frame.") from exc
+
+    def interactive(self, video_id: str, request: VideoInteractiveRequest) -> Job:
+        asset = self.validate(video_id, request)
+        model = self.models.get(asset.project_id, request.model_id)
+        spec = model.interaction
+        scope = "frame" if request.frame_count == 1 else "range"
+        if spec is None or scope not in spec.video_scopes:
+            raise DomainError("Choose an interactive model supporting this video scope.")
+        spatial = request.spatial_prompt
+        coordinates = [p.coordinates for p in spatial.points] + (spatial.box or [])
+        if any(len(p) != 2 or p[0] >= asset.height or p[1] >= asset.width for p in coordinates):
+            raise DomainError("Move or clear hints outside the source video frame.")
+        kinds = {"positive_point" if p.positive else "negative_point" for p in spatial.points}
+        if spatial.box:
+            if any(a >= b for a, b in zip(*spatial.box, strict=True)):
+                raise DomainError("Draw a box with nonzero width and height.")
+            kinds.add("box")
+        if not kinds <= spec.inputs.keys():
+            raise DomainError("The selected model does not support these input types.")
+
+        def run(context: JobContext) -> Outcome:
+            self.validate(video_id, request)
+            self.models.get(asset.project_id, model.id)
+            image = self.frame(asset, request.frame).astype(np.float32) / np.float32(255)
+            prediction = self.models.spatial_provider(model).predict_prompted(
+                image,
+                request.label_id,
+                model,
+                spatial,
+                None,
+                False,
+                lambda value: context.progress(
+                    0.05 + value * 0.2, "Segmenting the prompted video frame."
+                ),
+            )
+            context.check_cancelled()
+            mask = np.asarray(prediction.mask)
+            if mask.shape != (asset.height, asset.width) or not set(np.unique(mask)) <= {
+                0,
+                request.label_id,
+            }:
+                raise DomainError("The model returned invalid source-frame segmentation.")
+            binary = (mask == request.label_id).astype(np.uint8)
+            if not binary.any():
+                raise DomainError("No object was segmented. Adjust the points or box and retry.")
+            seed, complex_shape = polygon_from_mask(binary, request.frame)
+            warnings = (
+                [
+                    "The mask has holes or disconnected regions; its editable polygon shows "
+                    "the largest outer outline. Original masks are retained."
+                ]
+                if complex_shape
+                else []
+            )
+            tracking = VideoTrackingRequest(
+                editor_id=request.editor_id,
+                base_revision=request.base_revision,
+                client_id=request.client_id,
+                label_id=request.label_id,
+                seed=seed,
+                output="polygon",
+                frame_count=request.frame_count,
+                spatial_prompt=spatial,
+                draft_signature=request.draft_signature,
+            )
+            provenance = VideoDetectionProvenance(
+                model_id=model.id,
+                model_name=model.name,
+                model_version=model.version,
+                provider=model.provider,
+                remote_model="",
+                prompt="Viewer points and box",
+            )
+            return self.run(asset, tracking, context, provenance, mask_png(binary), warnings)
+
+        return self.jobs.submit(
+            "video_interactive",
+            asset.project_id,
+            {"asset_id": asset.id, **request.model_dump(mode="json")},
+            run,
+        )
+
     def start(self, video_id: str, request: VideoTrackingRequest) -> Job:
         if request.client_id is None:
             raise DomainError("Select a rectangle or polygon track, or ask to locate a tool.")
@@ -98,39 +228,7 @@ class VideoTracking:
             context.progress(
                 0.01, f"Annotating the tool with {model.name} on source frame {request.frame}."
             )
-            try:
-                decoded = subprocess.run(
-                    [
-                        "ffmpeg",
-                        "-v",
-                        "error",
-                        "-fflags",
-                        "+genpts",
-                        "-i",
-                        str(self.artifacts.path(asset.source_key)),
-                        "-map",
-                        "0:v:0",
-                        "-vf",
-                        f"select=eq(n\\,{request.frame})",
-                        "-frames:v",
-                        "1",
-                        "-fps_mode",
-                        "passthrough",
-                        "-f",
-                        "rawvideo",
-                        "-pix_fmt",
-                        "rgb24",
-                        "pipe:1",
-                    ],
-                    capture_output=True,
-                    check=True,
-                    timeout=120,
-                )
-                image = np.frombuffer(decoded.stdout, dtype=np.uint8).reshape(
-                    asset.height, asset.width, 3
-                )
-            except (OSError, subprocess.SubprocessError, ValueError) as exc:
-                raise DomainError("Could not decode the selected source video frame.") from exc
+            image = self.frame(asset, request.frame)
             project = self.store.get(Project, asset.project_id)
             label = next(label for label in project.labels if label.id == request.label_id)
             image_float = image.astype(np.float32) / np.float32(255)

@@ -1,8 +1,21 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import {
   evaluationVersionOptions,
   evaluationVersionName,
 } from "./evaluation-sets.js";
-import { actionLabel } from "./icons.js";
+import { actionLabel, icon } from "./icons.js";
 import { trainingSettingLabel } from "./training-settings.js";
 import { escapeHTML, badge, button, targetNames } from "./ui.js";
 import { targetSummary } from "./model-targets.js";
@@ -44,6 +57,21 @@ export function modelLibrary(state, canManage, latestDecision) {
       .join(", ");
   const trained = (model) =>
     Boolean(model.snapshot_id || model.learner_id || model.mode);
+  const predefined = state.models.filter((m) => m.preset && !trained(m));
+  const category = (model) =>
+    ["vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(
+      model.provider,
+    )
+      ? "radiology"
+      : Boolean(model.interaction)
+        ? "interactive"
+        : [
+              "openai-polygons",
+              "openai-chat-polygons",
+              "anthropic-polygons",
+            ].includes(model.provider)
+          ? "vision"
+          : "other";
   const origin = (model) => {
     const parent = state.models.find((item) => item.id === model.parent_id);
     if (model.mode === "scratch") return "Trained from scratch";
@@ -59,7 +87,7 @@ export function modelLibrary(state, canManage, latestDecision) {
         "anthropic-polygons",
       ].includes(model.provider)
     )
-      return "Hosted vision model";
+      return "Vision-language model";
     return model.preset ? "Pretrained model" : "Added to this project";
   };
   function card(m) {
@@ -68,40 +96,68 @@ export function modelLibrary(state, canManage, latestDecision) {
       (learner) => learner.id === m.learner_id,
     );
     const isDefault = state.project.annotation_model_id === m.id;
-    const sam = ["sam2", "medsam2"].includes(m.provider);
-    const scope = sam
-      ? m.provider === "medsam2"
-        ? "3D volume · local"
-        : "2D / selected slice · local"
-      : ["monai-unet", "vista3d"].includes(m.provider)
-        ? m.provider === "vista3d"
-          ? "3D CT · local GPU"
-          : `${m.config.spatial_dims || 3}D U-Net`
-        : [
-              "openai-polygons",
-              "openai-chat-polygons",
-              "anthropic-polygons",
-              "huggingface",
-            ].includes(m.provider)
-          ? "2D / selected slice"
-          : m.provider === "pixel-gaussian" || m.provider === "threshold"
-            ? "CPU demo baseline"
-            : "2D / 3D mask service";
-    const derive = m.read_only && m.provider === "vista3d" && canManage();
+    const spatial = Boolean(m.interaction);
+    const total = ["totalsegmentator-ct", "totalsegmentator-mr"].includes(
+      m.provider,
+    );
+    const logo = !trained(m) && m.preset === "vista3d" ? "monai.ico" : null;
+    const symbol = trained(m)
+      ? "network"
+      : m.provider === "totalsegmentator-mr"
+        ? "magnet"
+        : category(m) === "radiology"
+          ? "scan"
+          : spatial
+            ? "segment"
+            : category(m) === "vision"
+              ? "vision"
+              : "server";
+    const scope = total
+      ? `${m.provider === "totalsegmentator-ct" ? "3D CT" : "3D MRI"} · 3 mm · local`
+      : spatial
+        ? m.interaction?.volume_only
+          ? "3D volume · local"
+          : "2D / selected slice · local"
+        : ["monai-unet", "nnunet-v2", "vista3d"].includes(m.provider)
+          ? m.provider === "vista3d"
+            ? "3D CT · local"
+            : m.provider === "nnunet-v2"
+              ? `3D ${m.config.modality} · nnU-Net v2`
+              : `${m.config.spatial_dims || 3}D U-Net`
+          : [
+                "openai-polygons",
+                "openai-chat-polygons",
+                "anthropic-polygons",
+                "huggingface",
+              ].includes(m.provider)
+            ? "2D / selected slice"
+            : m.provider === "pixel-gaussian" || m.provider === "threshold"
+              ? "Demo baseline"
+              : "2D / 3D mask service";
+    const derive =
+      m.read_only &&
+      ["vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(
+        m.provider,
+      ) &&
+      canManage();
     return `<article class="card" data-model-id="${escapeHTML(m.id)}">
-      <div class="model-top"><h3>${escapeHTML(m.name)}</h3>${isDefault ? badge("Default") : ""}</div>
+      <div class="model-top"><span class="model-symbol${logo ? " model-symbol-image" : ""}" aria-hidden="true">${logo ? `<img src="/static/model-icons/${logo}" alt="" width="30" height="30">` : icon(symbol)}</span><h3>${escapeHTML(m.name)}</h3>${isDefault ? badge("Default") : ""}</div>
       <p class="model-provenance">${escapeHTML(origin(m))}</p>
       <p class="model-provenance">Provider: ${escapeHTML(provider)}${m.connection_mode ? ` · ${m.connection_mode === "manual" ? "Selected for this project" : "Automatic"}` : ""}</p>
-      <div class="model-meta">${badge(sam ? "Box / point prompts" : m.read_only && m.provider === "vista3d" ? "CT anatomy" : ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(m.provider) ? "Prompt-defined labels" : names(m.label_ids))}${badge(scope)}${m.unreviewed_training ? badge("Trained on unreviewed predictions") : ""}</div>
+      <div class="model-meta">${badge(total ? (m.provider === "totalsegmentator-ct" ? "117 structures" : "50 structures") : spatial ? "Box / point prompts" : m.read_only && m.provider === "vista3d" ? "CT anatomy" : ["openai-polygons", "openai-chat-polygons", "anthropic-polygons"].includes(m.provider) ? "Prompt-defined labels" : names(m.label_ids))}${badge(scope)}${m.unreviewed_training ? badge("Trained on unreviewed predictions") : ""}</div>
       <div class="model-card-footer">
-        ${canManage() && m.preset && m.connection_mode ? button("Change provider", "model-provider", m.id, "model-text-action") : ""}
         <details><summary>Model details</summary><div class="model-detail-body">
           ${targetSummary(state, m)}
+          ${total ? '<p class="muted">Apache-2.0 · Local inference and fine-tuning. Weights download on first use.</p>' : ""}
+          ${m.provider === "vista3d" ? '<p class="muted"><a href="https://huggingface.co/MONAI/vista3d/blob/c6dbe159632a4767696e09f91d74d729b82e73e6/LICENSE" target="_blank" rel="noopener noreferrer">Weight license</a>: noncommercial research/evaluation only, including fine-tuned weights.</p>' : ""}
+          ${m.provider === "nninteractive" ? '<p class="muted"><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">Weights: CC BY-NC-SA 4.0</a> · Noncommercial use, attribution and share-alike. Downloads on first use.</p>' : ""}
+          ${m.provider === "medsam2" ? '<p class="muted"><a href="https://huggingface.co/wanglab/MedSAM2/blob/e4a6f35edd7e091619cbc0750f462f1574e23955/README.md#license" target="_blank" rel="noopener noreferrer">Weight terms</a>: research and education only.</p>' : ""}
           <p class="code">${escapeHTML(m.config.model || m.provider)}</p>
           <p class="muted">${escapeHTML(m.config.url || (m.read_only ? "Pinned shared weights · reused locally" : "Local project checkpoint"))}</p>
           ${evaluationDetails(state, m)}
-          <div class="model-detail-actions">${!isDefault && canManage() ? button("Make default", "default-model", m.id, "model-text-action") : ""}${sam ? "" : button("Use as evaluation baseline", "baseline", m.id, "model-text-action")}</div>
+          <div class="model-detail-actions">${!isDefault && canManage() ? button("Make default", "default-model", m.id, "model-text-action") : ""}${spatial ? "" : button("Use as evaluation baseline", "baseline", m.id, "model-text-action")}</div>
         </div></details>
+        ${canManage() && m.preset && m.connection_mode ? button("Change provider", "model-provider", m.id, "model-text-action") : ""}
         ${canManage() && !m.preset ? `<div class="model-detail-actions">${trainingSetup ? button("Manage model", "manage-training-model", trainingSetup.id, "model-text-action") : button("Rename", "rename-model", m.id, "model-text-action") + button("Delete", "delete-model", m.id, "model-text-action")}</div>` : ""}
         ${derive ? button('Create project model <span aria-hidden="true">→</span>', "derive-model", m.id, "model-text-action model-derive") : ""}
       </div>
@@ -138,10 +194,28 @@ export function modelLibrary(state, canManage, latestDecision) {
               state.models.filter((m) => !trained(m) && !m.preset),
             ),
             group(
-              "base",
-              "Predefined models",
-              "Preloaded models available to this project.",
-              state.models.filter((m) => !trained(m) && m.preset),
+              "radiology",
+              "Radiology segmentation",
+              "Predefined models for CT and MRI anatomy.",
+              predefined.filter((m) => category(m) === "radiology"),
+            ),
+            group(
+              "interactive",
+              "Interactive segmentation",
+              "Guide segmentation with boxes or points.",
+              predefined.filter((m) => category(m) === "interactive"),
+            ),
+            group(
+              "vision",
+              "Vision-language models",
+              "Use text prompts to annotate images, slices and video frames.",
+              predefined.filter((m) => category(m) === "vision"),
+            ),
+            group(
+              "other",
+              "Other predefined models",
+              "Additional annotation models.",
+              predefined.filter((m) => category(m) === "other"),
             ),
           ].join("")
         : ""
@@ -167,12 +241,13 @@ export function modelLibrary(state, canManage, latestDecision) {
               j.request.learner_id === l.id &&
               ["queued", "running"].includes(j.status),
           );
-          return `<article class="card" data-learner-id="${l.id}"><div class="model-top"><h3>${escapeHTML(l.name)}</h3>${badge(running ? "training" : versions.length ? `${versions.length} trained versions` : "Not trained")}</div><p>${escapeHTML(state.recipes.find((r) => r.id === l.recipe)?.name || l.recipe)} · ${escapeHTML(names(l.label_ids) || (l.inherit_targets ? "Choose organs when training" : "No targets"))}</p><p class="muted">${["monai-unet", "vista3d"].includes(l.recipe) ? (l.recipe === "monai-unet" && l.config.spatial_dims === 2 ? "Local neural network · 2D images" : "Local neural network · scalar volumes") : "Workflow demonstration baseline"}</p><div class="toolbar">${canManage() && !running ? button("Start training", "start-training", l.id, "primary") : ""}${state.modelSplits.some((s) => s.learner_id === l.id) ? button("Evaluation set", "model-split", l.id) : ""}${completed ? button("Results", "job-details", completed.id) : ""}${canManage() && !running ? button("Rename", "rename-learner", l.id) + button("Delete", "delete-learner", l.id) : ""}</div><details><summary>Recommended training settings</summary><p class="muted">Override these when you start a training run.</p><dl class="details-list">${Object.entries(
+          return `<article class="card" data-learner-id="${l.id}"><div class="model-top"><h3>${escapeHTML(l.name)}</h3>${badge(running ? "training" : versions.length ? `${versions.length} trained versions` : "Not trained")}</div><p>${escapeHTML(state.recipes.find((r) => r.id === l.recipe)?.name || l.recipe)} · ${escapeHTML(names(l.label_ids) || (l.inherit_targets ? "Choose organs when training" : "No targets"))}</p><p class="muted">${["monai-unet", "nnunet-v2", "vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(l.recipe) ? (l.recipe === "monai-unet" && l.config.spatial_dims === 2 ? "Local neural network · 2D images" : "Local neural network · scalar volumes") : "Workflow demonstration baseline"}</p><div class="toolbar">${canManage() && !running ? button("Start training", "start-training", l.id, "primary") : ""}${state.modelSplits.some((s) => s.learner_id === l.id) ? button("Evaluation set", "model-split", l.id) : ""}${completed ? button("Results", "job-details", completed.id) : ""}${canManage() && !running ? button("Rename", "rename-learner", l.id) + button("Delete", "delete-learner", l.id) : ""}</div><details><summary>Recommended training settings</summary><p class="muted">Override these when you start a training run.</p><dl class="details-list">${Object.entries(
             {
               ...state.recipes.find((r) => r.id === l.recipe)?.default_config,
               ...l.config,
             },
           )
+            .filter(([key]) => key !== "device")
             .map(
               ([key, value]) =>
                 `<dt>${escapeHTML(trainingSettingLabel(key))}</dt><dd>${escapeHTML(typeof value === "object" ? JSON.stringify(value) : value)}</dd>`,
@@ -193,7 +268,7 @@ export function modelLibrary(state, canManage, latestDecision) {
             .map(
               ([key, label]) =>
                 `<label>${label}<select data-context="${key}" aria-label="${label}"><option value="">Select a model</option>${state.models
-                  .filter((m) => !["sam2", "medsam2"].includes(m.provider))
+                  .filter((m) => !m.interaction)
                   .map(
                     (m) =>
                       `<option value="${m.id}" ${state.context[key] === m.id ? "selected" : ""}>${escapeHTML(m.name)}</option>`,
@@ -241,7 +316,7 @@ export function providerName(model) {
   }
 }
 function evaluationDetails(state, model) {
-  if (["sam2", "medsam2"].includes(model.provider)) return "";
+  if (Boolean(model.interaction)) return "";
   const result = [...state.evaluations]
     .reverse()
     .find((e) => e.candidate_id === model.id);

@@ -1,6 +1,19 @@
+<!--
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1100" viewBox="0 0 1400 1100" role="img" aria-labelledby="title description">
   <title id="title">MONAI Label: describe the task, inspect the result, improve a model</title>
-  <desc id="description">A person types or speaks to MONAI Label in a tablet browser. The workspace connects radiology, pathology and endoscopy viewers with an assistant. On the server, Nemotron understands the request and coordinates validated tools. GPT Astra or another vision model creates initial annotations, SAM2 tracks video objects, and local models perform segmentation and learning. Users inspect, correct, submit and review annotations. Remote clients need only a browser.</desc>
+  <desc id="description">A person types or speaks to MONAI Label in a tablet browser. The workspace connects radiology, pathology and endoscopy viewers with an assistant. Nemotron, GPT or Claude understands requests and coordinates validated tools. Separate annotation models create editable masks, SAM 2.1 tracks video objects, and training recipes publish derived models. Users inspect, correct, submit and review annotations. Remote clients need only a browser.</desc>
   <defs>
     <linearGradient id="background" x2="0" y2="1">
       <stop stop-color="#f1f6fc"/>
@@ -127,7 +140,7 @@
   <text x="1001" y="260" class="label">Assistant</text>
   <rect x="1000" y="282" width="319" height="128" rx="12" fill="#fff"/>
   <text x="1016" y="312" class="body">I’ll use Astra to segment</text>
-  <text x="1016" y="342" class="body">the tool and SAM2 to track</text>
+  <text x="1016" y="342" class="body">the tool and SAM 2.1 to track</text>
   <text x="1016" y="372" class="body">it across 16 frames.</text>
   <rect x="1000" y="427" width="319" height="76" rx="12" fill="#deede7"/>
   <text x="1016" y="457" class="body">The result is ready</text>
@@ -151,10 +164,10 @@
   <text x="175" y="750" class="body muted">The client displays the workspace; computation stays on the server or model provider.</text>
 
   <rect x="174" y="775" width="312" height="158" rx="12" fill="#d4e6fc"/>
-  <text x="195" y="807" class="heading">Nemotron</text>
-  <text x="195" y="838" class="body">Understands your request</text>
-  <text x="195" y="867" class="body">and viewer context.</text>
-  <text x="195" y="906" class="body">Coordinates validated tools.</text>
+  <text x="195" y="807" class="heading">Assistant</text>
+  <text x="195" y="838" class="body">Nemotron · GPT · Claude</text>
+  <text x="195" y="877" class="small muted">Understands requests and</text>
+  <text x="195" y="904" class="small muted">coordinates validated tools.</text>
 
   <rect x="502" y="775" width="275" height="158" rx="12" fill="#fff"/>
   <text x="520" y="807" class="label">Annotate</text>
@@ -164,14 +177,14 @@
 
   <rect x="793" y="775" width="227" height="158" rx="12" fill="#fff"/>
   <text x="811" y="807" class="label">Track</text>
-  <text x="811" y="838" class="body">SAM2</text>
+  <text x="811" y="838" class="body">SAM 2.1</text>
   <text x="811" y="877" class="small muted">Carry a box or mask</text>
   <text x="811" y="904" class="small muted">across video frames</text>
 
   <rect x="1036" y="775" width="296" height="158" rx="12" fill="#fff"/>
   <text x="1054" y="807" class="label">Learn</text>
-  <text x="1054" y="838" class="body">VISTA3D · U-Net</text>
-  <text x="1054" y="877" class="small muted">Train from accepted labels.</text>
+  <text x="1054" y="838" class="body">U-Net · nnU-Net v2</text>
+  <text x="1054" y="869" class="body">VISTA3D · TotalSegmentator</text>
   <text x="1054" y="904" class="small muted">Keep the original weights.</text>
   <text x="175" y="973" class="body muted">Shared project data · Permissions · Annotation history · Background jobs</text>
   <text x="44" y="1047" class="small muted">System illustration, not a screenshot. Local models and remote Slicer/QuPath desktops run on the server.</text>

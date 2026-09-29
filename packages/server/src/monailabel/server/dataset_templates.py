@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Import public datasets into normal, revision-checked annotation/review workflows."""
 
 import gzip
@@ -20,6 +31,13 @@ from monailabel.server.data import MAX_NIFTI_BYTES, Datasets, decode_image, nift
 from monailabel.server.dataset_downloads import Archive, Downloads, Source, sources
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.labels import imported_labels
+from monailabel.server.raster_datasets import (
+    RASTER_FORMATS,
+    binary_mask,
+    image_names,
+    png_mask,
+    source_group,
+)
 from monailabel.server.reference_imports import ReferenceImports
 from monailabel.server.storage import Store
 from monailabel.server.video.assets import Videos
@@ -47,7 +65,12 @@ class DatasetTemplates:
         return [
             DatasetTemplate.model_validate(
                 source.model_dump(include=set(DatasetTemplate.model_fields))
-                | {"cached": self.downloads.cached(source)}
+                | {
+                    "cached": self.downloads.cached(source)
+                    and (
+                        source.mask_download is None or self.downloads.cached(source.mask_download)
+                    )
+                }
             )
             for source in sources()
         ]
@@ -77,6 +100,12 @@ class DatasetTemplates:
         if request.section not in source.sections:
             raise DomainError("This dataset does not have the requested source section.")
         needs_masks = request.include_masks or request.evaluation_percentage is not None
+        if source.format == "kvasir-instrument" and request.evaluation_percentage is not None:
+            raise DomainError(
+                "Kvasir-Instrument does not publish patient/procedure IDs. "
+                "Import it for annotation/training or as a separate evaluation-only collection; "
+                "a frame-based percentage split would not establish independent cases."
+            )
         if needs_masks and (not source.has_masks or request.section == "test"):
             raise DomainError(
                 "This selection has no reference labels. "
@@ -88,7 +117,7 @@ class DatasetTemplates:
                 raise DomainError("Choose an active evaluation set in this project.")
         if request.channel >= max(1, len(source.channels)):
             raise DomainError("Choose a channel provided by this dataset.")
-        if source.format == "totalsegmentator" and needs_masks:
+        if source.format in {"totalsegmentator", "totalsegmentator-mr"} and needs_masks:
             if (
                 not request.targets
                 or len(set(request.targets)) != len(request.targets)
@@ -141,7 +170,17 @@ class DatasetTemplates:
             "dataset_import",
             project_id,
             request.model_dump(mode="json")
-            | {"source_url": source.source_url, "source_checksum": source.checksum},
+            | {
+                "source_url": source.source_url,
+                "source_checksum": source.checksum,
+                "labels_url": source.labels_url,
+                "license": source.license,
+                "license_url": source.license_url,
+                "citation": source.citation,
+                "grouping": source.grouping,
+                "mask_checksum": source.mask_download.checksum if source.mask_download else None,
+                "label_groups": source.label_groups,
+            },
             work,
         )
 
@@ -155,8 +194,11 @@ class DatasetTemplates:
         context: JobContext,
     ) -> Outcome:
         archive = Archive(path)
+        mask_archive = None
         needs_masks = request.include_masks or request.evaluation_percentage is not None
         try:
+            if needs_masks and source.mask_download:
+                mask_archive = Archive(self.downloads.fetch(source.mask_download, context))
             if source.format == "msd":
                 section = "imagesTr" if request.section == "training" else "imagesTs"
                 images = sorted(
@@ -176,9 +218,22 @@ class DatasetTemplates:
                     label_names = {
                         int(k): str(v) for k, v in definition["labels"].items() if int(k)
                     }
+                    if source.label_groups:
+                        members = [i for group in source.label_groups.values() for i in group]
+                        if len(set(members)) != len(members) or set(members) != set(label_names):
+                            raise DomainError(
+                                "Template label groups do not match the published dataset."
+                            )
+                        label_names = {i: name for i, name in enumerate(source.label_groups, 1)}
+            elif source.format in RASTER_FORMATS:
+                images = image_names(source, archive)
+                label_names = {1: "nuclei" if source.format == "tnbc" else "instrument"}
             else:
                 images = sorted(
-                    name for name in archive.names if PurePosixPath(name).name == "ct.nii.gz"
+                    name
+                    for name in archive.names
+                    if PurePosixPath(name).name
+                    == ("mri.nii.gz" if source.format == "totalsegmentator-mr" else "ct.nii.gz")
                 )
                 label_names = (
                     {i + 1: name for i, name in enumerate(request.targets)} if needs_masks else {}
@@ -190,13 +245,20 @@ class DatasetTemplates:
                     "No cases match this selection. "
                     "Reduce the starting case or choose another section."
                 )
-            evaluation_count = 0
+            evaluation_groups: set[str] = set()
             if request.evaluation_percentage is not None:
-                if len(selected) < 2:
-                    raise DomainError("A combined import needs at least two source cases.")
-                evaluation_count = min(
-                    len(selected) - 1,
-                    math.ceil(len(selected) * request.evaluation_percentage / 100),
+                groups = list(dict.fromkeys(source_group(source, name) for name in selected))
+                if len(groups) < 2:
+                    raise DomainError(
+                        "A combined import needs at least two independent source groups."
+                    )
+                count = min(
+                    len(groups) - 1,
+                    math.ceil(len(groups) * request.evaluation_percentage / 100),
+                )
+                evaluation_groups = set(groups[:count])
+                evaluation_count = sum(
+                    source_group(source, name) in evaluation_groups for name in selected
                 )
                 context.progress(
                     0.5,
@@ -210,7 +272,7 @@ class DatasetTemplates:
             failed: list[JsonValue] = []
             evaluation_set = None
             set_name = f"{source.name} evaluation"[:120]
-            if request.split == Split.VALIDATION or evaluation_count:
+            if request.split == Split.VALIDATION or evaluation_groups:
                 evaluation_set = next(
                     (
                         record
@@ -228,8 +290,8 @@ class DatasetTemplates:
                     raise DomainError("The evaluation set is no longer active. Refresh and retry.")
             for index, name in enumerate(selected):
                 case_request = request
-                if evaluation_count:
-                    is_evaluation = index < evaluation_count
+                if evaluation_groups:
+                    is_evaluation = source_group(source, name) in evaluation_groups
                     case_request = request.model_copy(
                         update={
                             "evaluation_percentage": None,
@@ -252,6 +314,7 @@ class DatasetTemplates:
                         user_id,
                         evaluation_set,
                         set_name,
+                        mask_archive,
                     )
                     if updated_set is not None:
                         evaluation_set = updated_set
@@ -278,6 +341,8 @@ class DatasetTemplates:
             )
         finally:
             archive.close()
+            if mask_archive:
+                mask_archive.close()
 
     def import_case(
         self,
@@ -290,13 +355,14 @@ class DatasetTemplates:
         user_id: str,
         evaluation_set: EvaluationSet | None,
         set_name: str,
+        mask_archive: Archive | None = None,
     ) -> tuple[Asset, str | None, EvaluationSet | None]:
         content = archive.read(name)
         if source.channels:
             content = select_channel(content, request.channel)
         case = PurePosixPath(name)
         filename = case.name
-        if source.format == "totalsegmentator":
+        if source.format in {"totalsegmentator", "totalsegmentator-mr"}:
             filename = case.parent.name + ".nii.gz"
         elif source.channels:
             filename = (
@@ -309,10 +375,20 @@ class DatasetTemplates:
             if source.format == "msd":
                 mask_name = str(case.parent.parent / "labelsTr" / case.name)
                 values = read_mask(archive, mask_name, affine, mask.shape)
-                if not set(np.unique(values)) <= {0, *label_names}:
+                original_ids = (
+                    {i for group in source.label_groups.values() for i in group}
+                    if source.label_groups
+                    else set(label_names)
+                )
+                if not set(np.unique(values)) <= {0, *original_ids}:
                     raise DomainError("Reference mask contains IDs absent from dataset.json.")
-                # Keep original task IDs until all geometry and mapping checks pass.
-                mask = values.astype(np.uint8)
+                if source.label_groups:
+                    for identifier, source_ids in enumerate(source.label_groups.values(), 1):
+                        mask[np.isin(values, source_ids)] = identifier
+                else:
+                    mask = values.astype(np.uint8)
+            elif source.format in RASTER_FORMATS:
+                mask = binary_mask(source, mask_archive or archive, name, mask.shape)
             else:
                 for identifier, label in label_names.items():
                     values = read_mask(
@@ -332,18 +408,14 @@ class DatasetTemplates:
                     mask[selected] = identifier
         # Match known image identity before assigning a canonical dataset source group.
         key = self.datasets.artifacts.put_array(image)
-        group = (
-            f"msd:{source.id}:{case.name}"
-            if source.format == "msd"
-            else f"totalsegmentator:{case.parent.name}"
-        )
+        group = source_group(source, name)
         known = {a.group_id for a in self.store.list(Asset, project_id) if a.image_key == key}
         if len(known) > 1:
             raise DomainError("This case already has conflicting source groups in the project.")
         if known:
             group = next(iter(known))
         if request.split == Split.VALIDATION:
-            assert mask is not None and affine is not None
+            assert mask is not None
             result = self.references.import_pair(
                 project_id,
                 EvaluationImportRequest(
@@ -356,8 +428,8 @@ class DatasetTemplates:
                 ),
                 filename,
                 content,
-                filename.removesuffix(".gz"),
-                nifti_bytes(mask, affine),
+                filename.removesuffix(".gz") if affine is not None else case.stem + "-labels.png",
+                nifti_bytes(mask, affine) if affine is not None else png_mask(mask),
                 user_id,
             )
             return (

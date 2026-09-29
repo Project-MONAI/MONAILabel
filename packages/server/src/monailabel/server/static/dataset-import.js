@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { escapeHTML as esc } from "./ui.js";
 import { randomId } from "./random-id.js";
 
@@ -108,7 +121,7 @@ export function importFiles(ui, defaultUse = "pool") {
       ) +
       '<p data-pair-status role="status"></p>' +
       `<fieldset><legend>Structures in these labels</legend><p class="muted">0 is background. Name each structure covered by these label files.</p><datalist id="reference-structure-names">${initialName.map((l) => `<option value="${esc(l.name)}">`).join("")}</datalist><div data-label-rows>${row(1, initialName.length === 1 ? initialName[0].name : "")}</div><button type="button" data-add-structure>Add structure</button></fieldset>` +
-      '<label class="reference-import-choice"><input type="checkbox" name="reviewed">These labels have been reviewed</label><p class="muted">Leave unchecked to review them after import.</p></div>' +
+      '<div data-training-review><label class="reference-import-choice"><input type="checkbox" name="reviewed">These labels have been reviewed</label><p class="muted">Leave unchecked to review them after import.</p></div></div>' +
       "<div data-evaluation-options>" +
       selectField(
         "Evaluation set",
@@ -244,7 +257,7 @@ export function importFiles(ui, defaultUse = "pool") {
           status.textContent = `${pairs.length - failed} imported · ${failed} failed. Successful imports are saved; retry to finish.`;
           return false;
         }
-        if (evaluation && data.has("reviewed")) {
+        if (evaluation) {
           status.textContent = "Saving fixed evaluation references…";
           await api(
             `/projects/${projectId}/evaluation-sets/${currentSet.id}/versions`,
@@ -256,7 +269,7 @@ export function importFiles(ui, defaultUse = "pool") {
         state.datasetFilter = evaluation ? `set:${currentSet.id}` : "all";
         state.pages.datasets = 1;
         message(
-          `Imported ${pairs.length} ${withLabels ? "image/label pairs" : "images"}${evaluation ? ` into ${currentSet.name}. Reserved for evaluation. ${data.has("reviewed") ? "Fixed references are ready for model comparison." : "Review the labels before comparing models."}` : "."}`,
+          `Imported ${pairs.length} ${withLabels ? "image/label pairs" : "images"}${evaluation ? ` into ${currentSet.name}. Fixed references are ready for model comparison and excluded from training.` : "."}`,
         );
       } finally {
         fields.forEach((input, index) => (input.disabled = disabled[index]));
@@ -282,11 +295,13 @@ export function importFiles(ui, defaultUse = "pool") {
           .forEach((input) => (input.disabled = !visible));
       }
     }
+    form.querySelector("[data-training-review]").hidden = evaluation;
+    form.elements.reviewed.disabled = evaluation || !withLabels;
     const creating = evaluation && !form.elements.evaluation_set.value;
     form.querySelector("[data-set-name]").hidden = !creating;
     form.elements.set_name.disabled = !creating;
     form.querySelector("[data-purpose-help]").textContent = evaluation
-      ? "Evaluation-only data needs images + labels and is excluded from every model’s training."
+      ? "Imported reference labels are ready for evaluation and excluded from every model’s training."
       : withLabels
         ? "Add images and existing labels. Each model manages its own split."
         : "Add images now; each model chooses its own training and validation split.";

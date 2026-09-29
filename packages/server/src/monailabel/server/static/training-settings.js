@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { escapeHTML } from "./ui.js";
 
 const numbers = {
@@ -30,7 +43,7 @@ const hints = {
 export const trainingSettingLabel = (key) =>
   numbers[key]?.[0] ||
   {
-    device: "Run training on",
+    device: "Execution device",
     intensity_window: "Image intensity range",
     spatial_dims: "Image dimensions",
     in_channels: "Image channels",
@@ -40,6 +53,7 @@ export const trainingSettingLabel = (key) =>
     bundle_version: "Bundle version",
     vista_label_ids: "Original structure IDs",
     label_mapping: "Structure mapping",
+    modality: "Scan modality",
   }[key] ||
   key.replaceAll("_", " ");
 export function trainingSettings(learner) {
@@ -67,20 +81,7 @@ export function trainingSettings(learner) {
     .join("");
   if (!fields) return "";
   return `<details><summary>Training settings (recommended)</summary><p class="muted">Changes apply to this run only.</p><div class="form-grid">${fields}${
-    "device" in config
-      ? `<label>Run training on<select name="run_device">${[
-          "auto",
-          "cpu",
-          "cuda",
-        ]
-          .filter((d) => learner.recipe !== "vista3d" || d !== "auto")
-          .map(
-            (d) =>
-              `<option value="${d}" ${config.device === d ? "selected" : ""}>${{ auto: "Automatic", cpu: "CPU", cuda: "GPU (CUDA)" }[d]}</option>`,
-          )
-          .join("")}</select></label>`
-      : ""
-  }${"intensity_window" in config && config.spatial_dims !== 2 ? `<div><label>Image intensity range<input name="run_intensity_window" aria-describedby="run-range-hint" placeholder="Automatic" value="${escapeHTML(config.intensity_window?.join(", ") || "")}"></label><small id="run-range-hint">Optional: minimum, maximum (for example, -200, 300). Leave blank for automatic scaling.</small></div>` : ""}</div><p class="muted" data-training-budget role="status"></p></details>`;
+"intensity_window" in config && config.spatial_dims !== 2 ? `<div><label>Image intensity range<input name="run_intensity_window" aria-describedby="run-range-hint" placeholder="Automatic" value="${escapeHTML(config.intensity_window?.join(", ") || "")}"></label><small id="run-range-hint">Optional: minimum, maximum (for example, -200, 300). Leave blank for automatic scaling.</small></div>` : ""}</div><p class="muted" data-training-budget role="status"></p></details>`;
 }
 
 export function bindTrainingSettings(form) {
@@ -91,11 +92,13 @@ export function bindTrainingSettings(form) {
     const steps = value("epochs") * value("steps_per_epoch");
     const patches = steps * value("batch_size");
     output.textContent =
-      steps && patches
+      steps && !form.elements.run_batch_size
+        ? `${steps.toLocaleString()} weight updates · nnU-Net plans batch and patch sizes`
+        : steps && patches
         ? `${steps.toLocaleString()} weight updates · ${patches.toLocaleString()} sampled patches`
         : "Enter epochs, training steps and batch size to see the run size.";
   };
-  form.addEventListener("input", update);
+  output.closest("details").addEventListener("input", update);
   update();
 }
 export function trainingOverrides(form, learner) {

@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Web workspace actions, sharing the same services as desktop clients."""
 
 import os
@@ -34,6 +45,9 @@ router = APIRouter(prefix="/api", dependencies=[Depends(authorize)])
 
 
 def local_desktop(request: Request) -> bool:
+    if os.environ.get("MONAILABEL_NATIVE_VIEWERS") == "0":
+        return False
+
     def loopback(host: str) -> bool:
         if host == "localhost":
             return True
@@ -50,7 +64,8 @@ def local_desktop(request: Request) -> bool:
 def desktop_backend_url(request: Request) -> str:
     if configured := os.environ.get("MONAILABEL_DESKTOP_BACKEND_URL"):
         return configured.rstrip("/")
-    if getattr(request.app.state, "direct_tls", False):
+    local_tls = bool(getattr(request.app.state, "local_ca_certificate", None))
+    if getattr(request.app.state, "direct_tls", False) and not local_tls:
         return str(request.base_url).rstrip("/")
     server = request.scope.get("server")
     if not server:
@@ -64,7 +79,7 @@ def desktop_backend_url(request: Request) -> str:
     if address.is_unspecified:
         address = ip_address("::1" if address.version == 6 else "127.0.0.1")
     host = f"[{address}]" if address.version == 6 else str(address)
-    return f"http://{host}:{server[1]}"
+    return f"{'https' if local_tls else 'http'}://{host}:{server[1]}"
 
 
 @router.patch("/projects/{project_id}/label-colors")
@@ -247,6 +262,7 @@ def viewer(
                         secret_env=secret_env,
                         mode=mode,
                         shared_filesystem=selected == "slicer",
+                        ca_certificate=getattr(request.app.state, "local_ca_certificate", None),
                     )
                 )
             )
@@ -260,7 +276,15 @@ def viewer(
     url = desktop_backend_url(request)
 
     def work(context: JobContext) -> Outcome:
-        desktop = service.desktops.open(asset, user, selected, mode, url, context)
+        desktop = service.desktops.open(
+            asset,
+            user,
+            selected,
+            mode,
+            url,
+            context,
+            ca_certificate=getattr(request.app.state, "local_ca_certificate", None),
+        )
         return Outcome({"url": f"/desktop/{desktop.id}", "viewer": selected})
 
     return service.jobs.submit(

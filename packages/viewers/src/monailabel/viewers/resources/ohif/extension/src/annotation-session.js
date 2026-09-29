@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { api } from "./api";
 import { panelSession } from "./panel-session";
 import { MaskTransfer } from "./masks";
@@ -66,6 +79,16 @@ export function startAnnotationSession(servicesManager, assetId) {
           ),
         });
         session.set("models", choices);
+        const preferred =
+          session.get("selected", "") ||
+          project.annotation_model_id ||
+          Object.values(project.defaults || {})[0];
+        session.set(
+          "selected",
+          choices.find((model) => model.id === preferred)?.id ||
+            choices[0]?.id ||
+            "",
+        );
         session.set(
           "permission",
           permissions.roles.some((role) =>

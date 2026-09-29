@@ -1,94 +1,85 @@
 # Viewers
 
-Open a sample from **Datasets** to annotate, or from **Reviews** to review it. Viewers share the project's models, labels, revisions and backend assistant.
+Open samples from **Datasets** to annotate or **Reviews** to review.
 
-| Data                           | Viewer              |
-| ------------------------------ | ------------------- |
-| Scalar NIfTI / CT volumes      | 3D Slicer           |
-| Bounded RGB pathology images   | QuPath              |
-| Imported DICOM or scalar NIfTI | OHIF in the browser |
-| Video / endoscopy clips        | CVAT in the browser |
-
-Server-launched desktop tools are discovered first, then downloaded if supported, and cached in `workspace/.cache/tools/`. `MONAILABEL_TOOLS_DIR` overrides this path; standalone CLI provisioning uses its OS user cache. OHIF is prepared separately on first use. NIfTI viewing in OHIF does not require a DICOM server.
+| Data | Viewer |
+| --- | --- |
+| Scalar volumes | Slicer |
+| Bounded pathology images | QuPath |
+| DICOM or scalar NIfTI | OHIF |
+| Video | CVAT |
 
 ## Local and remote launch
 
-Open the workspace through `localhost`, `127.0.0.1` or `::1` to launch Slicer and QuPath as normal desktop windows on the server machine. Open it through a network hostname or IP address to launch a private browser desktop instead. Buttons and assistant requests use the same choice. OHIF and CVAT always open in the browser.
+Slicer/QuPath open native windows for localhost access and private browser desktops for network access. OHIF/CVAT always open in the browser. Use `/datasets?desktop=browser` for a headless host or SSH forwarding.
 
-Remote clients, including tablets, need only a browser. Slicer or QuPath runs on the Linux server in a Docker container with its existing annotation assistant. The first launch prepares the runtime and viewer; later launches reuse the downloads. The desktop resolution automatically follows the browser's available width and height, including window resizing and tablet rotation. Smaller screens use a proportionally larger native desktop scaled to fill the tab, keeping application controls within view. Use the display's side handle for touch controls and its on-screen keyboard.
+Browser desktops resize with the tab. The side toolbar provides a keyboard, touch controls and **Clipboard → Paste into viewer / Copy to computer**.
 
-Use the side toolbar's **Clipboard** panel to exchange text with your computer, including over HTTP. Paste text into the panel and choose **Paste into viewer**. After copying text inside Slicer or QuPath, choose **Copy to computer** to put it on your device's clipboard. Keyboard paste also sends local clipboard text directly to the focused viewer control.
-
-Closing the last viewer tab ends its session after a ten-second grace period. Submit your annotation before closing; unsaved edits are discarded when the viewer ends. Exiting the native application also closes its browser tab, including **Exit Slicer** after submission; if the browser blocks closing, the tab returns to the project workspace. Refreshing the page or keeping another tab connected preserves the session, and a network interruption alone does not end it or close the tab. **Browser desktops** in the workspace sidebar lists running viewers; **End session** closes one immediately after confirmation. Annotation and review use separate sessions. Server restarts retain running containers, but host reboots and container crashes do not preserve unsaved native state. Saved native files remain under `workspace/viewers/desktop/`; submitted annotations remain in the workspace.
-
-For SSH port forwarding or a headless local server, open `/datasets?desktop=browser` to force browser launch for that workspace tab. The API also accepts `target=browser` on the viewer launch request. A browser cannot determine whether a localhost address was forwarded from another machine.
+Submit or save drafts before closing. Closing the last tab ends the desktop after ten seconds; **End session** closes it immediately. Refresh and network interruptions preserve the session. Server restarts retain running containers, but crashes/reboots lose unsaved native state. Saved desktop files remain under `workspace/viewers/desktop/`.
 
 ### Browser desktop server setup
 
-Use a Linux x86_64 or ARM64 server with a local Docker daemon and native portable Slicer/QuPath distributions. See the [Spark guide](spark.md) for ARM64 builds. Remote devices connect over HTTPS to the workspace; include its hostname in `MONAILABEL_ALLOWED_HOSTS`. An HTTPS reverse proxy must forward WebSocket upgrades for `/desktop/`. No VNC port is exposed: the backend relays the signed-in user's display through a private Unix socket. Session ownership and current project access are checked at connection and while connected.
+Requires Linux x86_64/ARM64 and a local Docker daemon. See [Spark](spark.md) for ARM64 viewers and [Docker deployment](docker.md) for running the backend in a container.
 
-The default native bridge URL uses the HTTP connection's local server address, so binding only a specific LAN interface works too. An HTTPS reverse proxy can terminate TLS while the backend continues to listen locally. When using the server's own TLS options, the bridge uses the workspace HTTPS address, which must resolve from the container and have a certificate trusted there. For a private development CA, prefer terminating TLS at the proxy; trusting a certificate on the tablet alone does not install it in the viewer container. `MONAILABEL_DESKTOP_BACKEND_URL` overrides the bridge address for custom deployments.
+Configure HTTPS and allowed hosts for remote access. Reverse proxies must forward WebSocket upgrades for `/desktop/`. The viewer bridge must reach and trust the backend URL; `MONAILABEL_DESKTOP_BACKEND_URL` overrides it. For private development certificates, terminating TLS at the proxy avoids installing the CA in each viewer container.
 
-| Server setting | Default | Purpose |
-| --- | --- | --- |
-| `MONAILABEL_DESKTOP_LIMIT` | `8` | Maximum active browser desktops per workspace |
-| `MONAILABEL_DESKTOP_MEMORY` | `8g` | Docker memory limit per desktop |
-| `MONAILABEL_DESKTOP_CPUS` | `4` | Docker CPU limit per desktop |
+| Setting | Default |
+| --- | --- |
+| `MONAILABEL_DESKTOP_LIMIT` | 8 desktops |
+| `MONAILABEL_DESKTOP_MEMORY` | 8g per desktop |
+| `MONAILABEL_DESKTOP_CPUS` | 4 per desktop |
 
-Desktop containers have a private home and display, read-only viewer/bridge mounts, dropped Linux capabilities and no workspace or Docker socket mount. They use host networking to reach the backend, so this is intended for trusted workspace users who may run native viewer scripts. Display rendering uses software OpenGL; annotation and training still run in the backend's configured providers. Large 3D scenes may be slower than a local GPU desktop. Runtime logs are retained in the session's private directory when it ends.
+Desktops use host networking and software rendering. They are intended for trusted workspace users who can run native viewer scripts. Project access and session ownership are checked during display connections.
 
 ## Annotate and review
 
-Choose a compatible model and state the target and scope, such as `Annotate spleen on this slice` or `Annotate nuclei in the selected region`. Inspect and correct the result with native tools before submitting. A single slice or small region is not a complete volume/image annotation.
-
-Submission creates a pending annotation. Reviewers can accept, request changes, or accept corrections in the viewer. Corrected acceptance saves a new immutable revision and its decision together. The web Reviews table also supports selected saved annotations: select one or more rows, then use the single **Review decision** dropdown above the table for **Good / Needs changes / Pending**.
-
-Successful submission/review offers a return or exit action. Keep working to retain unsaved viewer content. Failures leave the viewer open. The workspace refreshes committed changes automatically while protecting open forms.
+Choose a compatible model and name the target and scope. Inspect and correct results before submitting. Submission creates a pending revision; reviewers accept, request changes or accept a corrected revision. **Reviews → Review decision** also supports decisions on selected rows.
 
 ## Slicer
 
-Use **Manual editing** for Segment Editor and **Ctrl+Enter** to send chat. The conversation panel can be resized or popped out. Select the intended Red/Yellow/ Green view for slice requests; geometry must align with a source voxel plane.
+Use **Manual editing** for Segment Editor and **Ctrl+Enter** for chat. Select the intended source-aligned Red/Yellow/Green view for slice requests.
 
 ```text
-Clear spleen on this slice
-Undo my last change
-Change spleen color to blue
-Restore the default anatomical color for spleen
+Clear spleen on this slice.
+
+Undo my last change.
+
+Change spleen color to blue.
 ```
 
-Local mask edits preserve other structures and requested-outside scope. Save a Slicer scene to retain boxes, points, ROIs and other native edits. After bridge updates, save or submit your work, end the old viewer session and open the sample again. Local launches can read authorized workspace files directly; remote launches use authenticated downloads.
+Save a Slicer scene to retain native boxes, points and ROIs. After adapter updates, save/submit, end the session and reopen.
 
-For model-assisted boxes, explicitly select a capable localization model. `Add ROI for spleen between slice 70 to 80 using Astra` evaluates all eleven slices. ROI slice numbers are one-based and inclusive; they are not Slicer's millimeter position. ROI creation does not automatically constrain later segmentation. See [SAM](#local-sam-annotation) for zero-based point/box editing prompts.
+For localization, name a capable model: `Add ROI for spleen between slice 70 to 80 using Astra`. ROI slice numbers are one-based and inclusive, not millimeter positions. Creating an ROI does not automatically constrain later segmentation.
 
 ## QuPath
 
-The **MONAI Label** tab provides chat and optional pop-out controls. A selected area runs as one crop without tiling; whole-image requests can specify a tile size (default 256 pixels). Results return to source coordinates and preserve outside edits.
+Use the **MONAI Label** tab for chat. A selected region is processed as one crop; whole-image requests can use tiles, defaulting to 256 pixels. Outside edits are preserved.
 
-Ask `Clear all annotations in the selected region` to remove labels only inside that area, or `Clear nuclei in the selected region` to keep other classes. Selection guides and outside objects remain. Say `Undo that` to restore the edit.
+```text
+Annotate nuclei in the selected region.
 
-Leave the model on **Automatic** and ask, for example, `Annotate nuclei in the selected region`. The backend matches the image and targets to compatible defaults, a dedicated model, or the configured Astra preset. Volume-only models such as VISTA3D are excluded from QuPath's choices. Incomplete models are excluded from automatic selection; an explicit choice or compatible default reports its configuration error without switching models. Name a model in chat to choose it explicitly; the Claude and Gemini presets require an explicit choice or configured default.
+Clear nuclei in the selected region.
 
-Classify native objects as project structures before mask submission. Selection guides are not segmentation labels. **Save QuPath draft** preserves the native project; save before closing or reopening after an adapter update.
+Undo that.
+```
 
-`Classify the annotated nuclei` proposes editable cell categories for up to 128 objects. Classification is separate from the segmentation mask. Backend cell-type review/training and streaming gigapixel slides are not implemented.
+**Automatic** uses compatible defaults or the configured Astra preset. Name another model explicitly if needed. Classify native objects as project structures before mask submission; selection guides are not labels. **Save QuPath draft** preserves the native project.
+
+`Classify the annotated nuclei` proposes editable categories for up to 128 objects. Durable cell-type review/training and streaming whole slides are not implemented.
 
 ## OHIF
 
-Saved masks load automatically with the selected source image, including while the assistant is collapsed. Opening/closing the panel preserves local mask edits and chat. A failed mask load offers Retry and blocks submission until ready.
+Saved masks load automatically. A failed load offers Retry and blocks submission. Use native tools or chat for slice edits, Undo/Redo and submission. **Return to workspace** reuses the launch page.
 
-As in Slicer, ask `Clear the spleen annotation on the current slice`, then `Annotate the spleen on the current slice using GPT Astra`. Clearing is a local, undoable edit; other slices and labels remain unchanged. Say `Undo that` or `Redo that` to step through assistant edits.
-
-Use native editing or chat, then submit. **Return to workspace** reuses the launch page when possible. NIfTI uses a cached local DICOM viewing copy while annotations stay on the original grid. See [DICOM import and viewing](#dicom-import-and-viewing).
+NIfTI viewing uses a cached DICOM copy; annotation stays on the original grid. See [DICOM import and viewing](#dicom-import-and-viewing).
 
 ## CVAT
 
-The [video workflow](video.md) imports clips, opens CVAT directly into a rectangle/polygon annotation job and submits saved tracks for workspace review. It requires FFmpeg and Docker Compose. The workspace prepares CVAT on first launch and opens an integrated viewer using the workspace sign-in, with an assistant-focused panel. Configured annotation models locate or segment tools on a source frame; local SAM 2.1 tracks them over a requested range or whole clip. Describe the tool, shape and frame range in chat. `uv run monailabel viewer cvat` can download the images in advance. Saved drafts and submitted revisions are distinct; review tasks start from the submitted revision.
-
-CVAT also supports `Clear all annotations on this frame`, `Clear the snare annotations for 16 frames`, and `Clear all annotations in the whole video`. A frame range includes the displayed frame. Other labels and frames remain unchanged; clearing creates one native undo step. Say `Undo that`, `Redo that`, `Save my draft`, or `Submit this annotation for review`. Saved annotation revisions remain immutable.
+Requires Docker Compose and FFmpeg. See [video annotation](video.md) for import, box/polygon tracking, draft saving and review. Managed CVAT uses the workspace sign-in. Saved drafts and submitted review revisions are separate.
 
 ## Colors
 
-Labels share project display colors across viewers. New anatomical labels use Slicer's Generic Anatomy palette, with user overrides preserved. DICOM stores a recommended display color per segment; it does not define one universal organ palette. See [palette provenance](../packages/core/src/monailabel/core/resources/README.md).
+Project colors are shared across viewers. New anatomical labels use Slicer's palette; manual overrides are preserved. See [palette source and license](../packages/core/src/monailabel/core/resources/README.md).
 
 ## Provisioning and platforms
 
@@ -96,198 +87,142 @@ Labels share project display colors across viewers. New anatomical labels use Sl
 uv run monailabel viewer slicer
 uv run monailabel viewer qupath
 uv run monailabel viewer ohif
-# Use an existing Slicer installation:
+uv run monailabel viewer cvat
 export MONAILABEL_SLICER_EXECUTABLE=/path/to/Slicer
 ```
 
-Linux desktop flows are supported. QuPath has a Windows portable installer recipe; Slicer on Windows and viewers on macOS can use explicit existing executables. Native Windows/macOS QA and automatic Slicer Windows installation remain pending.
+Tools cache under `workspace/.cache/tools/`; override with `MONAILABEL_TOOLS_DIR`. Standalone CLI provisioning uses the OS user cache and launches on that machine. Use `--url https://your-server` for a remote backend.
 
-OHIF annotation and submission also work over a network HTTP address. Microphone input requires HTTPS or localhost; it is disabled when the browser cannot provide it.
+OHIF's first build needs Node.js 22, Corepack and Git. `MONAILABEL_OHIF_DIST` selects an existing build. Linux is supported; native Windows/macOS validation remains pending.
 
-OHIF's first source build needs Node.js 22, Corepack and Git. Set `MONAILABEL_OHIF_DIST` to use an existing distribution. Pinned installer recipes live in `viewers/resources/installers/`.
+## Interactive segmentation
 
-The standalone CLI launches a viewer on the machine where the command runs. It can connect to a remote backend using `--url https://your-server`. Browser desktop sessions use the workspace sign-in and require no CLI on the client. Network access requires appropriate allowed hosts and HTTPS; see [remote access](#voice-and-remote-access).
-
-## Local SAM annotation
-
-**Implemented:** SAM 2.1 for 2D images / individual volume slices, and MedSAM2 for medical volumes. Both run locally, appear under **Models → Annotation**, and use immutable, checksum-verified weights cached under `workspace/.cache/models/`. New projects default to VISTA3D; select SAM explicitly to use box/point prompts.
+nnInteractive segments prompted objects in CT/MRI volumes. MedSAM2 propagates a seed slice through a medical volume; SAM 2.1 handles 2D images and single slices. These models need user points or a box to identify the object.
 
 ### Setup
 
-```bash
-uv run monailabel-server
-```
-
-The server includes the MONAI and SAM runtimes. First inference downloads the selected checkpoint (about 156 MB each). Set `MONAILABEL_MODELS_DIR` to change the shared cache and `MONAILABEL_SAM_DEVICE=cpu` or `cuda:0` to choose execution. CUDA is selected when available. Native Windows runtime/viewer QA is still pending.
-
-SAM is spatially prompted: **a target name identifies the label, while a box or points identify the object**. A text-only request explains which viewer hint is missing; it never silently calls a hosted localizer. Annotate one object/label per request, then refine or annotate another structure. An existing label is replaced only within the requested scope; overlapping other labels require correction.
+First use downloads the model: about 411 MB for nnInteractive or 156 MB for each SAM model. nnInteractive also installs its pinned inference environment. `MONAILABEL_MODELS_DIR` overrides the cache.
 
 ### Radiology
 
-#### Slicer
-
-1. Open a sample and select **SAM 2.1** for a slice or **MedSAM2** for a volume.
-2. Create slice boxes and positive/negative points through chat, or use native Markups. Chat-created hints remain editable; drag their handles to refine them. For a manually drawn box or point list, choose its node in **SAM hint**. A selected 3D ROI retains the existing volume-seed workflow.
-3. Choose a source-aligned slice with a suitable intensity window. The assistant combines the target's current slice box and points, including native edits. Select the intended box if several match. A point label beginning with `-` or `negative` is an exclusion point.
-4. Run SAM on the next chat turn after editing hints. Inspect the returned mask before submitting it.
-
-#### OHIF
-
-Open either NIfTI or imported DICOM. Chat creates editable native RectangleROI boxes and Probe points; green points include and red points exclude. Drag the handles to adjust them. With a SAM model selected, **Spatial prompt → Box / Point** also supports drawing manually. Native Probe labels starting with `-` or `negative` supply exclusions. One matching box and all matching points on the current slice are combined; select one box when several match.
-
-#### Chat in both viewers
-
-For example, on a source slice large enough to contain these coordinates:
+Open an image in Slicer or OHIF and send:
 
 ```text
-Create a box for spleen from voxel 50, 60 to voxel 120, 140 on this slice
-Add a positive point in the box for spleen
-Add a negative point for spleen at voxel 125, 145 on this slice
-Move the positive point for spleen to voxel 90, 100 on this slice
-Resize the spleen box to voxel 45, 55 through voxel 125, 145 on this slice
-Segment spleen on this slice using SAM 2.1 with this box and these points
-Clear the negative points on this slice
-Clear the spleen box on this slice
-Clear all SAM prompts on this slice
+Start nnInteractive for spleen.
 ```
 
-Coordinates are **zero-based source voxels**, not screen pixels. Two coordinates specify the two source axes other than the slice axis, in source-axis order; three specify I/J/K. Do not copy the example coordinates without checking your image. A point requested inside a box starts at its center and is explicitly described as an editable starting point, not anatomical localization. Without coordinates or a suitable box/selection, the assistant requests the missing information.
+Choose a **Model** and select or type a **Target label**. The Model menu separates radiology, interactive and vision-language models, followed by Trained models. Only compatible, nonempty groups appear; headings cannot be selected. The selected model determines which input tools are shown. The toolbar uses icons with tooltips. Choose **+ Point** to mark tissue to include, **− Point** to exclude tissue, or **Box** to draw around it. Slicer boxes use two opposite-corner clicks; OHIF boxes use a drag. Points and box handles remain editable. Selecting a model does not start drawing until you choose a tool. Point mode stays active while scrolling between slices.
 
-For model-assisted localization instead of explicit coordinates, name a compatible vision model:
+Use **▶ Update slice** or choose **Update volume** from its arrow menu. SAM 2.1 supports only **Update slice**. In Slicer, the colored **Slice view** icon opens a menu for Red, Yellow or Green view and sits before the input tools; separators keep the view selector, tools and Update action distinct. nnInteractive combines points across slices and one slice box. MedSAM2/SAM use hints on the selected seed slice. A selected box resolves multiple matching boxes. Inspect the result, adjust hints, and press **Update** again. Each update replays the current hints; it does not use an unsaved mask as an additional model prompt.
+
+Switch **Target label** to annotate another structure. Each label retains its own hints across slices; only the active label’s hints are shown, while all masks stay visible. Update changes only the active label and preserves other labels.
+
+Click the active input tool again, press **Esc**, or say “Stop interaction mode” to stop drawing and retain hints and masks. Models without interactive inputs keep the view and Update controls. Switching models preserves hints; only interactive models use them during inference. These chat controls also work:
 
 ```text
-Create an initial box for spleen on this slice using GPT Astra
+Switch to negative points.
+
+Draw a spleen box.
+
+Clear negative points on this slice.
+
+Clear all spatial hints.
+
+Stop interaction mode.
 ```
 
-This is a separate localization job and may use a hosted API. SAM does not locate organs from names alone. Choose SAM for the subsequent segmentation request. No automatic paid-model fallback is used.
+Clearing hints does not erase segmentation. Changing hints, the source slice, the image or the mask during inference prevents the stale result from being applied. Press **Update** again after editing. Save a Slicer scene to retain hints; OHIF hints last for the session.
 
-Clear commands distinguish target, point polarity, boxes versus points, and current slice versus full volume. For example, `Clear all SAM prompts for spleen throughout this volume` preserves other targets. Hints remain viewer-local; clearing them does not clear segmentation voxels or saved annotations. Save a Slicer scene to retain its hints; OHIF hints currently last for the viewer session. Chat hint edits do not enter the segmentation undo stack.
-
-Pending edits and SAM proposals are rejected if their source slice, hint geometry/selection, sample or annotation revision becomes stale. Keep the seed slice selected until completion. Existing selected Slicer 3D ROIs retain the ROI capture path; chat edit commands operate on slice boxes and points.
-
-For volume propagation use:
-
-```text
-Annotate spleen through the full volume using MedSAM2 and my box
-```
-
-Review the entire result before submission. A box is a prompt, not a guarantee that every enclosed voxel belongs to the named organ.
+Use `Start MedSAM2 for spleen.` for volume propagation, or `Start SAM 2.1 for spleen.` for a selected slice. Prompts can also run inference directly: `Segment spleen in the whole volume with nnInteractive.`
 
 ### Pathology and other 2D images
 
-In QuPath, select **one object-sized region**, choose **SAM 2.1**, then say:
+In QuPath, choose SAM 2.1 and a target label, then add positive/negative points or drag a box around one object. Use **Update image**, or select a region and use **Update region**. You can also start drawing through chat:
 
 ```text
-Annotate the selected region as nucleus using SAM 2.1
+Start SAM 2.1 for nucleus.
 ```
 
-The selected region is sent as one crop, without tiling, and its bounding box prompts the object. The returned mask is placed in source coordinates and restricted to the selection. This supports interactive object annotation; a broad region containing hundreds of nuclei needs a dedicated instance-segmentation model. SAM is not presented as a cell-type classifier or automatic whole-slide nuclei detector.
+Hints are kept separately for each target and saved with the QuPath draft. “Clear all input points and boxes” removes hints without deleting annotation objects. SAM 2.1 annotates one object at a time; it does not perform automatic whole-slide nuclei detection.
+
+### Video
+
+In CVAT, select SAM 2.1, a target label and **New object** or an existing object. Add positive/negative points or drag a box, then use **Update frame** or **Track range**. Inputs stay separate for each object, label and frame. Say “Clear negative points on this frame” or “Clear all inputs in the whole video” to remove them. Clearing inputs preserves tracks. CVAT retains editable polygons and the backend retains the original lossless masks.
 
 ### Provenance and execution limits
 
-| Model | Pinned checkpoint | Runtime |
-| --- | --- | --- |
-| SAM 2.1 tiny | [facebook/sam2.1-hiera-tiny](https://huggingface.co/facebook/sam2.1-hiera-tiny/tree/de431c4043854a71d8101e17995dfe596bf101a5) | Image predictor |
-| MedSAM2 | [wanglab/MedSAM2](https://huggingface.co/wanglab/MedSAM2/tree/e4a6f35edd7e091619cbc0750f462f1574e23955), `MedSAM2_latest.pt` | Medical image predictor and bidirectional volume propagation |
+| Model | Checkpoint |
+| --- | --- |
+| SAM 2.1 tiny | [facebook/sam2.1-hiera-tiny](https://huggingface.co/facebook/sam2.1-hiera-tiny/tree/de431c4043854a71d8101e17995dfe596bf101a5) |
+| nnInteractive v1.0 | [MIC-DKFZ/nnInteractive](https://huggingface.co/MIC-DKFZ/nnInteractive/tree/3f308d751c00644e4fde6f09c600264b393b21b5/nnInteractive_v1.0); CC BY-NC-SA 4.0 (noncommercial, attribution, share-alike) |
+| MedSAM2 | [wanglab/MedSAM2](https://huggingface.co/wanglab/MedSAM2/tree/e4a6f35edd7e091619cbc0750f462f1574e23955), `MedSAM2_latest.pt` |
 
-The SAM package uses the [MedSAM2 runtime pinned at 332f30d](https://github.com/bowang-lab/MedSAM2/tree/332f30d420f1d1b08e2a79b3ae6a602458808383), which shares the SAM 2 architecture. Its published wheel omits model YAML resources, so the two required configurations are packaged with this adapter; provenance and the upstream license are retained alongside them. Model loading uses `weights_only=True`. Frame preprocessing follows the published model interface; native source geometry is restored without resampling the original image.
-
-SAM training recipes, streaming video, automatic whole-slide object discovery, and automatic evaluation without spatial prompts remain unimplemented. Evaluation must never derive prompts from held-out masks and call the result automatic annotation. The actual GPU smoke checks verify execution, source geometry and viewer transfer; they are not clinical accuracy benchmarks.
+Runtime/configuration sources and licenses are recorded in [third-party notices](../THIRD_PARTY_NOTICES.md). Fine-tuning these interactive models and automatic evaluation without spatial prompts are unsupported. Held-out masks must not supply evaluation prompts.
 
 ## DICOM import and viewing
 
 ### Connect, filter and import
 
-Open **Datasets → Import from DICOM server**:
+1. Open **Datasets → Import from DICOM server**.
+2. Enter a backend-reachable DICOMweb endpoint, such as `http://localhost:8042/dicom-web`, and configure authentication.
+3. Search by modality, date, import status, patient/accession, descriptions or exact UIDs.
+4. Select series or **Import all matches**. Searches are capped at 1,000 series; refine filters if needed.
 
-1. Enter the **DICOMweb endpoint**, such as `http://localhost:8042/dicom-web`. This address is reached by the MONAI Label backend, including when your browser is on a tablet.
-2. Choose no authentication, username/password, or access token. Click **Connect**. Credentials are stored encrypted in the workspace and are never sent to the viewer. Saved connections can be reused within the project.
-3. Click **Search**, with optional filters:
+The endpoint must support QIDO `/series` search with pagination and WADO instance retrieval. PACS/DIMSE addresses and Orthanc REST roots are not DICOMweb endpoints. Credentials are encrypted in the workspace.
 
-   | Filter | Matching |
-   | --- | --- |
-   | Modality | CT, MR or another listed modality |
-   | Study date from/to | Inclusive range; either end can be omitted |
-   | Import status | Not imported (default), already imported, or all |
-   | Patient ID / accession number | Exact value |
-   | Patient name / study or series description | Contains the entered text, subject to the source server's DICOM matching rules |
-   | Study UID / series UID | Exact identifier, under More filters → Exact UID lookup |
-
-4. Select series, or choose **Import all matches**. This includes available matches across result pages. Searches are capped at 1,000 series; refine filters if more match. Already imported and unsupported series are not imported again.
-
-The activity job reports imported, skipped and failed series individually. Cancellation retains completed series; retry skips those already imported. A failed or incomplete series does not become a dataset asset.
-
-The endpoint must provide standard QIDO `/series` search with pagination and WADO instance retrieval. A raw PACS/DIMSE address or Orthanc REST root is not a DICOMweb endpoint. Unsupported source filters or authentication are reported by the connection/search response.
+Activity reports imported, skipped and failed series. Cancellation retains completed imports; retries skip them. Incomplete series do not become assets.
 
 ### Where images are served
 
-Import copies original DICOM instances into the project's workspace and creates a geometry-preserving scalar volume for annotation and training. **OHIF reads the imported workspace files through authenticated `/api/assets/{asset_id}/dicomweb` routes. The original server is not contacted during viewing.** Each annotation session shows only the selected sample's study and series, so copies in other projects do not appear as duplicate studies. Access is checked at project, series and instance level.
-
-Original DICOM headers and UIDs are retained. Patient identity, when present, groups imported series; missing patient identity falls back to the study. Identical decoded images reuse their existing source group; conflicting groups require correction before import. Check grouping before dividing a dataset for learning, especially when the same patient appears under different archive identities.
+OHIF reads imported workspace copies through authenticated DICOMweb routes; viewing no longer requires the source server. Original headers and UIDs are retained. Patient ID, or study ID when absent, supplies the source group. Check grouping before training/evaluation.
 
 ### Open NIfTI in OHIF
 
-Every 3D sample offers **Slicer** and **OHIF**. Select OHIF, or say `view this sample in OHIF`.
-
-The dataset's **OHIF** action opens a new tab immediately and loads the viewer there once preparation completes. Keep the workspace tab open during setup. If a browser blocks the new tab, the assistant provides an **Open OHIF annotation viewer** link.
-
-On first use, MONAI Label generates and caches a DICOM **Secondary Capture** viewing series locally. Later launches reuse it. No Orthanc upload or running DICOM server is needed. The original NIfTI and its source grid remain the annotation/training source; edits from OHIF map back to that grid.
-
-The viewing copy uses synthetic identifiers and explicitly says it is derived from NIfTI. Its modality is OT because NIfTI does not establish the original acquisition modality or clinical headers. Integer intensities within signed 16-bit range are preserved exactly; other intensities use 16-bit quantization with a recorded rescale slope/intercept. This affects the viewing copy only.
+Choose **OHIF** on a 3D sample. First use creates a cached Secondary Capture viewing series with synthetic identifiers and modality OT; no DICOM server is required. Annotations map back to the original NIfTI grid. Values outside signed 16-bit range use quantization and rescale metadata in the viewing copy.
 
 ### Limits
 
-- Imported DICOM: regular scalar single-frame CT/MR, up to 3,000 instances and 256 MiB per series. Enhanced multiframe, irregular spacing, gantry tilt and unsupported decoders are rejected.
-- NIfTI viewing: scalar 3D with orthogonal voxel axes, including oblique rotations and reversed slice direction. Sheared grids require resampling outside this preview or viewing in Slicer.
-- Local DICOMweb is a read-only subset for the bundled OHIF viewer, not a full PACS or DICOM archive. DICOM SEG export remains future work.
-- Original copies can contain patient-identifying metadata; workspace access follows the existing project roles.
+- DICOM: regular scalar single-frame CT/MR; up to 3,000 instances and 256 MiB per series. Enhanced multiframe, irregular spacing, gantry tilt and unsupported decoders are rejected.
+- NIfTI: scalar 3D with orthogonal voxel axes, including oblique rotations. Sheared grids need external resampling or Slicer.
+- Local DICOMweb serves the bundled viewer; DICOM SEG export is not implemented.
+- Original files can retain patient-identifying headers; protect workspace access.
 
-The optional [local Orthanc example](../deploy/dicom/compose.yaml) is useful as an import source. It is independent of local viewing after import. The SeriesInstanceUID API/CLI import uses `MONAILABEL_ORTHANC_URL` for its import step.
-
-Protocol references: [DICOM QIDO search](https://dicom.nema.org/medical/dicom/current/output/chtml/part18/sect_10.6.html), [DICOM WADO retrieval](https://dicom.nema.org/medical/dicom/current/output/chtml/part18/sect_10.4.html).
+An optional [Orthanc example](../deploy/dicom/compose.yaml) provides an import source. The SeriesInstanceUID import uses `MONAILABEL_ORTHANC_URL`.
 
 ## Voice and remote access
 
-The web workspace and OHIF have two independent controls:
+**Microphone** transcribes into the prompt box; inspect and send it manually. **Read replies** enables spoken responses. Recognition uses the browser's speech service and may send audio to that provider. MONAI Label stores prompt text, not microphone audio. Unsupported browsers retain typing.
 
-- **Microphone:** tap the microphone inside the prompt box, speak, then tap the stop icon. Review or edit the transcript and press the send arrow. Speech never submits a prompt automatically.
-- **Read replies:** opt in to spoken assistant responses. Turn it off to stop playback.
+In remote Slicer and QuPath, click the viewer's prompt box, then open **Dictate a prompt** (microphone icon) in the left browser-desktop toolbar. Choose **Use microphone**, speak, and review the transcript. **Insert into viewer** pastes it at the cursor; use the viewer's Send button when ready. OHIF has its microphone beside the assistant's Send button. All use the microphone on your browser device.
 
-Recognition uses the device browser’s speech service. MONAI Label receives the resulting prompt text; it does not record or store microphone audio. Some browsers send audio to their speech provider, so this is not an offline transcription feature. Support varies by browser; unsupported browsers show an explanation and retain typing/keyboard dictation. See [MDN’s SpeechRecognition notes](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition).
-
-For Safari, enable Siri and allow microphone/speech access when prompted. WebKit’s speech recognition uses the Siri speech engine. See [WebKit’s support notes](https://webkit.org/blog/11648/new-webkit-features-in-safari-14-1/). Denied access, unavailable microphones and service connection errors appear beside the composer.
+Safari requires Siri and microphone/speech permission. See [browser support](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition) and [WebKit setup](https://webkit.org/blog/11648/new-webkit-features-in-safari-14-1/).
 
 ### Phones, tablets and other computers
 
-The server listens on `127.0.0.1:8000` by default, so only the server machine can connect. To enable network access explicitly, use `uv run monailabel-server --host 0.0.0.0 --port 8000`, or bind a specific interface address. Its hostname, resolved IPv4 addresses and primary network address are allowed automatically; `MONAILABEL_ALLOWED_HOSTS` replaces that list for custom DNS aliases or reverse proxies. Allowed hostnames do not change the listen address.
+Start with `--host 0.0.0.0 --port 8000`, or bind a specific interface. Create the administrator from localhost first. Connect using the server's hostname/IP; phone `localhost` refers to the phone.
 
-Use **HTTPS** with a certificate trusted by the device when connecting over your network. `localhost` on a phone refers to the phone, not your workstation. Connect to the server’s network hostname or IP address. The same responsive workspace runs on touch devices; the Menu and Assistant buttons expose navigation and chat on small screens.
+`MONAILABEL_ALLOWED_HOSTS` replaces the default hostname/IP allowlist for custom aliases or proxies; it does not change the listen address. Allow the chosen port through the firewall.
 
-OHIF runs in the device browser. On tablets its study list starts collapsed; on phones both side panels start collapsed to leave room for the image. Tap the right-side panel icon to open the assistant. Swipe the phone toolbar to reach additional tools. Review controls are under **Review annotation**. Slicer and QuPath open as [server-hosted browser desktops](#local-and-remote-launch) when connecting through a remote address.
+### HTTPS
 
-If you already use an HTTPS reverse proxy, keep it and include the hostname in `MONAILABEL_ALLOWED_HOSTS`. For a local demonstration, [mkcert](https://github.com/FiloSottile/mkcert) can create a trusted development certificate:
-
-```bash
-## Install mkcert using its platform instructions first.
-mkcert -install
-mkdir -p .local-certs
-## Replace YOUR_SERVER_IP with the workstation's actual LAN address.
-mkcert -cert-file .local-certs/server.pem -key-file .local-certs/server-key.pem \
-  localhost 127.0.0.1 YOUR_SERVER_IP
-```
-
-Trust mkcert’s **rootCA.pem** on the phone/tablet using its OS instructions; `mkcert -CAROOT` shows the directory. Do not transfer the CA private key. The mkcert README covers mobile trust setup.
-
-Stop the existing MONAI Label process before using the same workspace with these arguments:
+Stop the running server, then start with:
 
 ```bash
-MONAILABEL_ALLOWED_HOSTS=localhost,127.0.0.1,YOUR_SERVER_IP \
-uv run monailabel-server --host 0.0.0.0 --port 8443 \
-  --ssl-certfile .local-certs/server.pem --ssl-keyfile .local-certs/server-key.pem
+uv run monailabel --host 0.0.0.0 --https
 ```
 
-Keep any annotation/coordinator key variables in that shell’s environment. Open `https://YOUR_SERVER_IP:8443` from a device on the same network, sign in, and allow the microphone. Open a DICOM sample in OHIF from Datasets for a browser-based annotation demo. Network/firewall access must allow the chosen port.
+Open `https://YOUR_SERVER_IP:8000`. Certificates are generated under `workspace/.tls/` and reused on restart. Localhost, the server hostname and detected LAN address are covered; custom aliases can be supplied through `MONAILABEL_ALLOWED_HOSTS` before startup. Managed Slicer and QuPath sessions trust this certificate automatically.
+
+For voice input, copy **only `workspace/.tls/ca.crt`** to the browser device and import it into the browser or operating system's trusted certificate authorities, then restart the browser. Keep `ca.key` and `server.key` private. Clicking through an untrusted certificate warning is not a substitute for this trust step. No trust-store changes are made automatically.
+
+For an existing certificate, use:
+
+```bash
+uv run monailabel --host 0.0.0.0 --ssl-certfile server.crt --ssl-keyfile server.key
+```
+
+On small screens, use Menu/Assistant controls; OHIF side panels start collapsed.
 
 ### Verification limits
 
-Automated checks simulate speech events to verify transcript updates, editing, cancellation, permission errors and spoken-reply controls. Responsive layouts are inspected at desktop, tablet and phone sizes. Headless browsers do not establish real microphone recognition quality or physical iOS/Android compatibility; check those on the device you will use for a demo.
+Test microphones and touch behavior on the target device. Headless browser checks do not establish physical iOS/Android compatibility. See [verification commands](testing.md).

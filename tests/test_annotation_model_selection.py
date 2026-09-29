@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import io
 
 import numpy as np
@@ -127,16 +138,17 @@ def test_nuclei_prefers_dedicated_model_and_respects_explicit_choice(client, htt
 
 
 @pytest.mark.parametrize("project_default", [True, False])
-def test_radiology_uses_vista_while_hosted_default_is_astra(http, pathology, project_default):
+def test_radiology_respects_project_choice_and_otherwise_defaults_to_astra(
+    http, pathology, project_default
+):
     project_id, asset_id, models = pathology
     service = http.app.state.services
     project = service.store.get(Project, project_id)
     if not project_default:
         project = project.model_copy(update={"annotation_model_id": None})
     volume = service.store.get(Asset, asset_id).model_copy(update={"kind": "volume3d"})
-    assert (
-        service.models.select_for_targets(project, volume, ["Spleen"], None) == models["vista3d"].id
-    )
+    expected = models["vista3d" if project_default else "nvidia-astra"]
+    assert service.models.select_for_targets(project, volume, ["Spleen"], None) == expected.id
     assert (
         service.models.select_for_targets(project, volume, ["Spleen"], models["nvidia-astra"].id)
         == models["nvidia-astra"].id

@@ -1,3 +1,16 @@
+<!--
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -16,9 +29,48 @@
       <iframe id="editor" title="CVAT annotation editor"></iframe>
       <aside aria-label="MONAI Label Assistant">
         <h2>MONAI Label Assistant</h2>
-        <select id="detection-model" aria-label="Annotation model">
-          <option value="">Automatic</option>
+        <label for="detection-model" class="control-label">Model</label>
+        <select id="detection-model" aria-label="Annotation model"></select>
+        <input
+          id="target-label"
+          aria-label="Target label"
+          list="target-labels"
+          placeholder="Choose or type a target label"
+          maxlength="80"
+        />
+        <datalist id="target-labels"></datalist>
+        <select id="target-object" aria-label="Object instance">
+          <option value="new">New object</option>
         </select>
+        <div
+          id="interaction-toolbar"
+          role="toolbar"
+          aria-label="Interaction toolbar"
+        >
+          <span id="input-tools"></span>
+          <span id="input-separator" class="tool-separator" hidden></span>
+          <div class="update-action">
+            <button id="update-frame" title="Update the current frame">
+              ▶ Update frame
+            </button>
+            <details id="update-options">
+              <summary aria-label="Update options" title="Update options">
+                ▾
+              </summary>
+              <div class="update-menu">
+                <label for="track-count">Frames including this frame</label>
+                <input
+                  id="track-count"
+                  type="number"
+                  value="16"
+                  min="1"
+                  step="1"
+                />
+                <button id="track-range">Track range</button>
+              </div>
+            </details>
+          </div>
+        </div>
         <p id="selection" class="muted">Loading the video…</p>
         <div
           id="messages"

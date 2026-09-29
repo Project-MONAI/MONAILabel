@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Spatial annotation contracts, scope isolation and provider selection."""
 
 import io
@@ -159,7 +170,7 @@ def test_sam_job_records_hints_and_missing_hints_never_call_provider(client, htt
         m for m in client.get(f"/api/projects/{project['id']}/models") if m["provider"] == "sam2"
     )
     provider = Predictor()
-    monkeypatch.setattr(service.models, "spatial_provider", lambda: provider)
+    monkeypatch.setattr(service.models, "spatial_provider", lambda model: provider)
     path = "/api/assets/" + sample["id"] + "/annotate"
     rejected = http.post(path, json={"model_id": sam["id"], "label_ids": [1]})
     assert rejected.status_code == 422 and "spatial hint" in rejected.text

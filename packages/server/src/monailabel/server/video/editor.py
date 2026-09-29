@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Durable CVAT task bindings; opening a task never overwrites a saved draft."""
 
 import os
@@ -121,8 +132,6 @@ class VideoEditors:
         if request.mode == "review" and not asset.annotation_id:
             raise DomainError("Submit tracks before opening a review task.")
         project = self.store.get(Project, asset.project_id)
-        if not any(label.id for label in project.labels):
-            raise DomainError("Add instrument labels when importing the clip before opening CVAT.")
         return self.jobs.submit(
             "video_editor",
             asset.project_id,
@@ -209,6 +218,27 @@ class VideoEditors:
                 ),
             }
         )
+
+    def ensure_labels(self, editor_id: str) -> VideoEditor:
+        editor = self.store.get(VideoEditor, editor_id)
+        with self.lock(editor.asset_id):
+            editor = self.store.get(VideoEditor, editor_id)
+            asset = self.store.get(VideoAsset, editor.asset_id)
+            if (
+                not editor.ready
+                or editor.submitted_annotation_id
+                or (editor.base_revision != asset.revision)
+            ):
+                raise Conflict("The video revision changed. Your CVAT draft is preserved.")
+            client = self.configured()
+            if editor.server_url != client.url:
+                raise Conflict("The CVAT service changed. Reopen this video.")
+            project = self.store.get(Project, editor.project_id)
+            labels = client.ensure_labels(editor.task_id, project.labels)
+            editor = editor.model_copy(update={"label_map": labels})
+            with self.store.transaction() as session:
+                session.update(editor)
+            return editor
 
     def submit(self, video_id: str, editor_id: str, user: User) -> TrackAnnotation:
         client = self.configured()

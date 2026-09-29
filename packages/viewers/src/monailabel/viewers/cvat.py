@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """CVAT's rectangle/polygon boundary. No workspace persistence or server imports."""
 
 import time
@@ -211,6 +222,19 @@ class CvatClient:
         for label in labels["results"]:
             if label.get("type") == "rectangle":
                 self.request("PATCH", f"/api/labels/{label['id']}", json={"type": "any"})
+
+    def ensure_labels(self, task_id: int, labels: list[Label]) -> dict[int, int]:
+        current = self.request("GET", "/api/labels", params={"task_id": task_id, "page_size": 100})
+        names = {item["name"] for item in current["results"]}
+        missing = [
+            {"name": label.name, "color": label.color, "type": "any"}
+            for label in labels
+            if label.id and label.name not in names
+        ]
+        if missing:
+            # CVAT appends labels without IDs; it deletes only explicitly deleted labels.
+            self.request("PATCH", f"/api/tasks/{task_id}", json={"labels": missing})
+        return self.label_map(task_id, labels)
 
     def check_frames(self, task_id: int, asset: VideoAsset) -> None:
         meta = self.request("GET", f"/api/tasks/{task_id}/data/meta")

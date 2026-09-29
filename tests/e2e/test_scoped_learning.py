@@ -1,6 +1,18 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Inspect independent review scopes and train from accepted coverage in the browser."""
 
 import io
+import json
 import subprocess
 import time
 
@@ -156,6 +168,18 @@ def test_review_scopes_train_without_evaluation(tmp_path, video):
                     units[1]["annotation_id"]: "changes_requested",
                 }
                 page.locator('#workspace nav [data-page="models"]').click()
+
+                # Keep this small coverage fixture runnable on browser CI hosts.
+                # Execution-device selection is not part of the product form.
+                def fixture_settings(route):
+                    if route.request.method == "POST":
+                        payload = route.request.post_data_json
+                        payload["config"]["device"] = "cpu"
+                        route.continue_(post_data=json.dumps(payload))
+                    else:
+                        route.continue_()
+
+                page.route("**/learners", fixture_settings)
                 page.locator('#content [data-action="model"]').click()
                 page.locator('#dialog [data-id="learner"]').click()
                 page.get_by_label("Model name", exact=True).fill("Local specialist")
@@ -173,9 +197,6 @@ def test_review_scopes_train_without_evaluation(tmp_path, video):
                 page.get_by_label("Epochs", exact=True).fill("1")
                 page.get_by_label("Training steps per epoch", exact=True).fill("2")
                 page.get_by_label("Training crop size", exact=True).fill("16")
-                page.get_by_role("combobox", name="Run training on", exact=True).select_option(
-                    "cpu"
-                )
                 with page.expect_response("**/train") as started:
                     page.locator("#dialog").get_by_role(
                         "button", name="Start training", exact=True

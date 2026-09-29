@@ -1,0 +1,34 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[project]
+name = "monailabel-sam-runtime"
+version = "1.0.0rc1"
+description = "Pinned MedSAM2 inference runtime for MONAI Label"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.12"
+dependencies = ["torch>=2.11,<2.12", "torchvision>=0.26,<0.27", "numpy>=2.0.1,<3", "tqdm>=4.66.5,<5", "hydra-core>=1.3.2,<1.4", "iopath>=0.1.10,<0.2", "pillow>=11,<13"]
+
+[project.urls]
+Repository = "https://github.com/Project-MONAI/MONAILabel"
+Upstream = "https://github.com/bowang-lab/MedSAM2"
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sam2", "src/efficient_track_anything"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"upstream.json" = "sam2/upstream.json"

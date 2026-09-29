@@ -1,59 +1,70 @@
 # Verification
 
-Use disposable workspaces for mutation and viewer tests. Never run a second server against an active workspace. The standard lint, type and test commands are in [AGENTS.md](../AGENTS.md#development).
+Use disposable workspaces for mutation and viewer tests. Never run a second server against an active workspace. Run the standard [development checks](../AGENTS.md#development) and JavaScript tests:
+
+```bash
+node --test tests/web/*.mjs
+```
+
+Fixture tests verify software behavior, not model accuracy. Tests below use scripted or local models unless an endpoint is explicitly configured.
 
 ## Workspace browser
 
-Workspace chat and file import can also be checked on an HTTP network hostname, where `crypto.randomUUID` is unavailable:
+For real nnU-Net and TotalSegmentator CT/MRI training, continuation and source-grid prediction checks:
 
 ```bash
+MONAILABEL_TEST_NNUNET_GPU=1 uv run pytest tests/test_nnunet.py
+MONAILABEL_TEST_TOTALSEG_GPU=1 uv run pytest tests/test_totalsegmentator.py
+uv run --group e2e pytest --browser-e2e tests/e2e/test_nnunet_browser.py
+```
+
+```bash
+uv sync --locked --group e2e
 uv run --group e2e playwright install chromium
-uv run --group e2e pytest --browser-e2e tests/e2e/test_workspace_http.py
+uv run --group e2e pytest --browser-e2e tests/e2e/test_workspace_http.py tests/e2e/test_dataset_template_browser.py tests/e2e/test_coordinator_readiness.py
+uv run --group e2e pytest --browser-e2e tests/e2e/test_ohif_quickstart.py tests/e2e/test_scoped_learning.py
 ```
 
-These checks use Chromium and disposable workspaces with scripted chat responses; they do not call a model. Provider catalog HTTP fixtures exercise NVIDIA, OpenAI, Anthropic and Gemini discovery through the UI, including filtering, search, duplicate detection, provider changes during pending requests, environment references and encrypted saved keys. They also verify a manual custom connection, fixed preset names, visible provider labels, switching a preset to its direct provider and restoring automatic selection. Catalog unit tests cover pagination, upstream failures, capability filtering, project permissions, credential rotation, startup fallback and historical connection preservation.
-
-The radiology Quickstart can also be exercised through a real OHIF build:
-
-```bash
-uv run --group e2e pytest --browser-e2e tests/e2e/test_ohif_quickstart.py
-```
-
-This test uses a synthetic CT, deterministic VISTA3D/Astra annotation fixtures, and the production OHIF adapter to annotate a volume, correct a slice and submit the result through chat. OHIF is prepared in the disposable cache; `MONAILABEL_OHIF_DIST` can point to an existing build of the current extension. No hosted inference is called.
+Use `playwright install --with-deps chromium` if system libraries are missing. OHIF builds on first use; `MONAILABEL_OHIF_DIST` can reuse a current build. Annotation responses are fixtures; no hosted inference is called.
 
 ## Browser desktops
 
+Requires Linux and a running Docker daemon:
+
 ```bash
-uv sync --group e2e
-uv run playwright install chromium
 uv run --group e2e pytest --desktop-e2e tests/e2e/test_browser_desktop.py
 ```
 
-These opt-in tests require Linux and Docker. They launch real Slicer and QuPath in disposable containers through an HTTP network hostname, verify the full-tab layout, selected sample and submitted annotation, and exchange Unicode clipboard text with a separate browser page. They check that the remote resolution and native application follow browser resizing and tablet orientation changes while preserving draft text. They also refresh without losing the draft and close the last tab to end the session without changing the submitted revision. QuPath exercises tablet-sized touch and keyboard controls and excludes volume-only models. Native probes observe application state; image loading and browser input use the production adapters. No paid models are called. Artifacts are written under `test-results/` and test containers are removed afterward.
+These checks launch Slicer/QuPath in disposable containers and cover source geometry, editing, submission, session lifecycle, clipboard, dictation insertion and resizing. Artifacts stay under `test-results/`.
 
-To exercise the actual network interface rather than a synthetic hostname, set `MONAILABEL_E2E_HOST` to a local IPv4 address before running the desktop, OHIF Quickstart or managed CVAT tests. Their disposable servers bind both loopback (for initial administrator setup) and that explicitly requested address. Chromium then connects using the network address, exercising insecure-context handling and automatic browser-desktop selection. This does not replace a separate physical-device/browser check. Do not point the variable at another machine or a production workspace.
+OHIF and desktop voice checks inject speech-service events to verify transcript handling, permissions errors and draft preservation over HTTPS. Set `MONAILABEL_E2E_BROWSER_CHANNEL=msedge` to run these checks with an installed Microsoft Edge. They do not verify a physical microphone or the browser's transcription service.
 
-For desktop tests, also set `MONAILABEL_E2E_LAN_ONLY=1` to restart the disposable server on only that interface after local administrator setup. This checks Slicer/QuPath bridge connections when no loopback listener is available, matching an explicit `--host` interface address. The original server is stopped before restarting the workspace.
-
-The standard suite checks loopback/native versus remote/browser selection, explicit browser override, owner and role enforcement, cross-origin WebSocket rejection, streaming, logout revocation, session limits, reconnect renewal and failed-start cleanup. It also checks status requests during slow setup, continued access to existing desktops, cancellation and account changes during launch, and cleanup when log collection fails. Physical iPad/Safari interaction and GPU rendering performance require separate device checks.
-
-The Slicer exit test submits through the native viewer, chooses **Exit Slicer**, and verifies that its browser tab closes only after the submission is saved. A second tab with closing disabled returns to the project workspace. Lifecycle checks distinguish a confirmed native exit from network failures, unavailable Docker, lost access and obsolete disconnect notifications.
-
-The Slicer radiology Quickstart check uses an asymmetric synthetic CT with reversed source orientation and deterministic annotation providers. Browser keyboard input requests whole-volume annotation, current-slice clearing, undo/redo, slice repair and submission. A read-only native probe verifies the complete source-grid mask after each step; the submitted immutable mask must match it exactly. Real VISTA3D execution is covered separately by the GPU runners.
-
-The pathology Quickstart test imports the public OpenSlide sample, draws a native QuPath region through the browser, sends the documented segmentation and submission prompts, and checks that only the selected crop reaches the annotation fixture. QuPath applies the returned objects and publishes the submitted mask through its production adapter.
+Set `MONAILABEL_E2E_HOST` to an actual local IPv4 address for LAN checks. `MONAILABEL_E2E_LAN_ONLY=1` additionally tests an interface-only listener after local administrator setup. Physical tablets, speech recognition and display performance require device checks.
 
 ## Golden prompts
 
-The eight [Spleen learning workflow prompts](workflows.md#try-the-spleen-learning-workflow) come from [spleen.json](../examples/prompts/spleen.json). The runner verifies imports, scoped reviews, batch annotation, named model creation, training and comparison against independent fixed references. The README keeps shorter first-use prompts for each modality.
-
 ```bash
 uv run python examples/render_golden_prompts.py --check
-# Deterministic tools and tiny images; no GPU, network or medical weights:
 uv run python examples/verify_spleen_workflow.py --output /tmp/spleen-fixture.json
-# Test all eight prompts with the managed Nano 4B conversation model:
+uv run python examples/verify_golden_stories.py --story both --output /tmp/golden-stories.json
+```
+
+These use temporary workspaces and deterministic fixtures. `--workspace /path/to/empty-directory` retains results; `--prompts /path/to/definition.json` selects another prompt set.
+
+To test a local conversation model:
+
+```bash
 uv run python examples/verify_spleen_workflow.py --coordinator 4b --output /tmp/spleen-4b.json
-# Real VISTA3D and Decathlon; connect your existing conversation endpoint:
+uv run python examples/verify_golden_stories.py --coordinator lightning --story both --output /tmp/lightning-stories.json
+uv run python examples/evaluate_coordinators.py --variant 4b --suite viewer-edits --output /tmp/4b-edits.json
+uv run python examples/evaluate_coordinators.py --variant 9b --suite quickstart --output /tmp/9b-quickstart.json
+```
+
+`evaluate_coordinators.py` tests tool selection against fixture workspace metadata without executing operational tools. `--suite quickstart` checks every README prompt; `--variant` accepts `4b`, `9b` or `lightning`. Use `--case` to select a prompt (repeat for several), or `--story` to select a golden story. `--provider openai --model gpt-6-astra` tests the hosted assistant using `OPENAI_API_KEY` and incurs API charges. Full training budgets and hosted annotation quality require separate runs.
+
+For real Decathlon/VISTA3D execution with an existing coordinator:
+
+```bash
 uv run python examples/verify_spleen_workflow.py --real \
   --coordinator-url http://127.0.0.1:8001/v1 \
   --coordinator-model YOUR_SERVED_MODEL \
@@ -61,70 +72,50 @@ uv run python examples/verify_spleen_workflow.py --real \
   --output /tmp/spleen-real.json
 ```
 
-The default runner creates and removes a temporary workspace. Supply `--workspace /path/to/empty-directory` to retain results for inspection. `--cache-dir` reuses dataset downloads; `MONAILABEL_MODELS_DIR` selects a model cache. Omit `--real` to test a conversation endpoint against deterministic inference/training fixtures. Fixture scores verify software behavior, not medical quality. Reports include the instruction revision, loaded skills and tool-call traces. Use `--prompts /path/to/definition.json` to exercise paraphrases and different model names while retaining the workflow's assertions. Repeat runs in fresh workspaces to check consistency; one passing run does not establish reliability.
-
-The real run imports 41 cases, reserves 9 labeled references, annotates 5 of the remaining 32 images, fine-tunes a derived model, and scores it and the unchanged base on identical references. It checks image membership, annotation revisions, model lineage, logs and reports. Reviews are explicitly accepted by the test prompts; this does not replace human inspection in normal use.
-
-Additional [radiology](../examples/prompts/radiology.json) and [pathology](../examples/prompts/pathology.json) definitions exercise viewer actions, model choices and continued U-Net learning:
-
-```bash
-uv run python examples/verify_golden_stories.py --story both --output /tmp/golden-stories.json
-uv run python examples/verify_golden_stories.py --coordinator lightning --story both --output /tmp/lightning-stories.json
-uv run python examples/verify_golden_stories.py --coordinator 4b --story both --output /tmp/4b-stories.json
-# Tool selection only; does not execute operational tools:
-uv run python examples/evaluate_coordinators.py --variant lightning --output /tmp/lightning-prompts.json
-uv run python examples/evaluate_coordinators.py --variant 4b --story endoscopy --output /tmp/4b-endoscopy.json
-uv run python examples/evaluate_coordinators.py --variant 4b --suite viewer-edits --output /tmp/4b-edits.json
-# Focused regression; still calls the real model, but executes no operational tool:
-uv run python examples/evaluate_coordinators.py --variant 4b --story radiology \
-  --case compare_versions --output /tmp/4b-comparison-prompt.json
-uv run node --test tests/web/*.mjs
-```
+This downloads data/weights, annotates cases, fine-tunes a derived model and compares it with the base against held-out references. `MONAILABEL_MODELS_DIR` selects the model cache. Evaluation imports accept supplied references automatically; generated annotations still need review.
 
 ## Native viewers
 
-Check Slicer, QuPath and OHIF on disposable images with asymmetric geometry. Verify source orientation, selected-slice scope, class colors, editable hints, stale-revision rejection, submission and corrected review. Preserve user drafts. Headless browser checks do not establish native desktop or physical mobile-device compatibility.
+Check orientation, selected-slice scope, colors, editable hints, stale-revision rejection and corrected review with asymmetric disposable images. Preserve user drafts.
 
-Use `uv run python examples/vista3d_smoke.py --help` for the VISTA3D GPU smoke check. SAM contracts and viewer transfers are exercised in `tests/test_sam.py` and the spatial-hint tests. These exercise runtime and transfer behavior; they are not clinical benchmarks. Remaining capabilities and platform gaps are listed in the [roadmap](roadmap.md).
+Model execution checks:
 
-`uv run python examples/sam2_smoke.py --frames 70` runs real SAM 2.1 image segmentation and video propagation on CUDA in a disposable workspace. It verifies source-size masks, seed preservation and tracking across the 64-frame chunk boundary. It downloads cached weights but makes no hosted inference calls. The VISTA smoke runner likewise disables conversation provisioning: neither GPU smoke check needs a second coordinator runtime.
+```bash
+uv run python examples/check_gpu.py
+uv run python examples/vista3d_smoke.py --help
+uv run python examples/sam2_smoke.py --frames 70
+```
+
+The model checks download cached weights. SAM checks propagation across its 64-frame chunk boundary. Neither requires a second coordinator. Run on the target hardware; see [DGX Spark](spark.md).
 
 ## Video and CVAT browser tests
 
-The opt-in [video E2E suite](../tests/e2e/test_video_cvat.py) starts the bundled CVAT services and a disposable MONAI Label server, then drives both web applications with Chromium. Install Docker with Compose, FFmpeg (including `ffprobe`), and the browser from the repository root:
+The manual **Video and CVAT E2E** workflow requires a self-hosted Linux runner labeled `nvidia` with Docker and the system prerequisites installed. It uses a disposable workspace.
+
+Requires Docker Compose, FFmpeg/ffprobe and Chromium:
 
 ```bash
-uv sync --locked --group e2e
-uv run --locked --group e2e playwright install chromium
 uv run --locked --group e2e pytest tests/e2e --video-e2e -v -s --junitxml=test-results/video-e2e.xml
 ```
 
-On Linux, use `playwright install --with-deps chromium` if browser system libraries are missing. The Docker daemon must be running; the first run downloads CVAT images. The managed tracking cases also download local model weights. No GPU, chat endpoint or paid model is needed. Ordinary `uv run pytest` skips these browser tests.
+Tests use separate services, ports and workspaces; teardown removes their containers and volumes. First runs download CVAT images and, for tracking checks, public samples and SAM weights. Screenshots and redacted logs stay in `test-results/video-*`.
 
-Each run creates a random Compose project, separate ports, generated credentials and a temporary workspace. Teardown removes that run's containers, volumes and workspace after success or failure. Existing workspaces and CVAT deployments are not used. Screenshots, passed checkpoints, browser errors and redacted service logs remain under the printed `test-results/video-*` directory; the command also writes a JUnit report. The [Video and CVAT E2E workflow](../.github/workflows/video-e2e.yml) runs on relevant pull requests or manual dispatch and uploads these artifacts.
+The suite covers native editing, draft preservation, tracking, submission/review, revision conflicts and restart persistence. The [CI workflow](../.github/workflows/video-e2e.yml) uploads its artifacts. Ordinary `uv run pytest` skips opt-in browser suites.
 
-The suite imports a synthetic variable-rate clip through the workspace UI, draws two instrument tracks with the native CVAT mouse controls, and saves occluded/outside keyframes. It checks source timing and geometry, draft resume, immutable submission, separate review tasks, requested changes, stale submission rejection, corrected acceptance, track identity and revision lineage, persistence after server restart, and clip deletion that retains external drafts. A delayed refresh verifies that a submitted correction cannot immediately be reviewed using the previous revision. Additional cases draw an unsupported standalone shape and verify rejection without draft loss, reserve a video procedure from related image training, and exercise annotator access through browser controls and authenticated requests. Annotation writes use CVAT's UI; API reads verify persisted results. These synthetic checks verify software behavior, not annotation quality.
+To include an existing coordinator in the snare test:
 
-To include the real local coordinator in the 16-frame snare polygon case, set `MONAILABEL_E2E_COORDINATOR_URL` to its OpenAI-compatible API base URL and `MONAILABEL_E2E_COORDINATOR_MODEL` to its served model name. If authentication is needed, `MONAILABEL_E2E_COORDINATOR_KEY_ENV` names the environment variable containing its key. The annotation endpoint remains a deterministic fixture; no hosted annotation calls are made. Without those variables, routing is scripted for reproducibility.
+| Environment variable | Value |
+| --- | --- |
+| `MONAILABEL_E2E_COORDINATOR_URL` | Compatible API base URL |
+| `MONAILABEL_E2E_COORDINATOR_MODEL` | Served model name |
+| `MONAILABEL_E2E_COORDINATOR_KEY_ENV` | Optional environment variable holding its key |
+| `MONAILABEL_E2E_COORDINATOR_TIMEOUT` | Request timeout; default 240 seconds |
+| `MONAILABEL_E2E_COORDINATOR_MAX_TOKENS` | Output budget; default 8,192, use 4,096 for managed Nano 4B |
 
-The live-coordinator case allows 240 seconds per model request and 8,192 output tokens by default. `MONAILABEL_E2E_COORDINATOR_TIMEOUT` and `MONAILABEL_E2E_COORDINATOR_MAX_TOKENS` override those limits; use 4,096 tokens when checking Nano 4B's managed profile. The browser wait accommodates skill selection followed by the operational tool request.
-
-The managed-viewer cases start without CVAT credentials or services, install through the **CVAT** action, and annotate through the embedded native editor using only the workspace sign-in. They run the real local SAM 2.1 tracker, check automatic draft application, reject application after an intervening manual edit, preserve unrelated tracks, exercise embedded chat with scripted coordinator routing, submit and accept revisions, and reopen saved tracks after a server restart. A real HyperKvasir snare sample exercises catalog import, opening CVAT from a workspace tracking request, guidance before a tool box is drawn, and a segmentation request outlining the tool from an empty draft and tracking 16 frames after choosing a vision model and label. A deterministic local HTTP endpoint supplies the vision response; CVAT, source-frame extraction and SAM run normally. Provider contract tests cover Responses and Chat Completions payloads, credentials, abstentions and invalid geometry. An additional case checks vision abstention, an explicitly named model overriding the panel selection, new-track undo/redo and preservation of unrelated manual tracks. These tests download the public clip and pinned model weights; they verify execution and data handling, not clinical tracking accuracy.
-
-A synthetic moving polygon verifies single-frame boxes and segmentation through the configured vision HTTP boundary without a temporal tracker, tracking a selected polygon for N frames, and whole-video tracking from frame 0 while another frame is displayed. A 70-frame clip crosses SAM's chunk boundary. The test inspects automatically added native polygons and downloaded source-size masks, verifies Undo and leaving without submission, saves and reloads mixed box/polygon drafts, and round-trips exact keyframes and identities through a separate review task. It also checks that chat and its composer remain visible at two viewport sizes with no manual settings panel and review controls collapsed until needed. Geometry tests cover border pixels, thin objects, disconnected masks and holes, including warnings and lossless original-mask retention.
-
-A mixed image/video project verifies the shared Datasets table, search, type filters, pagination, selection across pages and refreshes, sample details, and bulk deletion of both media types. All mutation checks run in the disposable workspace.
-
-Viewer launch checks verify that CVAT buttons navigate a loading tab automatically and that chat requests navigate directly to the prepared editor. They also verify cleanup after launch failure, a manual link after closing a loading tab, and automatic navigation when browser popups are blocked.
-
-The smaller video tests in `tests/test_videos.py` cover conversion, revision contracts, authorization and grouping. FFmpeg-dependent tests skip if it is unavailable. `tests/web/videos.mjs` checks capability controls and review filtering without starting services.
+Annotation remains a fixture; CVAT, frame extraction and SAM execute normally.
 
 ## Scoped review and local learning
 
-`tests/e2e/test_scoped_learning.py` submits two regions or two video ranges from one source, inspects their previews in Chromium, accepts one and requests changes to the other, then trains a U-Net through the workspace. It verifies that the snapshot contains only accepted coverage and that training without evaluation produces no held-out score. Run it with `--browser-e2e`.
+The scoped browser suite accepts one region/range, requests changes to another, and checks that U-Net training uses only accepted coverage. Native QuPath and CVAT tests also apply the resulting checkpoint in the viewer. Run with `--browser-e2e`, `--desktop-e2e` or `--video-e2e` as appropriate.
 
-The native QuPath quickstart test continues from its submitted region to acceptance, real U-Net training and application of that checkpoint in QuPath. The native CVAT polygon clear/undo test continues through the same loop using source video frames. Run those with `--desktop-e2e` and `--video-e2e`, respectively. Small training runs verify integration, not annotation quality.
-
-`tests/test_review_units.py` and `tests/test_optional_evaluation.py` cover immutable scope revisions, accepted coverage, legacy video review migration, held-out grouping and training without evaluation. Loss-gradient checks verify that unreviewed pixels are excluded while project class 255 remains usable.
-
-For GPU and ARM64 setup checks, use `uv run python examples/check_gpu.py` and the [DGX Spark guide](spark.md). Passing on another CUDA machine does not validate GB10 hardware.
+For release artifacts, run [pip checks](releasing.md#prepare-a-release) and [Docker checks](docker.md#verify-a-build).

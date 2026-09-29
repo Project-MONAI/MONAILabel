@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Composition root: application services share storage and execution ports."""
 
 from contextlib import ExitStack
@@ -15,6 +26,7 @@ from monailabel.server.classification import Classifications
 from monailabel.server.coordinator_runtime import CoordinatorRuntime
 from monailabel.server.data import Datasets
 from monailabel.server.dataset_downloads import dataset_cache_dir
+from monailabel.server.dataset_exports import DatasetExports
 from monailabel.server.dataset_templates import DatasetTemplates
 from monailabel.server.deletion import Deletion, cleanup_storage
 from monailabel.server.desktops.sessions import DesktopSessions
@@ -76,6 +88,7 @@ class Services:
                 self.presets.ensure(project.id)
             self.evaluation_sets = EvaluationSets(self.store)
             self.datasets = Datasets(self.store, self.artifacts)
+            self.dataset_exports = DatasetExports(self.store, self.artifacts, self.jobs)
             self.videos = Videos(self.store, self.artifacts)
             self.video_tracking = VideoTracking(self.store, self.artifacts, self.jobs, self.models)
             self.video_editors = VideoEditors(self.store, self.videos, self.jobs, self.secrets)

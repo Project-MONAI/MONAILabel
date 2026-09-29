@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Chat access to the same curated dataset imports as the workspace form."""
 
 from pydantic import Field
@@ -8,18 +19,22 @@ from monailabel.core.models import AssistantReply
 from .base import ToolContext, ToolRegistry
 
 
-class TemplateImportArgs(DatasetTemplateImport):
-    limit: int = Field(default=5, ge=1, le=2000, description="Maximum samples; default 5.")
+class TemplateArgs(DatasetTemplateImport):
     all_samples: bool = Field(
         default=False, description="True only when all images were requested; ignores limit."
     )
 
 
-class TemplateSplitArgs(DatasetTemplateImport):
+class TemplateImportArgs(TemplateArgs):
+    limit: int = Field(default=5, ge=1, le=2000, description="Maximum samples; default 5.")
+
+
+class TemplateSplitArgs(TemplateArgs):
     include_masks: bool = Field(
         default=False,
         description="Import reference masks for the ANNOTATION/TRAINING portion only. "
-        "Keep false for images-only annotation, even when evaluation labels are requested. "
+        "True for 'import with labels' or 'labeled cases'; false for 'images only' "
+        "or labels requested only for evaluation. "
         "The evaluation portion ALWAYS receives its reference masks independently.",
     )
     evaluation_percentage: float = Field(
@@ -49,7 +64,8 @@ def register(registry: ToolRegistry) -> None:
         "(split=pool, including imports intended for later training). "
         "For evaluation requests, set split=validation: images AND supplied labels are "
         "automatically imported from the labeled training section and reserved for evaluation. "
-        "For other uses, include labels only when requested. Imported labels need review. "
+        "Published evaluation references are accepted on import. "
+        "For other uses, include labels only when requested; those labels need review. "
         "Only start when the user requests an import, not when merely browsing options.",
         TemplateImportArgs,
         lambda args: import_template(registry.context, args),
@@ -59,22 +75,24 @@ def register(registry: ToolRegistry) -> None:
         "import_dataset_split",
         "Import BOTH portions of a sample dataset in one job: a percentage of images WITH "
         "labels reserved for independent evaluation, and the remainder for annotation/training. "
-        "Use this for '80% images only for annotation and remaining 20% images+labels for "
-        "evaluation': evaluation_percentage=20, include_masks=false, split=pool. "
+        "'Import with labels; reserve 20% for evaluation' uses evaluation_percentage=20, "
+        "include_masks=true. '80% images only, 20% with evaluation labels' uses "
+        "evaluation_percentage=20, include_masks=false. Both use split=pool. "
         "Omit limit (all cases) unless the user requests a total sample count. "
         "Do not import just the evaluation portion or use the five-image quick-start default. "
         "Use an exact template_id from inspect_workspace(dataset_templates). "
         "Uses the labeled source training section; evaluations always include provided labels. "
         "include_masks controls labels for the annotation/training remainder only. "
         "Evaluation count rounds up to whole cases, leaving at least one annotation case. "
-        "Existing annotations/reservations are protected. Labels remain pending review.",
+        "Published evaluation references are accepted on import; training labels need review. "
+        "Existing annotations, review decisions and reservations are protected.",
         TemplateSplitArgs,
-        lambda args: start_import(registry.context, args),
+        lambda args: import_template(registry.context, args),
         action="manage",
     )
 
 
-def import_template(ctx: ToolContext, args: TemplateImportArgs) -> AssistantReply:
+def import_template(ctx: ToolContext, args: TemplateArgs) -> AssistantReply:
     request = DatasetTemplateImport.model_validate(
         args.model_dump(exclude={"all_samples"})
         | {"limit": None if args.all_samples else args.limit}
@@ -104,17 +122,20 @@ def start_import(ctx: ToolContext, request: DatasetTemplateImport) -> AssistantR
             f"{100 - percentage:g}% {content} for annotation/training and "
             f"{percentage:g}% images with labels for evaluation. "
             "Evaluation rounds up to whole cases and stays excluded from training. "
-            "Labels will be pending review. Progress appears in Activity and imported cases "
+            "Published evaluation references are ready to use; training labels need review. "
+            "Progress appears in Activity and imported cases "
             "appear in Datasets. Existing annotations are preserved."
         )
     else:
         message = (
             f"Started importing {count} {content} from {template.name} into {project.name}. "
             "Progress and imported images will appear in Datasets."
-            + (" Reference masks will be pending review." if request.include_masks else "")
             + (
-                " These samples are reserved for evaluation and excluded from training."
+                " Published references are accepted on import, reserved for evaluation "
+                "and excluded from training."
                 if request.split == "validation"
+                else " Reference masks will be pending review."
+                if request.include_masks
                 else ""
             )
         )
