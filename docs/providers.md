@@ -84,7 +84,11 @@ Connect a deployed [image-segmentation endpoint](https://huggingface.co/docs/inf
 
 `max_output_tokens` in model configuration maps to the field above. `reasoning_effort` is supported only by compatible adapters; Anthropic rejects GPT-specific settings. Gemini uses `max_tokens` at `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`.
 
+For Gemini model IDs, including gateway routes, array upper limits are sent as schema descriptions instead of `maxItems` constraints. Large nested array limits can cause Gemini to reject an otherwise valid request with HTTP 400. MONAI Label still validates the full contract locally, including the maximum of 64 polygons and 512 points per polygon. See [Google's schema complexity guidance](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/capabilities/control-generated-output#considerations).
+
 Polygon coordinates use original 2D image pixels. Refused, incomplete, malformed, out-of-bounds or conflicting output fails validation without applying a partial result.
+
+HTTP 503 means the upstream provider or gateway is temporarily unavailable; retry the annotation shortly. Requests are not automatically retried or switched to another provider, and raw provider error bodies are withheld because they can contain credentials.
 
 Volume requests with 2D models require an explicit slice and intensity window. `AnnotateRequest.all_slices=true` iterates the selected source axis and publishes only after every plane succeeds. Lossless `orientation` transforms support transpose and row/column flips; rotations requiring resampling are rejected. Results are restored to the source grid before merging.
 

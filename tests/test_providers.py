@@ -88,6 +88,28 @@ def test_remote_error_does_not_expose_provider_body(monkeypatch):
     assert "401" in str(error.value)
 
 
+def test_unavailable_provider_suggests_retry_without_exposing_body_or_retrying(monkeypatch):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(503, text="secret-body-api-key")
+
+    mock_endpoint(monkeypatch, handler)
+    with pytest.raises(
+        DomainError, match="503.*temporarily unavailable.*Try again shortly"
+    ) as error:
+        RemoteSegmenter("openai-polygons").predict(
+            np.zeros((2, 2, 1), dtype=np.float32),
+            LABELS,
+            "",
+            model("openai-polygons", model="gpt-6-astra"),
+        )
+    assert error.value.code == "provider_error"
+    assert "secret" not in str(error.value)
+    assert len(calls) == 1
+
+
 def test_huggingface_binary_masks_are_mapped(monkeypatch):
     stream = io.BytesIO()
     Image.fromarray(np.array([[0, 255], [255, 0]], dtype=np.uint8)).save(stream, format="PNG")
@@ -159,6 +181,9 @@ def test_chat_polygon_adapter_uses_exact_model_and_environment_key(
         assert data["model"] == provider_model
         assert request.headers["authorization"] == "Bearer test-key"
         assert data["response_format"]["json_schema"]["strict"] is True
+        output_schema = data["response_format"]["json_schema"]["schema"]
+        assert output_schema["properties"]["polygons"]["maxItems"] == 64
+        assert output_schema["$defs"]["Polygon"]["properties"]["points"]["maxItems"] == 512
         assert data[max_tokens_field] == 2048
         assert len({"max_tokens", "max_completion_tokens"} & data.keys()) == 1
         if reasoning_effort:
@@ -211,6 +236,67 @@ def test_chat_polygon_adapter_uses_exact_model_and_environment_key(
     )
     assert result.mask.shape == (3, 5)
     assert result.mask[0, 4] == 1 and result.mask[2, 4] == 0
+
+
+@pytest.mark.parametrize("provider_model", ["gemini-3.8-flash", "gcp/google/gemini-3.8-flash"])
+def test_gemini_polygon_schema_avoids_rejected_array_caps(monkeypatch, provider_model):
+    polygons = {
+        "polygons": [
+            {"label_id": 1, "points": [{"x": 0, "y": 0}, {"x": 4, "y": 0}, {"x": 0, "y": 4}]}
+        ]
+    }
+
+    def handler(request):
+        data = json.loads(request.content)
+        assert data["model"] == provider_model
+        output_schema = data["response_format"]["json_schema"]["schema"]
+        polygon_array = output_schema["properties"]["polygons"]
+        points = output_schema["$defs"]["Polygon"]["properties"]["points"]
+        # Gemini rejected the original nested caps (64 polygons, 512 points) with 400.
+        assert "maxItems" not in polygon_array and "maxItems" not in points
+        assert "64" in polygon_array["description"] and "512" in points["description"]
+        assert points["minItems"] == 3
+        assert output_schema["$defs"]["Point"]["properties"]["x"]["maximum"] == 4
+        assert output_schema["$defs"]["Polygon"]["properties"]["label_id"]["enum"] == [1]
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"finish_reason": "stop", "message": {"content": json.dumps(polygons)}}]
+            },
+        )
+
+    mock_endpoint(monkeypatch, handler)
+    result = RemoteSegmenter("openai-chat-polygons").predict(
+        np.zeros((4, 4, 1), dtype=np.float32),
+        LABELS,
+        "liver",
+        model("openai-chat-polygons", model=provider_model),
+    )
+    assert result.mask[0, 0] == 1 and result.mask[3, 3] == 0
+
+
+@pytest.mark.parametrize("polygon_count,point_count", [(65, 3), (1, 513)])
+def test_gemini_array_caps_are_still_validated_locally(monkeypatch, polygon_count, point_count):
+    polygons = {
+        "polygons": [{"label_id": 1, "points": [{"x": 0, "y": 0}] * point_count}] * polygon_count
+    }
+    mock_endpoint(
+        monkeypatch,
+        lambda request: httpx.Response(
+            200,
+            json={
+                "choices": [{"finish_reason": "stop", "message": {"content": json.dumps(polygons)}}]
+            },
+        ),
+    )
+    with pytest.raises(DomainError, match="No partial mask was applied") as error:
+        RemoteSegmenter("openai-chat-polygons").predict(
+            np.zeros((4, 4, 1), dtype=np.float32),
+            LABELS,
+            "liver",
+            model("openai-chat-polygons", model="gcp/google/gemini-3.8-flash"),
+        )
+    assert error.value.code == "provider_output_invalid"
 
 
 @pytest.mark.parametrize(

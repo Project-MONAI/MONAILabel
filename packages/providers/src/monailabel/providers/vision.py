@@ -60,6 +60,19 @@ def anthropic_schema(value: Any) -> Any:
     return result
 
 
+def gemini_schema(value: Any) -> Any:
+    """Keep array caps in descriptions; Gemini can reject large nested maxItems limits."""
+    if isinstance(value, list):
+        return [gemini_schema(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    result = {key: gemini_schema(item) for key, item in value.items()}
+    if result.get("type") == "array" and "maxItems" in result:
+        limit = result.pop("maxItems")
+        result["description"] = (result.get("description", "") + f" At most {limit} items.").strip()
+    return result
+
+
 def vision_request(
     provider: str,
     config: "RemoteConfig",
@@ -70,6 +83,10 @@ def vision_request(
 ) -> dict[str, Any]:
     if not config.model:
         raise DomainError("The vision provider requires an explicit model ID.")
+    if config.model.rsplit("/", 1)[-1].startswith("gemini-"):
+        # Direct Gemini and gateway routes share this schema restriction. The original
+        # contracts still enforce every limit when parsing the returned annotation.
+        specification = {**specification, "schema": gemini_schema(specification["schema"])}
     encoded = [base64.b64encode(image).decode() for image in images]
     urls = ["data:image/png;base64," + content for content in encoded]
     if provider == "anthropic-polygons":

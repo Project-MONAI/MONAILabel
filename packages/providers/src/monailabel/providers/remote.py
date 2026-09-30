@@ -156,8 +156,13 @@ class RemoteSegmenter:
                 payload = response.json()
         except httpx.HTTPStatusError as exc:
             # Remote bodies and URLs can contain credentials; do not echo them.
+            detail = (
+                " The upstream service is temporarily unavailable. Try again shortly."
+                if exc.response.status_code == 503
+                else ""
+            )
             raise DomainError(
-                f"Provider returned HTTP {exc.response.status_code}.",
+                f"Provider returned HTTP {exc.response.status_code}." + detail,
                 code="provider_error",
                 status=502,
             ) from exc
