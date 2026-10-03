@@ -1303,19 +1303,68 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 return
 
             logging.info(sample)
-            image_id = sample["id"]
+            sample_id = sample["id"]
             image_file = sample.get("path")
-            image_name = sample.get("name", image_id)
-            node_name = sample.get("PatientID", sample.get("name", image_id))
+            image_name = sample.get("name", sample_id)
+            node_name = sample.get("PatientID", sample.get("name", sample_id))
             checksum = sample.get("checksum")
             local_exists = image_file and os.path.exists(image_file)
+            multichannel: bool = bool(sample.get("multichannel", False))
+            multi_file: bool = bool(sample.get("multi_file", False))
 
             logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
             if local_exists:
-                self._volumeNode = slicer.util.loadVolume(image_file)
-                self._volumeNode.SetName(node_name)
+                if multichannel:
+                    # For 4D multichannel images, NOTE: slicer does not like 4D nifti images
+                    # from https://github.com/Project-MONAI/MONAILabel/issues/241#issuecomment-1497788857
+                    volumeSequenceNode = slicer.util.loadSequence(image_file)
+                    volumeSequenceNode.SetName(node_name)
+                    # Get a volume node
+                    browserNode = slicer.modules.sequences.logic().GetFirstBrowserNodeForSequenceNode(
+                        volumeSequenceNode
+                    )
+                    browserNode.SetOverwriteProxyName(
+                        None, True
+                    )  # set the proxy node name based on the sequence node name
+                    self._volumeNode = browserNode.GetProxyNode(volumeSequenceNode)
+                else:
+                    if not multi_file:
+                        self._volumeNode = slicer.util.loadVolume(image_file)
+                        self._volumeNode.SetName(node_name)
+                    else:  # in the case the underlying dataset is multi_file, we load all the images in the directory
+                        dir_path = image_file
+                        if not os.path.isdir(dir_path):
+                            raise ValueError(f"multi_file=True but path is not a directory: {dir_path}")
+
+                        # get valid image paths
+                        entries = sorted(os.listdir(dir_path))
+                        image_paths = []
+                        for name in entries:
+                            full_path = os.path.join(dir_path, name)
+                            if os.path.isfile(full_path) and name.lower().endswith((".nii", ".nii.gz", ".nrrd")):
+                                image_paths.append(full_path)
+
+                        if not image_paths:
+                            raise ValueError(f"No loadable modality files found in: {dir_path}")
+
+                        nodes = []
+                        for image in image_paths:
+                            image_base_name = os.path.basename(image)
+                            node = slicer.util.loadVolume(image)
+                            if node is None:
+                                raise RuntimeError(f"Failed to load modality volume: {image}")
+                            node.SetName(image_base_name)
+                            nodes.append(node)
+
+                        self._volumeNode = nodes[0]
             else:
-                download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(image_id)}"
+                if multi_file or multichannel:
+                    raise RuntimeError(
+                        "Remote download is not supported for multi_file or multichannel samples. "
+                        "Ensure the MONAILabel server and 3D Slicer share the same storage path "
+                        "(i.e. the image file must be locally accessible)."
+                    )
+                download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(sample_id)}"
                 logging.info(download_uri)
 
                 sampleDataLogic = SampleData.SampleDataLogic()
@@ -1326,7 +1375,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
                 try:
                     datastore = self.logic.datastore()
-                    label_info = datastore["objects"][image_id]["labels"]["original"]["info"]
+                    label_info = datastore["objects"][sample_id]["labels"]["original"]["info"]
                     labels = label_info.get("params", {}).get("label_names", {})
 
                     if labels:
@@ -1338,7 +1387,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         labels = self.logic.info().get("labels")
 
                     # ext = datastore['objects'][image_id]['labels']['original']['ext']
-                    maskFile = self.logic.download_label(image_id, "original")
+                    maskFile = self.logic.download_label(sample_id, "original")
                     self.updateSegmentationMask(maskFile, list(labels))
                     print("Original label uploaded! ")
 

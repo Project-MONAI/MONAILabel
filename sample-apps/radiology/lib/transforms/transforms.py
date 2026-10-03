@@ -10,6 +10,7 @@
 # limitations under the License.
 import copy
 import logging
+import os
 from typing import Any, Dict, Hashable, Mapping
 
 import numpy as np
@@ -18,13 +19,197 @@ from einops import rearrange
 from monai.config import KeysCollection, NdarrayOrTensor
 from monai.data import MetaTensor
 from monai.networks.layers import GaussianFilter
-from monai.transforms import CropForeground, GaussianSmooth, Randomizable, Resize, ScaleIntensity, SpatialCrop
+from monai.transforms import (
+    ConcatItemsd,
+    CropForeground,
+    EnsureChannelFirst,
+    GaussianSmooth,
+    LoadImage,
+    Randomizable,
+    Resize,
+    ScaleIntensity,
+    SpatialCrop,
+)
 from monai.transforms.transform import MapTransform, Transform
 from monai.utils.enums import CommonKeys
 
 LABELS_KEY = "label_names"
 
 logger = logging.getLogger(__name__)
+
+
+class ConvertFromMultiChannelBasedOnBratsClassesd(MapTransform):
+    """
+    Dictionary-based transform that reverses
+    ``ConvertToMultiChannelBasedOnBratsClassesd``.
+
+    Converts a 3-channel binary prediction (TC, WT, ET) back to a
+    single-channel integer label map:
+
+    Output shape: (1, H, W, D), dtype ``torch.long`` by default.
+
+    Args:
+        keys: keys of the items to be transformed.
+        dtype: output dtype, default ``torch.long``.
+        allow_missing_keys: don't raise an error if a key is missing.
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        dtype: torch.dtype = torch.long,
+        allow_missing_keys: bool = False,
+    ) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.dtype = dtype
+
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]) -> Dict[Hashable, NdarrayOrTensor]:
+        """
+        Merge 3 binary channels into a single-channel integer label map.
+
+        Channel → label assignment:
+          - WT only (wt & ~tc) -> 1  (oedema / peritumoral)
+          - ET (et)            -> 2  (enhancing tumor)
+          - TC only (tc & ~et) -> 3  (necrotic core)
+          - background         -> 0
+        """
+        d = dict(data)
+        for key in self.key_iterator(d):
+            img = d[key]
+
+            if img.shape[0] != 3:
+                raise ValueError(
+                    f"Expected 3-channel input (TC, WT, ET) for key '{key}', " f"got {img.shape[0]} channels."
+                )
+
+            tc = img[0].bool()
+            wt = img[1].bool()
+            et = img[2].bool()
+
+            label_map = torch.zeros_like(img[0], dtype=self.dtype)
+            label_map[wt & ~tc] = 1  # Oedema
+            label_map[et] = 2  # Enhancing tumour
+            label_map[tc & ~et] = 3  # Necrotic core
+
+            result = label_map.unsqueeze(0)
+
+            d[key] = MetaTensor(result, meta=img.meta) if isinstance(img, MetaTensor) else result
+
+        return d
+
+
+# Adapted from https://github.com/Project-MONAI/MONAILabel/issues/241#issuecomment-1497561538
+class LoadDirectoryImagesd(MapTransform):
+    """
+    Load all 3D images from a directory, stack them along a new axis,
+    and preserve MONAI-style metadata similar to LoadImaged.
+
+    Each key should point to a directory of NIfTI/NRRD files (.nii, .nii.gz,
+    .nrrd).  Files are loaded in the BraTS modality order (T1, T1ce, T2, FLAIR)
+    by matching the ``_t1``, ``_t1ce``, ``_t2``, ``_flair`` filename suffixes,
+    resized to a common spatial shape, and concatenated into a single
+    (C, H, W, D) tensor.  Metadata from the first file is preserved and stored
+    in ``d[f"{key}_meta_dict"]``.  A ``ValueError`` is raised if any expected
+    modality file is missing or ambiguous.
+
+    Args:
+        keys: keys of the directory paths to transform.
+        target_spacing: if provided, voxel spacing to which each image is
+            resampled before stacking (passed to ``Spacingd`` in the pipeline).
+            When ``None`` no resampling is applied here.
+        allow_missing_keys: don't raise an error if a key is absent.
+        channels: expected number of modality files in the directory.  A
+            ``ValueError`` is raised if the count doesn't match.  Set to 0 to
+            skip the check.
+    """
+
+    def __init__(self, keys: KeysCollection, target_spacing=None, allow_missing_keys: bool = False, channels: int = 2):
+        super().__init__(keys, allow_missing_keys)
+        self.target_spacing = target_spacing
+        self.loader = LoadImage(reader="ITKReader", image_only=False)
+        self.ensure_channel_first = EnsureChannelFirst()
+        self.channels = int(channels)
+
+    def __call__(self, data: Dict):
+        d = dict(data)
+
+        for key in self.key_iterator(d):
+            dir_path = d[key]
+            if not os.path.isdir(dir_path):
+                raise ValueError(f"Expected a directory path for key '{key}', got: {dir_path}")
+
+            # Gather files in the required BraTS modality order: T1, T1ce, T2, FLAIR.
+            # Alphabetical sort is intentionally avoided, it would place FLAIR first,
+            # assigning the wrong channel index to each modality.
+            _MODALITY_SUFFIXES = ["_t1", "_t1ce", "_t2", "_flair"]
+            all_files = [f for f in os.listdir(dir_path) if f.lower().endswith((".nii", ".nii.gz", ".nrrd"))]
+            image_files = []
+            for suffix in _MODALITY_SUFFIXES:
+                matches = [
+                    os.path.join(dir_path, f)
+                    for f in all_files
+                    if os.path.splitext(os.path.splitext(f)[0])[0].lower().endswith(suffix)
+                    or f.lower().endswith(suffix + ".nrrd")
+                ]
+                if len(matches) != 1:
+                    raise ValueError(
+                        f"Expected exactly one file matching '*{suffix}' in {dir_path}, "
+                        f"found {len(matches)}: {matches}"
+                    )
+                image_files.append(matches[0])
+
+            if 0 < self.channels != len(image_files):
+                raise ValueError(f"Expected {self.channels} modality files in {dir_path}, found {len(image_files)}")
+
+            channel_keys = []
+            meta_dicts = []
+            reference_shape = None
+
+            logger.info(f"Loading {len(image_files)} images from {dir_path}")
+
+            for idx, img_path in enumerate(image_files):
+                img, meta = self.loader(img_path)
+                img = self.ensure_channel_first(img)
+
+                if reference_shape is None:
+                    reference_shape = img.shape[1:]
+                elif img.shape[1:] != reference_shape:
+                    raise ValueError(
+                        f"Modality file '{img_path}' in {dir_path} has shape {img.shape[1:]} "
+                        f"which differs from the first modality shape {reference_shape}. "
+                        f"All modalities must be co-registered and resampled to the same voxel "
+                        f"grid before loading. Please preprocess your dataset accordingly."
+                    )
+
+                ch_key = f"{key}_ch{idx + 1}"
+                d[ch_key] = img
+                d[f"{ch_key}_meta_dict"] = meta
+
+                channel_keys.append(ch_key)
+                meta_dicts.append(meta)
+
+                logger.debug(f"Loaded {ch_key}: {img.shape}")
+
+            # MONAI-native concatenation
+            concat = ConcatItemsd(keys=channel_keys, name=key, dim=0)
+            d = concat(d)
+
+            # Clean up temporary channel keys
+            for ch_key in channel_keys:
+                d.pop(ch_key, None)
+                d.pop(f"{ch_key}_meta_dict", None)
+
+            # Construct merged metadata
+            merged_meta = copy.deepcopy(meta_dicts[0])
+            merged_meta["filename_or_obj"] = image_files
+            merged_meta["num_channels"] = len(channel_keys)
+            merged_meta["original_channel_dim"] = 0
+
+            d[f"{key}_meta_dict"] = merged_meta
+
+            logger.info(f"Concatenated {len(channel_keys)} images → {d[key].shape}")
+
+        return d
 
 
 class BinaryMaskd(MapTransform):

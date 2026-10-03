@@ -40,9 +40,31 @@ class Random(Strategy):
             images_info.append(datastore.get_image_info(image).get("strategy", {}).get(strategy, {}))
 
         current_ts = int(time.time())
-        weights = [current_ts - info.get("ts", 0) for info in images_info]
+        # Clamp to zero so future/corrupt timestamps don't produce negative weights,
+        # which would cause random.choices to raise a ValueError.
+        weights = [max(0, current_ts - info.get("ts", 0)) for info in images_info]
 
-        image = random.choices(images, weights=weights)[0]
-        logger.debug(f"Random: Images: {images}; Weight: {weights}")
-        logger.info(f"Random: Selected Image: {image}; Weight: {weights[0]}")
-        return {"id": image, "weight": weights[0]}
+        if sum(weights) == 0:
+            # All images were seen at the current second (or have corrupt timestamps);
+            # fall back to a uniform random pick.
+            selected_idx = random.randrange(len(images))
+        else:
+            selected_idx = random.choices(range(len(images)), weights=weights, k=1)[0]
+        image = images[selected_idx]
+        selected_weight = weights[selected_idx]
+
+        logger.info(f"Random: Selected Image: {image}; Weight: {selected_weight}")
+
+        # If the datastore contains 4d images send the multichannel flag to ensure images are loaded as sequences
+        if datastore.get_is_multichannel():
+            return {"id": image, "weight": selected_weight, "multichannel": True}
+
+        # If the datastore is multi_file, each sample has a directory with multiple images
+        if datastore.get_is_multi_file():
+            return {
+                "id": image,
+                "weight": selected_weight,
+                "multi_file": True,
+            }  # this will send the directory and we will walk it later on
+
+        return {"id": image, "weight": selected_weight}

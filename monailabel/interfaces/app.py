@@ -90,7 +90,9 @@ class MONAILabelApp:
         self.app_dir = app_dir
         self.studies = studies
         self.conf = conf if conf else {}
-
+        self.multichannel: bool = strtobool(conf.get("multichannel", False))
+        self.multi_file: bool = strtobool(conf.get("multi_file", False))
+        self.input_channels = conf.get("input_channels", False)
         self.name = name
         self.description = description
         self.version = version
@@ -146,6 +148,8 @@ class MONAILabelApp:
             extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
             auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
             read_only=settings.MONAI_LABEL_DATASTORE_READ_ONLY,
+            multichannel=self.multichannel,
+            multi_file=self.multi_file,
         )
 
     def init_remote_datastore(self) -> Datastore:
@@ -282,6 +286,9 @@ class MONAILabelApp:
             )
 
         request = copy.deepcopy(request)
+        request["multi_file"] = self.multi_file
+        request["multichannel"] = self.multichannel
+        request["input_channels"] = self.input_channels
         request["description"] = task.description
 
         image_id = request["image"]
@@ -292,7 +299,7 @@ class MONAILabelApp:
             else:
                 request["image"] = datastore.get_image_uri(request["image"])
 
-            if os.path.isdir(request["image"]):
+            if os.path.isdir(request["image"]) and not self.multi_file:
                 logger.info("Input is a Directory; Consider it as DICOM")
 
             logger.debug(f"Image => {request['image']}")
@@ -431,6 +438,10 @@ class MONAILabelApp:
             )
 
         request = copy.deepcopy(request)
+        # 4D image support, send train task information regarding data
+        request["multi_file"] = self.multi_file
+        request["multichannel"] = self.multichannel
+        request["input_channels"] = self.input_channels
         result = task(request, self.datastore())
 
         # Run all scoring methods

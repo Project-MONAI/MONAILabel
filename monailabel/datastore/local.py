@@ -102,9 +102,11 @@ class LocalDatastore(Datastore):
         images_dir: str = ".",
         labels_dir: str = "labels",
         datastore_config: str = "datastore_v2.json",
-        extensions=("*.nii.gz", "*.nii"),
+        extensions=("*.nii.gz", "*.nii", "*.nrrd"),
         auto_reload=False,
         read_only=False,
+        multichannel: bool = False,
+        multi_file: bool = False,
     ):
         """
         Creates a `LocalDataset` object
@@ -124,6 +126,14 @@ class LocalDatastore(Datastore):
         self._ignore_event_config = False
         self._config_ts = 0
         self._auto_reload = auto_reload
+        if multichannel and multi_file:
+            raise ValueError(
+                "multichannel and multi_file are mutually exclusive: "
+                "multichannel expects a single 4D NIfTI volume per sample, "
+                "while multi_file expects a directory of separate modality files."
+            )
+        self._multichannel: bool = multichannel
+        self._multi_file: bool = multi_file
 
         logging.getLogger("filelock").setLevel(logging.ERROR)
 
@@ -255,6 +265,18 @@ class LocalDatastore(Datastore):
         if not full_path:
             ds = json.loads(json.dumps(ds).replace(f"{self._datastore_path.rstrip(os.pathsep)}{os.pathsep}", ""))
         return ds
+
+    def get_is_multichannel(self) -> bool:
+        """
+        Returns whether the dataset is multichannel or not
+        """
+        return self._multichannel
+
+    def get_is_multi_file(self) -> bool:
+        """
+        Returns whether the dataset is multi-file or not
+        """
+        return self._multi_file
 
     def get_image(self, image_id: str, params=None) -> Any:
         """
@@ -431,6 +453,43 @@ class LocalDatastore(Datastore):
         """
         self._reconcile_datastore()
 
+    def add_directory(self, directory_id: str, filename: str, info: Dict[str, Any]) -> str:
+        """
+        Add a directory to the datastore
+
+        :param directory_id: the directory id
+        :param filename: the filename
+        :param info: additional info
+
+        :return: directory id
+        """
+        id = os.path.basename(os.path.normpath(filename))
+        if not directory_id:
+            directory_id = id
+
+        logger.info(f"Adding Image: {directory_id} => {filename}")
+        name = directory_id
+        dest = os.path.realpath(os.path.join(self._datastore.image_path(), name))
+
+        with FileLock(self._lock_file):
+            logger.debug("Acquired the lock!")
+            if os.path.isdir(filename):
+                if os.path.exists(dest):
+                    shutil.rmtree(dest)
+                shutil.copytree(filename, dest)
+            else:
+                shutil.copy2(filename, dest)
+
+            info = info if info else {}
+            info["ts"] = int(time.time())
+            info["name"] = name
+
+            # images = get_directory_contents(filename)
+            self._datastore.objects[directory_id] = ImageLabelModel(image=DataModel(info=info, ext=""))
+            self._update_datastore_file(lock=False)
+        logger.debug("Released the lock!")
+        return directory_id
+
     def add_image(self, image_id: str, image_filename: str, image_info: Dict[str, Any]) -> str:
         id, image_ext = self._to_id(os.path.basename(image_filename))
         if not image_id:
@@ -552,10 +611,17 @@ class LocalDatastore(Datastore):
         files = os.listdir(path)
 
         filtered = dict()
-        for pattern in patterns:
-            matching = fnmatch.filter(files, pattern)
-            for file in matching:
-                filtered[os.path.basename(file)] = file
+        if not self._multi_file:
+            for pattern in patterns:
+                matching = fnmatch.filter(files, pattern)
+                for file in matching:
+                    filtered[os.path.basename(file)] = file
+        else:
+            ignored = {"labels", ".lock", os.path.basename(self._datastore_config_path).lower()}
+            for file in files:
+                abs_file = os.path.join(path, file)
+                if os.path.isdir(abs_file) and file.lower() not in ignored:
+                    filtered[os.path.basename(file)] = file
         return filtered
 
     def _reconcile_datastore(self):
@@ -585,24 +651,26 @@ class LocalDatastore(Datastore):
         invalidate = 0
         self._init_from_datastore_file()
 
-        local_images = self._list_files(self._datastore.image_path(), self._extensions)
+        local_files = self._list_files(self._datastore.image_path(), self._extensions)
 
-        image_ids = list(self._datastore.objects.keys())
-        for image_file in local_images:
-            image_id, image_ext = self._to_id(image_file)
-            if image_id not in image_ids:
-                logger.info(f"Adding New Image: {image_id} => {image_file}")
+        ids = list(self._datastore.objects.keys())
+        for file in local_files:
+            if self._multi_file:
+                # Directories have no extension — use the name as-is
+                file_id = file
+                file_ext_str = ""
+            else:
+                file_id, file_ext_str = self._to_id(file)
 
-                name = self._filename(image_id, image_ext)
-                image_info = {
+            if file_id not in ids:
+                logger.info(f"Adding New Image: {file_id} => {file}")
+                name = self._filename(file_id, file_ext_str)
+                file_info = {
                     "ts": int(time.time()),
-                    # "checksum": file_checksum(os.path.join(self._datastore.image_path(), name)),
                     "name": name,
                 }
-
                 invalidate += 1
-                self._datastore.objects[image_id] = ImageLabelModel(image=DataModel(info=image_info, ext=image_ext))
-
+                self._datastore.objects[file_id] = ImageLabelModel(image=DataModel(info=file_info, ext=file_ext_str))
         return invalidate
 
     def _add_non_existing_labels(self, tag) -> int:

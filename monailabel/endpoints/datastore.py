@@ -66,20 +66,28 @@ def add_image(
     user: Optional[str] = None,
 ):
     logger.info(f"Image: {image}; File: {file}; params: {params}")
-    file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
 
-    image_id = image if image else os.path.basename(file.filename).replace(file_ext, "")
+    instance: MONAILabelApp = app_instance()
+    if instance.datastore().get_is_multi_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Multi-file datastore does not support single-file uploads. "
+            "Data must be pre-staged as sample subdirectories on the server filesystem.",
+        )
+
+    file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
+    id = image if image else os.path.basename(file.filename).replace(file_ext, "")
     image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 
     with open(image_file, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         background_tasks.add_task(remove_file, image_file)
 
-    instance: MONAILabelApp = app_instance()
     save_params: Dict[str, Any] = json.loads(params) if params else {}
     if user:
         save_params["user"] = user
-    image_id = instance.datastore().add_image(image_id, image_file, save_params)
+
+    image_id = instance.datastore().add_image(id, image_file, save_params)
     return {"image": image_id}
 
 
@@ -134,9 +142,14 @@ def download_image(image: str, check_only=False, check_sum=None):
     instance: MONAILabelApp = app_instance()
     image = instance.datastore().get_image_uri(image)
 
+    if os.path.isdir(image):
+        raise HTTPException(
+            status_code=400,
+            detail="Image may be a multi-file sample (directory). Single-file download is not supported for this sample.",
+        )
     if not os.path.isfile(image):
-        logger.error(f"Image NOT Found or is a directory: {image}")
-        raise HTTPException(status_code=404, detail="Image NOT Found or is a directory")
+        logger.error(f"Image NOT Found: {image}")
+        raise HTTPException(status_code=404, detail="Image NOT Found")
 
     if check_only:
         if check_sum:
