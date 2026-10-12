@@ -69,8 +69,8 @@ def add_image(
     file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
 
     image_id = image if image else os.path.basename(file.filename).replace(file_ext, "")
-    # Sanitize the user-supplied image ID: strip any directory components so it
-    # cannot be used to write outside the datastore (path traversal).
+    # Normalize a caller-supplied image ID to a plain file name
+    # (no directory components) before it is used to build a path.
     if image:
         image_id = os.path.basename(image_id)
         if not image_id or image_id in (".", "..") or image_id.startswith("."):

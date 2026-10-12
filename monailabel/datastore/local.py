@@ -232,9 +232,9 @@ class LocalDatastore(Datastore):
     def _confine_path(dest: str, allowed_base: str) -> str:
         """Resolve ``dest`` and require it to stay inside ``allowed_base``.
 
-        Guards against path traversal in user-supplied IDs (image/label) that
-        are concatenated into filesystem paths. Raises :class:`ValueError` if
-        the resolved destination escapes the allowed directory.
+        IDs and tags are concatenated into filesystem paths, so the resolved
+        destination is checked before writing. Raises :class:`ValueError` if
+        it is not inside the allowed directory.
         """
         dest = os.path.realpath(dest)
         allowed_base = os.path.realpath(allowed_base)
@@ -244,7 +244,7 @@ class LocalDatastore(Datastore):
             # e.g. Windows paths on different drives have no common path
             inside = False
         if not inside:
-            raise ValueError(f"Path traversal detected: {dest!r} is outside {allowed_base!r}")
+            raise ValueError(f"Invalid path: {dest!r} is not inside {allowed_base!r}")
         return dest
 
     def _to_bytes(self, file):
