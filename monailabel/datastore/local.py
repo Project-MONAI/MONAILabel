@@ -238,7 +238,12 @@ class LocalDatastore(Datastore):
         """
         dest = os.path.realpath(dest)
         allowed_base = os.path.realpath(allowed_base)
-        if os.path.commonpath([dest, allowed_base]) != allowed_base:
+        try:
+            inside = os.path.commonpath([dest, allowed_base]) == allowed_base
+        except ValueError:
+            # e.g. Windows paths on different drives have no common path
+            inside = False
+        if not inside:
             raise ValueError(f"Path traversal detected: {dest!r} is outside {allowed_base!r}")
         return dest
 
