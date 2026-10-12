@@ -228,6 +228,20 @@ class LocalDatastore(Datastore):
     def _filename(self, id: str, ext: str) -> str:
         return id + ext
 
+    @staticmethod
+    def _confine_path(dest: str, allowed_base: str) -> str:
+        """Resolve ``dest`` and require it to stay inside ``allowed_base``.
+
+        Guards against path traversal in user-supplied IDs (image/label) that
+        are concatenated into filesystem paths. Raises :class:`ValueError` if
+        the resolved destination escapes the allowed directory.
+        """
+        dest = os.path.realpath(dest)
+        allowed_base = os.path.realpath(allowed_base)
+        if os.path.commonpath([dest, allowed_base]) != allowed_base:
+            raise ValueError(f"Path traversal detected: {dest!r} is outside {allowed_base!r}")
+        return dest
+
     def _to_bytes(self, file):
         return io.BytesIO(pathlib.Path(file).read_bytes())
 
@@ -438,7 +452,7 @@ class LocalDatastore(Datastore):
 
         logger.info(f"Adding Image: {image_id} => {image_filename}")
         name = self._filename(image_id, image_ext)
-        dest = os.path.realpath(os.path.join(self._datastore.image_path(), name))
+        dest = self._confine_path(os.path.join(self._datastore.image_path(), name), self._datastore.image_path())
 
         with FileLock(self._lock_file):
             logger.debug("Acquired the lock!")
@@ -493,8 +507,12 @@ class LocalDatastore(Datastore):
 
         logger.info(f"Adding Label: {image_id} => {label_tag} => {label_filename}")
         label_path = self._datastore.label_path(label_tag)
+        # Confine the label directory itself as well as the final file path, so
+        # a crafted label tag cannot redirect the write outside the labels dir.
+        labels_root = self._datastore.label_path(None)
+        label_path = self._confine_path(label_path, labels_root)
         name = self._filename(image_id, label_ext)
-        dest = os.path.join(label_path, name)
+        dest = self._confine_path(os.path.join(label_path, name), label_path)
 
         with FileLock(self._lock_file):
             logger.debug("Acquired the lock!")
