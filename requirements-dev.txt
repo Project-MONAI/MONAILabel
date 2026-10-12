@@ -38,3 +38,4 @@ click>=8.1.2
 testresources
 pre-commit
 attrs>=22.1.0
+SimpleITK
