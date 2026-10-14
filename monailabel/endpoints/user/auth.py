@@ -50,6 +50,7 @@ def open_id_configuration(realm_uri):
         url=f"{realm_uri}/.well-known/openid-configuration",
         timeout=settings.MONAI_LABEL_AUTH_TIMEOUT,
     )
+    response.raise_for_status()
     return response.json()
 
 
