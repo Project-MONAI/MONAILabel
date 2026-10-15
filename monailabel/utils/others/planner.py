@@ -92,6 +92,9 @@ class HeuristicPlanner:
         # Get the maximum width according available GPU memory
         # This equation roughly estimates the image size that fits in the available GPU memory using DynUNet
         width = (gpu_mem - 2000) / (0.5 * depth_base_2)
+        if width <= 0:
+            logger.info(f"Insufficient free GPU memory ({gpu_mem} MB); falling back to target size {target_img_size}")
+            return [int(target_img_size[0]), int(target_img_size[1]), depth_base_2]
         width_base_2 = int(2 ** np.round(np.log2(width)))
         if width_base_2 < np.maximum(target_img_size[0], target_img_size[1]):
             return [width_base_2, width_base_2, depth_base_2]
