@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import os
+import shutil
 import subprocess
 from collections import deque
 from typing import Optional
@@ -99,7 +100,11 @@ async def api_get_logs(
     return get_logs(os.path.join(settings.MONAI_LABEL_APP_DIR, "logs", "app.log"), lines, html, text, refresh)
 
 
-@router.get("/gpu", summary=f"{RBAC_ADMIN}Get GPU Info (nvidia-smi)")
+@router.get("/gpu", summary=f"{RBAC_ADMIN}Get GPU Info (nvidia-smi / rocm-smi)")
 async def gpu_info(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
-    response = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE).stdout.decode("utf-8")
+    # nvidia-smi on NVIDIA, rocm-smi on AMD ROCm.
+    smi = "nvidia-smi" if shutil.which("nvidia-smi") else ("rocm-smi" if shutil.which("rocm-smi") else None)
+    if smi is None:
+        return Response(content="No GPU SMI tool found (nvidia-smi / rocm-smi)", media_type="text/plain")
+    response = subprocess.run([smi], stdout=subprocess.PIPE).stdout.decode("utf-8")
     return Response(content=response, media_type="text/plain")

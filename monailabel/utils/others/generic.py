@@ -158,21 +158,49 @@ def gpu_memory_map():
     -------
     usage: dict
         Keys are device ids as integers.
-        Values are memory usage as integers in MB.
+        Values are free memory as integers in MB.
     """
-    logger.info("Using nvidia-smi command")
-    if shutil.which("nvidia-smi") is None:
-        logger.info("nvidia-smi command didn't work! - Using default image size [128, 128, 64]")
+    # Prefer nvidia-smi; fall back to rocm-smi on AMD ROCm hosts. Both report
+    # per-device free VRAM. On any failure keep the original safe default so the
+    # caller's image-size auto-tuning degrades gracefully instead of raising.
+    if shutil.which("nvidia-smi") is not None:
+        logger.info("Using nvidia-smi command")
+        try:
+            result = subprocess.check_output(
+                ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
+            )
+            gpu_memory = [int(x) for x in result.strip().split("\n")]
+            return dict(zip(range(len(gpu_memory)), gpu_memory))
+        except Exception as e:
+            logger.info(f"nvidia-smi command didn't work ({e})! - Using default image size [128, 128, 64]")
+            return {0: 4300}
+
+    if shutil.which("rocm-smi") is not None:
+        logger.info("Using rocm-smi command")
+        try:
+            # rocm-smi reports total + used VRAM in bytes per card; free = total - used.
+            result = subprocess.check_output(["rocm-smi", "--showmeminfo", "vram", "--csv"], encoding="utf-8")
+            gpu_memory = {}
+            idx = 0
+            for line in result.strip().split("\n"):
+                cols = line.split(",")
+                # Skip the header and any warning lines rocm-smi prints to stdout.
+                if not cols or not cols[0].startswith("card"):
+                    continue
+                try:
+                    total_b, used_b = int(cols[1]), int(cols[2])
+                except (IndexError, ValueError):
+                    continue
+                gpu_memory[idx] = max(0, (total_b - used_b) // (1024 * 1024))  # bytes -> MB free
+                idx += 1
+            if gpu_memory:
+                return gpu_memory
+        except Exception as e:
+            logger.info(f"rocm-smi command didn't work ({e})! - Using default image size [128, 128, 64]")
         return {0: 4300}
 
-    result = subprocess.check_output(
-        ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
-    )
-
-    # Convert lines into a dictionary
-    gpu_memory = [int(x) for x in result.strip().split("\n")]
-    gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
-    return gpu_memory_map
+    logger.info("Neither nvidia-smi nor rocm-smi found! - Using default image size [128, 128, 64]")
+    return {0: 4300}
 
 
 def gpu_count():
