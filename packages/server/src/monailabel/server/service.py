@@ -11,6 +11,7 @@
 
 """Composition root: application services share storage and execution ports."""
 
+import os
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -29,6 +30,10 @@ from monailabel.server.dataset_downloads import dataset_cache_dir
 from monailabel.server.dataset_exports import DatasetExports
 from monailabel.server.dataset_templates import DatasetTemplates
 from monailabel.server.deletion import Deletion, cleanup_storage
+from monailabel.server.demo_access import lifecycle_enabled
+from monailabel.server.demo_audit import DemoAudit
+from monailabel.server.demo_lifecycle import DemoLifecycle
+from monailabel.server.demo_onboarding import DemoOnboarding
 from monailabel.server.desktops.sessions import DesktopSessions
 from monailabel.server.dicom.connections import DicomConnections
 from monailabel.server.dicom.service import Dicom
@@ -40,6 +45,7 @@ from monailabel.server.models.catalog import ModelCatalogs
 from monailabel.server.models.presets import Presets
 from monailabel.server.reference_imports import ReferenceImports
 from monailabel.server.regions import Regions
+from monailabel.server.request_throttle import RequestThrottle
 from monailabel.server.review_units.service import ReviewUnits
 from monailabel.server.reviews import Reviews
 from monailabel.server.scoring import ValidationScorer
@@ -66,13 +72,22 @@ class Services:
             self.lock.acquire()
             cleanup.callback(self.lock.release)
             self.store = Store(data_dir / "monailabel.sqlite3")
+            self.audit = DemoAudit(
+                data_dir / "demo-audit", enabled=os.environ.get("MONAILABEL_DEMO_AUDIT") == "1"
+            )
+            cleanup.callback(self.audit.close)
             self.auth = Auth(self.store)
+            self.request_throttle = RequestThrottle(
+                enabled=os.environ.get("MONAILABEL_DEMO_HTTP_LIMITS") == "1"
+            )
             self.desktops = DesktopSessions(self.store, self.auth, data_dir)
             cleanup.callback(self.desktops.close)
             self.secrets = Secrets(self.store, data_dir)
             self.reviews = Reviews(self.store)
-            self.artifacts = Artifacts(data_dir / "artifacts")
+            self.artifacts = Artifacts(data_dir / "artifacts", database=self.store.path)
             cleanup_storage(self.store, self.artifacts)
+            assert self.artifacts.quota is not None
+            self.artifacts.quota.reconcile()
             ReviewUnits(self.store, self.artifacts).migrate_videos()
             self.deletion = Deletion(self.store)
             # Registered before workers so their clients close after jobs have finished.
@@ -111,6 +126,7 @@ class Services:
                 videos=self.videos,
                 legacy_cache=data_dir / "dataset-downloads",
             )
+            self.demo_onboarding = DemoOnboarding(self.store, self.dataset_templates)
             self.classifications = Classifications(
                 self.store, self.artifacts, self.models, self.jobs
             )
@@ -136,6 +152,8 @@ class Services:
             if self.coordinator:
                 cleanup.callback(self.coordinator.close)
                 self.coordinator.start()
+            self.demo_lifecycle = DemoLifecycle(self, enabled=lifecycle_enabled())
+            cleanup.callback(self.demo_lifecycle.close)
             self._cleanup = cleanup.pop_all()
 
     def close(self) -> None:

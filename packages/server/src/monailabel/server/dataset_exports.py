@@ -14,7 +14,6 @@
 import hashlib
 import json
 import re
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -39,6 +38,7 @@ from monailabel.core.video import TrackAnnotation, VideoAsset
 from monailabel.server.data import nifti_bytes
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.storage import Artifacts, Session, Store
+from monailabel.server.temporary_storage import job_spool
 
 
 class ExportRequest(Contract):
@@ -128,11 +128,14 @@ class DatasetExports:
             len(assets) + annotation_count + sum(len(self.units(snapshot, a, mode)) for a in assets)
         )
         completed = 0
-        with tempfile.TemporaryDirectory(prefix="export-", dir=self.artifacts.root) as temporary:
-            path = Path(temporary) / "dataset.zip"
-            with ZipFile(
-                path, "w", compression=ZIP_DEFLATED, compresslevel=3, allowZip64=True
-            ) as archive:
+        with job_spool(context, "EXPORT_TEMP_BYTES", 2 * 1024**3) as spool:
+            path = spool.path("dataset.zip")
+            with (
+                spool.open("dataset.zip") as output,
+                ZipFile(
+                    output, "w", compression=ZIP_DEFLATED, compresslevel=3, allowZip64=True
+                ) as archive,
+            ):
                 for asset in assets:
                     context.check_cancelled()
                     folder = f"samples/{asset.id}"
@@ -145,20 +148,22 @@ class DatasetExports:
                         source_path = self.artifacts.path(asset.source_key)
                         source_name = f"{folder}/image/{filename(asset.name)}"
                     else:
-                        source_path = Path(temporary) / "image.npy"
+                        source_path = spool.path("image.npy")
                         if isinstance(asset, Asset) and asset.affine:
-                            source_path = source_path.with_suffix(".nii")
-                            source_path.write_bytes(
-                                nifti_bytes(
-                                    self.artifacts.array(asset.image_key)[..., 0], asset.affine
+                            source_path = spool.path("image.nii")
+                            with spool.open(source_path.name) as stream:
+                                stream.write(
+                                    nifti_bytes(
+                                        self.artifacts.array(asset.image_key)[..., 0], asset.affine
+                                    )
                                 )
-                            )
                         else:
-                            np.save(
-                                source_path,
-                                self.artifacts.array(asset.image_key),
-                                allow_pickle=False,
-                            )
+                            with spool.open(source_path.name) as stream:
+                                np.save(
+                                    stream,
+                                    self.artifacts.array(asset.image_key),
+                                    allow_pickle=False,
+                                )
                         source_name = f"{folder}/image/{source_path.name}"
                     self.add_file(
                         archive,
@@ -169,6 +174,8 @@ class DatasetExports:
                         completed / total,
                         1 / total,
                     )
+                    if not asset.source_key:
+                        spool.remove(source_path.name)
                     completed += 1
                     metadata["image"] = source_name
                     for annotation in snapshot["annotations"][asset.id]:
@@ -186,17 +193,19 @@ class DatasetExports:
                             suffix = ".json"
                         else:
                             mask = self.artifacts.array(annotation.mask_key)
-                            mask_path = Path(temporary) / "mask"
+                            mask_path = spool.path("mask")
                             if asset.affine:
                                 source = (
                                     self.artifacts.read(asset.source_key)
                                     if asset.source_key
                                     else None
                                 )
-                                mask_path.write_bytes(nifti_bytes(mask, asset.affine, source))
+                                with spool.open(mask_path.name) as stream:
+                                    stream.write(nifti_bytes(mask, asset.affine, source))
                                 suffix = ".nii"
                             else:
-                                Image.fromarray(mask).save(mask_path, format="PNG")
+                                with spool.open(mask_path.name) as stream:
+                                    Image.fromarray(mask).save(stream, format="PNG")
                                 suffix = ".png"
                         name = f"{folder}/labels/revision-{annotation.revision:06d}{suffix}"
                         self.add_file(
@@ -208,6 +217,8 @@ class DatasetExports:
                             completed / total,
                             1 / total,
                         )
+                        if not isinstance(annotation, TrackAnnotation):
+                            spool.remove(mask_path.name)
                         completed += 1
                         version["file"] = name
                         metadata["annotations"].append(version)
@@ -219,10 +230,11 @@ class DatasetExports:
                             unit_path = self.artifacts.path(unit.mask_key)
                             suffix = ".json"
                         else:
-                            unit_path = Path(temporary) / "reference.png"
-                            Image.fromarray(self.artifacts.array(unit.mask_key)).save(
-                                unit_path, format="PNG"
-                            )
+                            unit_path = spool.path("reference.png")
+                            with spool.open(unit_path.name) as stream:
+                                Image.fromarray(self.artifacts.array(unit.mask_key)).save(
+                                    stream, format="PNG"
+                                )
                             suffix = ".png"
                         reference["file"] = (
                             f"{folder}/review-units/{unit.unit_id}/revision-{unit.revision:06d}{suffix}"
@@ -236,6 +248,8 @@ class DatasetExports:
                             completed / total,
                             1 / total,
                         )
+                        if unit.scope.kind != "frames":
+                            spool.remove(unit_path.name)
                         completed += 1
                     if isinstance(asset, VideoAsset):
                         metadata["video_metadata"] = json.loads(

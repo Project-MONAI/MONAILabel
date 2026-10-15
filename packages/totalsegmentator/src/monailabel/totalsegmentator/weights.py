@@ -28,6 +28,7 @@ from platformdirs import user_cache_path
 
 from monailabel.core.errors import DomainError
 from monailabel.core.ports import Progress
+from monailabel.core.preparation import prepared_models_only, require_prepared
 from monailabel.totalsegmentator.catalog import MODELS
 
 
@@ -39,12 +40,38 @@ def manifest(provider: str) -> dict[str, Any]:
     return data[MODELS[provider][1]]
 
 
-def pretrained_weights(provider: str, progress: Progress = lambda _: None) -> Path:
+def cache_root(provider: str) -> Path:
     spec = manifest(provider)
     root = Path(os.environ.get("MONAILABEL_MODELS_DIR", user_cache_path("monailabel") / "models"))
-    root = root / "totalsegmentator" / str(spec["sha256"])
-    root.mkdir(parents=True, exist_ok=True)
+    return root / "totalsegmentator" / str(spec["sha256"])
+
+
+def prepared(provider: str) -> bool:
+    root = cache_root(provider)
+    return all((root / name).is_file() for name in manifest(provider)["files"])
+
+
+def verify(provider: str, progress: Progress) -> None:
+    root = cache_root(provider)
+    for name, checksum in manifest(provider)["files"].items():
+        progress(0)
+        path = root / name
+        if not path.is_file():
+            raise DomainError("TotalSegmentator cache is incomplete. Ask the host to prepare it.")
+        with path.open("rb") as stream:
+            if hashlib.file_digest(stream, "sha256").hexdigest() != checksum:
+                raise DomainError("Cached TotalSegmentator weights differ from the pinned release.")
+
+
+def pretrained_weights(provider: str, progress: Progress = lambda _: None) -> Path:
+    spec = manifest(provider)
+    root = cache_root(provider)
     folder = root / str(spec["folder"])
+    if prepared_models_only():
+        require_prepared(prepared(provider), "TotalSegmentator weights")
+        verify(provider, progress)
+        return folder
+    root.mkdir(parents=True, exist_ok=True)
     lock = FileLock(str(root / "download.lock"), timeout=0.25)
     from filelock import Timeout
 
@@ -87,16 +114,7 @@ def pretrained_weights(provider: str, progress: Progress = lambda _: None) -> Pa
                         target.write_bytes(content)
                         target.chmod(0o444)
                 shutil.move(Path(temporary) / spec["folder"], folder)
-        for name, checksum in spec["files"].items():
-            progress(0)
-            path = root / name
-            if not path.is_file():
-                raise DomainError("TotalSegmentator cache is incomplete. Remove it and retry.")
-            with path.open("rb") as stream:
-                if hashlib.file_digest(stream, "sha256").hexdigest() != checksum:
-                    raise DomainError(
-                        "Cached TotalSegmentator weights differ from the pinned release."
-                    )
+        verify(provider, progress)
     finally:
         lock.release()
     return folder

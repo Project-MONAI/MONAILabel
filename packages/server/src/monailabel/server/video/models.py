@@ -21,6 +21,9 @@ from monailabel.core.models import Record
 
 class VideoEditor(Record):
     project_id: str
+    user_id: str | None = None
+    ended: bool = False
+    preparation_request_id: str | None = None
     asset_id: str
     base_revision: int
     mode: Literal["annotation", "review"]

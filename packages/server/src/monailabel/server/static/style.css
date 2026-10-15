@@ -26,6 +26,19 @@ limitations under the License.
   --line: #dfe6e9;
   --radius: 10px;
 }
+.demo-notice {
+  padding: 0.75rem;
+  margin: 0.75rem;
+  border: 1px solid #b4cec8;
+  border-radius: 8px;
+  background: #edf7f3;
+  color: #244940;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+main > #demo-countdown {
+  margin: 0 0 1rem;
+}
 * {
   box-sizing: border-box;
 }
@@ -663,6 +676,24 @@ td small {
 .model-grid .card p {
   margin: 10px 0;
 }
+.recorded-training-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  grid-auto-rows: auto;
+  align-items: start;
+  margin-bottom: 24px;
+}
+.recorded-training-grid summary {
+  color: var(--green);
+  cursor: pointer;
+  padding: 10px 0;
+}
+.recorded-training-grid .code {
+  overflow-wrap: anywhere;
+}
+.recorded-training-grid textarea.training-log {
+  height: 220px;
+  max-height: 60vh;
+}
 .model-top {
   display: flex;
   justify-content: space-between;
@@ -993,6 +1024,9 @@ label {
   font-size: 13px;
   color: #43565f;
   margin: 14px 0;
+}
+#auth [hidden] {
+  display: none;
 }
 label small,
 fieldset small {

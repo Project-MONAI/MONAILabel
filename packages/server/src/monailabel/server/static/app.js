@@ -28,6 +28,9 @@ import {
 import { trainingResults } from "./training-results.js";
 import { chatContent } from "./chat-content.js";
 import { bindAssistantResize } from "./assistant-resize.js";
+import { demoSession } from "./demo-session.js";
+import { DEMO_EXAMPLES, preparedExamples } from "./demo-examples.js";
+import { createTrainingExampleLoader, showTrainingPreview } from "./demo-training.js";
 ("use strict");
 import { actionLabel, submitLabel, staticIcons } from "./icons.js";
 import { evaluationSetAction } from "./evaluation-sets.js";
@@ -71,8 +74,16 @@ import { structurePicker } from "./structure-picker.js";
 import { importDatasetTemplate } from "./dataset-templates.js";
 import { openDicomImport } from "./dicom-import.js";
 import { pageFromURL, pageURL } from "./navigation.js";
+const trainingExamples = createTrainingExampleLoader(api);
 // A small server-backed console: no build step, UI framework, or client-side secrets.
 const $ = (selector) => document.querySelector(selector);
+const visitorSession = demoSession({
+  banner: $("#demo-countdown"),
+  onExpired: () => {
+    showAuth();
+    $("#auth-error").textContent = expiredMessage();
+  },
+});
 const desktopLaunchTarget = desktopTarget();
 const workspaceId = randomId();
 let viewerReturns = null;
@@ -111,12 +122,18 @@ const state = {
   page: pageFromURL(new URL(location.href)),
   context: {},
   setup: false,
+  trainingPreview: false,
+  demoLifecycle: false,
+  demoRegistration: { enabled: false },
+  authMode: "login",
+  visitor: null,
   conversations: new Map(),
   chatBusy: false,
   coordinator: null,
   reviewFilter: "pending",
   selectedFiles: new Set(),
   members: [],
+  accounts: [],
   pages: { datasets: 1, review: 1, activity: 1 },
   searches: { datasets: "", review: "", activity: "" },
   datasetFilter: "shared",
@@ -152,9 +169,20 @@ async function api(path, method = "GET", body) {
       "Cannot reach the server. Check your connection and retry.",
     );
   }
-  const result = await response.json();
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(response.status === 404 && path.startsWith("/auth/")
+      ? "This account-management action is available through the private administrator connection."
+      : "The server returned an unexpected response. Please retry or contact the host.");
+  }
   if (!response.ok) {
-    if (response.status === 401) showAuth();
+    if (response.status === 401) {
+      showAuth();
+      if (result.code === "demo_expired")
+        $("#auth-error").textContent = expiredMessage();
+    }
     throw new Error(
       typeof result.detail === "string"
         ? result.detail
@@ -183,20 +211,52 @@ function message(text, role = "assistant", action = null) {
   div.scrollIntoView({ block: "nearest" });
   return div;
 }
+function expiredMessage() {
+  return state.demoRegistration.enabled
+    ? "Demo access has ended. Create a new demo account with a different username when a place is available."
+    : "Demo access has ended. Ask the host for a new invitation.";
+}
 function showAuth() {
+  visitorSession.stop();
   state.user = null;
+  trainingExamples.clear();
   $("#workspace").classList.add("hidden");
   $("#auth").classList.remove("hidden");
+  const registering = !state.setup && state.demoRegistration.enabled && state.authMode === "register";
   $("#auth-title").textContent = state.setup
     ? "Your workspace starts here."
-    : "Welcome back.";
+    : registering ? "Try MONAI Label." : "Welcome back.";
   $("#auth-note").textContent = state.setup
     ? "Create the administrator account for this server. Use at least 12 characters for your password."
-    : "Sign in to your annotation workspace.";
-  $("#login-button").textContent = state.setup ? "Create workspace" : "Sign in";
+    : registering
+      ? "Create your own account for a one-hour visit. Use 3–40 letters, numbers, dots, underscores or hyphens for your username, and at least 12 characters for your password. Public demo data only."
+      : "Sign in with an account you have already created.";
+  $("#login-button").textContent = state.setup ? "Create workspace" : registering ? "Create demo account" : "Sign in";
+  $("#auth-switch").hidden = state.setup || !state.demoRegistration.enabled;
+  $("#auth-switch").textContent = registering ? "Already have an account? Sign in" : "New here? Create a demo account";
+  $("#confirm-password-label").hidden = !registering;
+  $("[name=confirm_password]").required = registering;
+  $("[name=confirm_password]").disabled = !registering;
+  $("#login-form [name=password]").autocomplete = registering || state.setup ? "new-password" : "current-password";
+  $("#demo-admission").hidden = !registering;
+  $("#demo-admission").textContent = state.demoRegistration.busy
+    ? state.demoRegistration.automatic_approval
+      ? "All demo slots are occupied. You can create an automatically approved account now and sign in when a slot becomes available. Your time will not start while waiting."
+      : `The demo currently has ${state.demoRegistration.active} active visits or unfinished sessions. You can try again later; existing visitors can still sign in.`
+    : state.demoRegistration.automatic_approval
+      ? "Approval is automatic. You receive Annotator and Reviewer access in your own demo project. Your timer starts when you enter an available demo slot, not while waiting."
+      : "Your timer starts when your account is created. Refreshing or signing in again does not restart it. Your project is separate from other visitors’ projects.";
 }
 async function start() {
-  state.setup = (await api("/auth/status")).setup_required;
+  const authStatus = await api("/auth/status");
+  state.setup = authStatus.setup_required;
+  state.trainingPreview = Boolean(authStatus.training_preview);
+  state.demoLifecycle = Boolean(authStatus.demo_lifecycle);
+  const wasEnabled = state.demoRegistration.enabled;
+  state.demoRegistration = authStatus.demo_registration || { enabled: false };
+  if (state.demoRegistration.enabled && !wasEnabled) state.authMode = "register";
+  $("#demo-notice").textContent = authStatus.activity_notice || "";
+  $("#demo-notice").hidden = !authStatus.activity_notice;
   if (state.setup) return showAuth();
   try {
     state.user = await api("/auth/me");
@@ -209,6 +269,9 @@ async function start() {
   $("#identity").title = state.user.username;
   $("#account-role").textContent = state.user.is_admin ? "Administrator" : "";
   $("#account-role").classList.toggle("hidden", !state.user.is_admin);
+  await visitorSession.start();
+  if (!state.user) return;
+  state.visitor = await api("/auth/session");
   const destination = new URLSearchParams(location.search);
   await loadProjects(
     destination.get("project") || sessionStorage.getItem("project"),
@@ -317,6 +380,8 @@ async function refreshAssistant() {
 }
 async function refresh({ automatic = false } = {}) {
   await refreshAssistant();
+  if (state.user?.is_admin) state.accounts = await api("/auth/accounts");
+  else state.accounts = [];
   if (state.project) {
     const prefix = `/projects/${state.project.id}`;
     // Read the counter first: a concurrent write will trigger another refresh.
@@ -398,6 +463,12 @@ async function refresh({ automatic = false } = {}) {
   render();
 }
 function render() {
+  // Polling must not collapse a walkthrough the visitor is currently reading.
+  const openExamples = new Set(
+    [...document.querySelectorAll("#demo-examples details[open]")].map(
+      (details) => details.dataset.example,
+    ),
+  );
   $("#project-select").title = state.project?.name || "Select a project";
   // Data refreshes keep the URL; section changes add one browser history entry.
   const destination = pageURL(state.page, location.href, state.project?.id);
@@ -420,6 +491,7 @@ function render() {
   );
   for (const id of ["edit-project", "delete-project"])
     $(`#${id}`).classList.toggle("hidden", !state.project || !canManage());
+  $("#new-project").classList.toggle("hidden", Boolean(state.visitor?.restricted_roles));
   $("#page-title").textContent = titles[state.page];
   $("#breadcrumb").textContent = state.project?.name ?? "YOUR WORKSPACE";
   $("#chat-context").textContent = state.project
@@ -445,9 +517,14 @@ function render() {
     team: () => team(state, canManage()),
   };
   $("#content").innerHTML =
-    !state.project && state.page !== "overview"
+    !state.project && state.page !== "overview" && !(state.page === "team" && state.user.is_admin)
       ? requireProject()
       : pages[state.page]();
+  if (["overview", "datasets"].includes(state.page))
+    $("#content").insertAdjacentHTML("afterbegin", preparedExamples(state));
+  for (const details of document.querySelectorAll("#demo-examples details"))
+    details.open = openExamples.has(details.dataset.example);
+  void trainingExamples.load($("#content"));
   const selectReviews = $("#select-page-reviews");
   if (selectReviews) {
     const checks = [...document.querySelectorAll("[data-review-selection]")];
@@ -471,6 +548,12 @@ function overview() {
   if (!state.project)
     return `<section class="hero"><h2>Start an annotation project</h2><p>Import images, choose a model and annotate in your preferred viewer.</p>${button("Create project", "project", "", "primary")}${button("Explore synthetic demo", "seed")}</section>`;
   const all = samples(state);
+  if (state.visitor?.restricted_roles && state.project.id === state.visitor.initial_project_id && !all.length) {
+    const preparing = state.jobs.some((job) => job.kind === "dataset_import" && ["queued", "running"].includes(job.status));
+    return `<section class="hero"><h2>${preparing ? "Preparing your sample CT…" : "Your demo workspace is ready."}</h2><p>This is your own project with Annotator and Reviewer access. A prepared public CT is loaded automatically. Open it in OHIF or Slicer to annotate and review.</p>${preparing ? '<p>The sample will appear here shortly.</p>' : button("Retry sample preparation", "demo-first-case", "", "primary")}<p class="muted">Your remaining time is shown above. Use public demo data only; do not upload patient data.</p></section>`;
+  }
+  if (state.visitor?.self_registered && state.project.id === state.visitor.initial_project_id && !all.length)
+    return `<section class="hero"><h2>Your one-hour demo starts here.</h2><p>This is your own project. Start with one prepared public CT, then open it in OHIF or Slicer and ask: “Segment the spleen using VISTA3D.” You can inspect and edit the result.</p>${button("Load one sample CT", "demo-first-case", "", "primary")}<p>No dataset download is started by this button. The assistant, annotation viewers and recorded training examples are available from this workspace.</p><p class="muted">Private pilot: access expires after one hour; automatic deletion of work is not enabled yet. Do not upload patient data.</p></section>`;
   const pending = all.filter((a) => statusOf(a) === "pending").length;
   const accepted = all.filter((a) => statusOf(a) === "accepted").length;
   const links = [
@@ -526,7 +609,7 @@ function modal(title, html, submit, label = "Save") {
   if (!$("#dialog").open) $("#dialog").showModal();
 }
 async function openForm(kind, id) {
-  if (kind !== "project" && !state.project)
+  if (!["project", "user", "demo-user"].includes(kind) && !state.project)
     throw new Error("Select a project first.");
   const prefix = `/projects/${state.project?.id}`;
   if (kind === "video-import")
@@ -648,7 +731,7 @@ async function openForm(kind, id) {
         "text",
         'required maxlength="120" placeholder="e.g. Spleen specialist"',
       ) +
-        `<p class="muted">Use this name in chat, for example “train Spleen specialist”.</p><p>Inherits all ${recipe?.supported_targets?.length || "supported"} base structures. Optionally choose initial training organs below; you can change them when starting fine-tuning.</p><div id="vista-structure-picker"></div>`,
+        `<p class="muted">${state.visitor ? "Creates a setup only, not trained weights. Live training is disabled for demo visitors." : "Use this name in chat, for example “train Spleen specialist”."}</p><p>Inherits all ${recipe?.supported_targets?.length || "supported"} base structures. Optionally choose initial training organs below; you can change them when starting fine-tuning.</p><div id="vista-structure-picker"></div>`,
       async (f) => {
         const name = f.get("name").trim();
         if (!name) throw new Error("Give this model a name to use in chat.");
@@ -671,7 +754,7 @@ async function openForm(kind, id) {
           state.context.learner_id = learner.id;
           state.modelsTab = "training";
           message(
-            `Created ${name} with inherited targets. Choose annotated organs when starting fine-tuning. You can refer to this model by name in chat.`,
+            `Created ${name} with inherited targets. ${state.visitor ? "Setup only: no new weights were trained. Live training is disabled in the demo." : "Choose annotated organs when starting fine-tuning. You can refer to this model by name in chat."}`,
           );
           return;
         }
@@ -709,6 +792,7 @@ async function openForm(kind, id) {
   if (kind === "start-training") {
     state.context.learner_id = id;
     const saved = state.learners.find((l) => l.id === id);
+    if (state.trainingPreview) return showTrainingPreview({ api, modal }, saved);
     const learner = {
       ...saved,
       config: {
@@ -837,26 +921,36 @@ async function openForm(kind, id) {
     state.page = "team";
     return render();
   }
-  if (kind === "user")
+  if (kind === "user" || kind === "demo-user") {
+    const demo = kind === "demo-user";
     return modal(
-      "Create user",
+      demo ? "Create demo visitor" : "Create user",
       field("Username", "username", "text", "required") +
         field(
           "Password (at least 12 characters)",
           "password",
           "password",
           "required minlength='12' autocomplete='new-password'",
-        ),
+        ) +
+        (demo
+          ? selectField("Demo duration", "minutes", '<option value="60">1 hour</option><option value="120">2 hours</option>') +
+            '<p>The clock starts at first sign-in and cannot be reset by logging in again. This account is not an administrator and is not automatically added to your projects.</p>'
+          : ""),
       async (f) => {
-        const u = await api("/auth/users", "POST", {
+        const u = await api(demo ? "/auth/demo-users" : "/auth/users", "POST", {
           username: f.get("username"),
           password: f.get("password"),
+          ...(demo ? { minutes: Number(f.get("minutes")) } : {}),
         });
         message(
-          `Created ${u.username}. Choose Assign roles to add them to this project.`,
+          demo
+            ? `Created ${u.username}. Their ${f.get("minutes")}-minute demo starts at first sign-in. Use a private browser window to test; your administrator session stays unchanged.`
+            : `Created ${u.username}. Choose Assign roles to add them to this project.`,
         );
       },
+      demo ? "Create visitor" : "Create user",
     );
+  }
   if (kind === "member") {
     const users = state.user.is_admin ? await api("/auth/users") : [];
     const input = users.length
@@ -1091,6 +1185,19 @@ async function sendPrompt(text) {
   } else render();
 }
 async function action(name, id) {
+  if (name === "demo-reset") {
+    const preview = await api("/demo-access/reset-preview");
+    return modal("Start a fresh demo",
+      `<p>This will remove ${preview.visitor_count} demo visitor accounts and ${preview.project_count} private demo projects. Current visitor logins will stop working and their usernames can be registered again.</p>
+       <p>Administrator and ordinary accounts, shared projects, cached datasets, prepared models and feedback records are preserved. This does not happen on a normal restart.</p>
+       <p>Close browser desktops and wait for all jobs and assistant replies to finish first. Unreferenced image files are reclaimed safely at a later server restart.</p>
+       <label>Type START FRESH DEMO to confirm<input name="confirmation" autocomplete="off" required pattern="START FRESH DEMO"></label>`,
+      async (form) => {
+        await api("/demo-access/reset", "POST", { confirmation: form.get("confirmation"), confirmation_token: preview.confirmation_token });
+        location.reload();
+        return true;
+      }, "Reset demo visitors");
+  }
   if (name.startsWith("video-"))
     return videoAction(name, id, {
       state,
@@ -1124,7 +1231,37 @@ async function action(name, id) {
     return render();
   }
   notice("");
+  if (name === "demo-example") {
+    const example = DEMO_EXAMPLES[id];
+    if (!example) return;
+    const projectId = state.project.id;
+    const job = await api("/demo-access/starter", "POST", { example: id });
+    if (job) await watch(job.id, projectId);
+    if (state.project?.id === projectId) {
+      state.page = "datasets";
+      await refresh();
+      notice(example.instructions);
+    }
+    return;
+  }
+  if (name === "demo-first-case") {
+    const projectId = state.project.id;
+    const job = state.visitor?.restricted_roles
+      ? await api("/demo-access/starter", "POST")
+      : await api(`/projects/${projectId}/dataset-imports`, "POST", {
+          template_id: "Task09_Spleen", limit: 1, include_masks: false,
+        });
+    if (job) await watch(job.id, projectId);
+    if (state.project?.id === projectId) {
+      state.page = "datasets";
+      await refresh();
+      notice("Your CT is ready. Open it in OHIF or Slicer, then ask to segment the spleen using VISTA3D.");
+    }
+    return;
+  }
   if (name === "model-targets") return showModelTargets(state, id, modal);
+  if (name === "refresh-accounts") return refresh();
+  if (name === "recorded-training") return showTrainingPreview({ api, modal });
   if (name === "default-model") {
     await api(`/projects/${state.project.id}/annotation-model`, "PUT", {
       model_id: id,
@@ -1224,6 +1361,7 @@ async function action(name, id) {
       "credential",
       "team",
       "user",
+      "demo-user",
       "member",
       "start-training",
       "rename-learner",
@@ -1369,6 +1507,7 @@ document.addEventListener("click", (event) => {
     $("#sidebar-content").classList.remove("mobile-open");
     $("#mobile-nav").setAttribute("aria-expanded", "false");
     render();
+    if (state.page === "team" && state.user?.is_admin) safely(refresh);
   }
   if (b.dataset.action) safely(() => action(b.dataset.action, b.dataset.id));
   if (b.dataset.prompt) safely(() => send(b.dataset.prompt));
@@ -1377,11 +1516,30 @@ $("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const f = new FormData(event.target);
   $("#login-button").disabled = true;
+  $("#auth-switch").disabled = true;
   try {
-    await api(state.setup ? "/auth/setup" : "/auth/login", "POST", {
+    const registering = !state.setup && state.demoRegistration.enabled && state.authMode === "register";
+    if (registering && f.get("password") !== f.get("confirm_password"))
+      throw new Error("The passwords do not match. Please enter them again.");
+    const automatic = registering && state.demoRegistration.automatic_approval;
+    const credentials = {
       username: f.get("username"),
       password: f.get("password"),
-    });
+    };
+    await api(state.setup ? "/auth/setup" : automatic ? "/auth/signup" : registering ? "/auth/register-demo" : "/auth/login", "POST", credentials);
+    if (automatic) {
+      state.authMode = "login";
+      try {
+        await api("/auth/login", "POST", credentials);
+      } catch (error) {
+        // Account creation succeeded. Do not encourage duplicate signup on a busy server.
+        showAuth();
+        $("#login-form [name=username]").value = credentials.username;
+        $("#login-form [name=password]").value = "";
+        $("[name=confirm_password]").value = "";
+        throw new Error(`Your account is approved. ${error.message} Sign in with the account you just created when a slot is available.`);
+      }
+    }
     event.target.reset();
     $("#auth-error").textContent = "";
     await start();
@@ -1389,7 +1547,15 @@ $("#login-form").addEventListener("submit", async (event) => {
     $("#auth-error").textContent = error.message;
   } finally {
     $("#login-button").disabled = false;
+    $("#auth-switch").disabled = false;
   }
+});
+$("#auth-switch").addEventListener("click", () => {
+  state.authMode = state.authMode === "register" ? "login" : "register";
+  $("#login-form [name=password]").value = "";
+  $("[name=confirm_password]").value = "";
+  $("#auth-error").textContent = "";
+  showAuth();
 });
 $("#chat-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1536,6 +1702,7 @@ let polling = false;
 function workspaceEditing() {
   return (
     $("#dialog").open ||
+    Boolean($("#content [data-recorded-examples] details[open]")) ||
     document.activeElement?.closest(
       "#content input, #content select, #content textarea",
     )

@@ -51,7 +51,7 @@ class ProjectCreate(Contract):
         description="Omit to start with only Background. If supplied, include Background with "
         "id=0 and at least one entry; an empty list is invalid.",
         min_length=1,
-        max_length=32,
+        max_length=256,
     )
     instructions: str = Field(default="", max_length=8000)
 
@@ -79,7 +79,7 @@ class ProjectUpdate(Contract):
 
 
 class LabelColorsUpdate(Contract):
-    targets: list[str] = Field(min_length=1, max_length=31)
+    targets: list[str] = Field(min_length=1, max_length=255)
     color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
     base_version: int = Field(ge=0)
 
@@ -426,6 +426,7 @@ class ClassificationProposal(Record):
 
 
 class AnnotateRequest(Contract):
+    replace_existing: bool = False
     model_id: str | None = None
     label_ids: list[int] | None = None
     prompt: str = Field(default="", max_length=8000)
@@ -437,6 +438,10 @@ class AnnotateRequest(Contract):
 
     @model_validator(mode="after")
     def validate_scope(self) -> Self:
+        if self.replace_existing and (
+            self.slice or self.image_region or self.image_tiling or self.spatial_prompt
+        ):
+            raise ValueError("Replacement requires automatic full-volume annotation.")
         if self.image_region and self.image_tiling:
             raise ValueError("A selected region uses one crop; tiling is for the full image.")
         if (self.image_region or self.image_tiling) and (self.slice or self.all_slices):
@@ -451,12 +456,13 @@ class AnnotateRequest(Contract):
 class BatchAnnotateRequest(Contract):
     limit: int = Field(default=5, ge=1, le=100)
     model_id: str | None = None
-    label_ids: list[int] = Field(default_factory=list, max_length=31)
+    label_ids: list[int] = Field(default_factory=list, max_length=255)
     submit_for_review: bool = False
     prompt: str = Field(default="", max_length=16000)
 
 
 class Proposal(Record):
+    replace_existing: bool = False
     project_id: str
     asset_id: str
     base_revision: int
@@ -480,7 +486,7 @@ class ReviewRequest(Contract):
     base_revision: int = Field(ge=0)
     proposal_id: str | None = None
     mask: list[JsonValue] | None = None
-    covered_labels: list[int] = Field(min_length=1, max_length=32)
+    covered_labels: list[int] = Field(min_length=1, max_length=256)
     reviewer: str = Field(default="", max_length=120)
     regions: list[ImageRegion] | None = Field(default=None, min_length=1, max_length=1000)
 
@@ -744,6 +750,7 @@ TERMINAL_STATUSES = frozenset(
 
 class Job(Record):
     project_id: str
+    user_id: str | None = None
     kind: str
     status: JobStatus = JobStatus.QUEUED
     progress: float = 0
@@ -824,6 +831,7 @@ class AssistantContext(Contract):
 class ViewerInferenceRequest(Contract):
     context: AssistantContext
     scope: Literal["full", "current_slice", "selected_region"] = "full"
+    all_targets: bool = False
 
 
 class AssistantRequest(Contract):
@@ -863,7 +871,7 @@ class Membership(Record):
 
 class CompleteReview(Contract):
     base_revision: int = Field(ge=1)
-    covered_labels: list[int] = Field(min_length=1, max_length=32)
+    covered_labels: list[int] = Field(min_length=1, max_length=256)
     comment: str = Field(default="", max_length=4000)
 
 

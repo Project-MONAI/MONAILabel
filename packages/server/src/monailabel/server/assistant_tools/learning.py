@@ -32,6 +32,8 @@ from monailabel.core.models import (
     TrainingSampleFilter,
     TrainRequest,
 )
+from monailabel.server.demo_policy import require_operator, require_setup, visitor
+from monailabel.server.demo_training import NOTICE, STEPS, preview_enabled
 from monailabel.server.labels import resolve_labels
 from monailabel.server.models.anatomy import ANATOMY_MODELS
 from monailabel.totalsegmentator.catalog import MODELS as TOTAL_MODELS
@@ -193,7 +195,7 @@ def register(registry: ToolRegistry) -> None:
         ),
         LearnerArgs,
         lambda a: create_learner(ctx, a),
-        action="manage",
+        action="create_setup",
     )
     registry.add(
         "start_training",
@@ -258,6 +260,15 @@ def register(registry: ToolRegistry) -> None:
 
 def create_learner(ctx: ToolContext, args: LearnerArgs) -> AssistantReply:
     service, project = ctx.service, ctx.project
+    if args.start_now:
+        require_operator(service.store, "Live training")
+    if visitor(service.store) and args.recipe not in {
+        "monai-unet",
+        "vista3d",
+        "totalsegmentator-ct",
+        "totalsegmentator-mr",
+    }:
+        raise DomainError("Choose a prepared demo model type.", status=403)
     background = {label.name.casefold() for label in project.labels if label.id == 0}
     if any(name.strip().casefold() in background for name in args.targets):
         raise DomainError(
@@ -295,6 +306,18 @@ def create_learner(ctx: ToolContext, args: LearnerArgs) -> AssistantReply:
         raise DomainError("Training from scratch cannot have initial pretrained weights.")
     if initialization == "fine_tune" and not parent:
         raise DomainError("Select initial weights for fine-tuning.")
+    # Reject an unapproved base before target resolution can append project labels.
+    require_setup(
+        service.store,
+        project.id,
+        LearnerCreate(
+            name=args.name or "Demo setup",
+            recipe=args.recipe,
+            initial_model_id=parent,
+            config={"modality": args.modality} if args.modality else {},
+            label_ids=[0],
+        ),
+    )
     project, ids = resolve_labels(
         service.store, project.id, args.targets, parent, set_defaults=False
     )
@@ -337,7 +360,10 @@ def create_learner(ctx: ToolContext, args: LearnerArgs) -> AssistantReply:
                 else "Fine-tuning will copy its initial model. "
             )
             + (
-                "Accept annotation reviews, then ask to train this model. "
+                "This is a setup only, not newly trained weights. Live training is disabled "
+                "for demo visitors. U-Net previews use default 3D single-channel settings."
+                if visitor(service.store)
+                else "Accept annotation reviews, then ask to train this model. "
                 "You can request a train/evaluation ratio or a fixed evaluation set."
             ),
             data=data,
@@ -392,6 +418,12 @@ def evaluation_set_id(ctx: ToolContext, name: str | None, identifier: str | None
 
 
 def train(ctx: ToolContext, args: TrainArgs) -> AssistantReply:
+    if preview_enabled():
+        return AssistantReply(
+            assistant="learning",
+            message=NOTICE + "\n\nIllustrative steps (not running):\n" + "\n".join(STEPS),
+            data={"page": "models", "training_preview": True, "job_started": False},
+        )
     set_id = evaluation_set_id(ctx, args.evaluation_set_name, args.evaluation_set_id)
     learner_id = args.learner_id or ctx.context.learner_id
     if args.learner_name is not None:

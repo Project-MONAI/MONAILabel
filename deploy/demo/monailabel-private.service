@@ -1,0 +1,17 @@
+[Unit]
+Description=Private MONAI Label research workspace
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/monailabel-demo/src
+Environment=MONAILABEL_DESKTOP_BACKEND_URL=http://127.0.0.1:8000
+ExecStartPre=/usr/bin/docker info --format={{.ServerVersion}}
+ExecStart=/bin/bash /opt/monailabel-demo/src/scripts/demo_run.sh monailabel --host 127.0.0.1 --port 8000 --assistant local --assistant-variant lightning --assistant-gpu 1
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=30
+UMask=0077
+
+[Install]
+WantedBy=default.target

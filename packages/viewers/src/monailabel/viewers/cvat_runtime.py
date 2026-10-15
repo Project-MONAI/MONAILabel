@@ -138,7 +138,39 @@ class CvatManager:
                 except (OSError, subprocess.SubprocessError) as error:
                     raise DomainError(f"Native CVAT build failed. See {log}.") from error
 
-    def ensure(self, username: str, password: str, progress: Callable[[str], None]) -> str:
+    def prepared(self) -> str:
+        """Read-only readiness check; visitors cannot start or repair shared CVAT."""
+        try:
+            configuration = json.loads((self.root / "runtime.json").read_text())
+            if configuration["version"] != VERSION or not (self.dist / "index.html").is_file():
+                raise ValueError("Unprepared distribution")
+            port = int(configuration["port"])
+            if not 1 <= port <= 65535:
+                raise ValueError("Invalid service port")
+            url = f"http://127.0.0.1:{port}"
+            with httpx.Client(base_url=url, timeout=5, trust_env=False) as http:
+                response = http.get("/api/server/about")
+                response.raise_for_status()
+                if response.json()["version"] != VERSION:
+                    raise ValueError("Unprepared service version")
+            return url
+        except (OSError, ValueError, KeyError, TypeError, httpx.HTTPError) as exc:
+            raise DomainError(
+                "CVAT is not prepared and running. Ask the demo host to prepare it.",
+                code="not_prepared",
+                status=503,
+            ) from exc
+
+    def ensure(
+        self,
+        username: str,
+        password: str,
+        progress: Callable[[str], None],
+        *,
+        download: bool = True,
+    ) -> str:
+        if not download:
+            return self.prepared()
         if not shutil.which("docker"):
             raise DomainError("Install Docker with Compose to prepare the CVAT viewer.", status=503)
         self.root.mkdir(parents=True, exist_ok=True)

@@ -30,6 +30,7 @@ from monailabel.core.errors import DomainError
 from monailabel.core.models import Contract
 from monailabel.core.video import VideoImport
 from monailabel.server.data import MAX_FILE_BYTES
+from monailabel.server.demo_context import actor
 from monailabel.server.jobs import JobContext
 from monailabel.server.workspace import workspace_dir
 
@@ -176,6 +177,20 @@ class Downloads:
         return True
 
     def fetch(self, source: Source | Download, context: JobContext) -> Path:
+        from monailabel.server.demo_policy import visitor
+
+        if os.environ.get("MONAILABEL_DEMO_CACHE_ONLY") == "1" or (
+            actor.get() is not None and visitor(context.store)
+        ):
+            # No network, rehashing, legacy copies or filesystem preparation on a visitor path.
+            if self._cached_here(source):
+                context.progress(0.5, "Using the verified cached download")
+                return self.path(source)
+            raise DomainError(
+                "This dataset is not prepared for the demo. Ask the host to cache it first.",
+                code="demo_cache_miss",
+                status=409,
+            )
         self.root.mkdir(parents=True, exist_ok=True)
         path = self.path(source)
         try:

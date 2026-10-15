@@ -23,4 +23,6 @@ class DesktopSession(Record):
     viewer: Literal["slicer", "qupath"]
     mode: Literal["annotation", "review"]
     credential_id: str
+    backend_url: str | None = None
+    ca_certificate: str | None = None
     ended: bool = False

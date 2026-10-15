@@ -28,10 +28,13 @@ limitations under the License.
         <p class="eyebrow">ANNOTATION WORKSPACE</p>
         <h1 id="auth-title">Welcome back.</h1>
         <p id="auth-note">Sign in to your annotation workspace.</p>
+        <p id="demo-notice" class="demo-notice" hidden></p>
+        <p id="demo-admission" role="status" hidden></p>
         <label
           >Username<input
             name="username"
             autocomplete="username"
+            maxlength="80"
             required /></label
         ><label
           >Password<input
@@ -39,10 +42,14 @@ limitations under the License.
             type="password"
             autocomplete="current-password"
             minlength="12"
+            maxlength="256"
             required /></label
-        ><button class="primary" type="submit" id="login-button">
+        >
+        <label id="confirm-password-label" hidden>Confirm password<input name="confirm_password" type="password" autocomplete="new-password" maxlength="256" /></label>
+        <button class="primary" type="submit" id="login-button">
           Sign in
         </button>
+        <button type="button" id="auth-switch" hidden>Create a demo account</button>
         <p id="auth-error" role="alert"></p>
       </form>
     </section>
@@ -200,6 +207,7 @@ limitations under the License.
         </div>
       </aside>
       <main>
+        <p id="demo-countdown" class="demo-notice" role="timer" aria-live="off" hidden></p>
         <header>
           <div>
             <p class="eyebrow" id="breadcrumb">YOUR WORKSPACE</p>

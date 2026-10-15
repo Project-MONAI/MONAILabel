@@ -14,6 +14,7 @@
 import json
 import os
 import secrets
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -25,8 +26,21 @@ def main() -> None:
     (session / "tmp").mkdir(exist_ok=True)
     Path("/tmp/.X11-unix").mkdir(mode=0o1777, exist_ok=True)
     settings = json.loads((session / "runtime.json").read_text())
-    # Host networking lets the bridge reach a backend bound to localhost. X requires
-    # a private cookie; VNC has no TCP listener and uses a private Unix socket only.
+    # The container has only its own loopback. This relay reaches one authenticated
+    # API gateway through a read-only Unix socket mount, never the host IP network.
+    relay = subprocess.Popen(["python3", "/opt/desktop-relay.py"])
+    for _ in range(50):
+        if relay.poll() is not None:
+            raise RuntimeError("The private API connection could not start.")
+        try:
+            with socket.create_connection(("127.0.0.1", 8765), timeout=0.1):
+                break
+        except OSError:
+            time.sleep(0.1)
+    else:
+        relay.terminate()
+        raise RuntimeError("The private API connection did not become ready.")
+    # X requires a private cookie; VNC uses a private Unix socket, not a TCP listener.
     os.environ["DISPLAY"] = ":" + str(1000 + secrets.randbelow(59000))
     os.environ["XAUTHORITY"] = str(session / ".Xauthority")
     subprocess.run(["xauth", "add", os.environ["DISPLAY"], ".", secrets.token_hex(16)], check=True)
@@ -117,6 +131,9 @@ def main() -> None:
             raise RuntimeError("The native viewer exited during startup.")
         (session / "started").touch()
         while viewer.poll() is None:
+            if relay.poll() is not None:
+                viewer.terminate()
+                raise RuntimeError("The private API connection stopped.")
             if vnc.poll() is not None:
                 viewer.terminate()
                 raise RuntimeError("The private display stopped.")
@@ -125,6 +142,7 @@ def main() -> None:
             raise RuntimeError("The native viewer stopped unexpectedly.")
     finally:
         vnc.terminate()
+        relay.terminate()
 
 
 if __name__ == "__main__":

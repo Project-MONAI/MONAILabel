@@ -26,6 +26,7 @@ import torch.nn.functional as F
 
 from monailabel.totalsegmentator.catalog import MODELS
 from monailabel.totalsegmentator.config import TotalConfig
+from monailabel.totalsegmentator.sockets import worker_sockets
 
 
 def status(root: Path, value: float) -> None:
@@ -243,4 +244,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    with worker_sockets():
+        main()

@@ -38,6 +38,8 @@ Video records retain original files and presentation timestamps. Tracks use zero
 
 One server process owns a workspace lock. SQLite transactions publish related records atomically; arrays, files and checkpoints are content-addressed. Background jobs support cooperative cancellation. Restart marks unfinished jobs interrupted. Idempotency keys require matching project, operation and payload.
 
+The optional [private demo lifecycle](demo-controls.md#expiry-and-an-explicit-fresh-demo) attributes jobs to visitors, carries their identity across HTTP/tool/job boundaries, and rechecks absolute deadlines when publishing records. Timed local inference runs in killable child process groups, while managed desktop/CVAT access is revoked by a server-side sweep independent of the countdown UI. Confirmed administrator reset uses one transaction, retains durable visit identities and feedback, and preserves shared caches. These controls do not turn the default installation into a public multi-tenant sandbox.
+
 The default workspace is `workspace/`, with downloads under `.cache/`. Credentials are encrypted using `secrets.key`; back it up with the database. Passwords use salted scrypt and stored session tokens are hashed.
 
 Deletion checks active jobs and saved learning/reference dependencies. Project deletion retains shared caches and external viewer data. Unreferenced artifacts are collected before workers start.

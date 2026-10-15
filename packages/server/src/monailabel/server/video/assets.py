@@ -26,6 +26,7 @@ from monailabel.core.video import (
     VideoImport,
     VideoMetadata,
 )
+from monailabel.server.demo_policy import require_prepared_import
 from monailabel.server.evaluation_sets import reserved, training_history
 from monailabel.server.labels import imported_labels
 from monailabel.server.model_splits import refresh_percentage_sets
@@ -101,6 +102,7 @@ class Videos:
         self.store, self.artifacts = store, artifacts
 
     def import_file(self, project_id: str, request: VideoImport, path: Path) -> VideoAsset:
+        require_prepared_import(self.store, project_id)
         self.store.get(Project, project_id)
         if not path.stat().st_size:
             raise DomainError("Select a nonempty video clip.")

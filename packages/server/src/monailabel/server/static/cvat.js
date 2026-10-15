@@ -12,6 +12,7 @@ limitations under the License.
 */
 
 import { randomId } from "./random-id.js";
+import { demoSession } from "./demo-session.js";
 
 const $ = (s) => document.querySelector(s);
 const editorId = location.pathname.split("/").at(-1);
@@ -26,6 +27,11 @@ const status = (message, error = false) => {
   $("#status").textContent = message;
   $("#status").classList.toggle("error", error);
 };
+const visitorSession = demoSession({
+  banner: $("#demo-countdown"),
+  trackActivity: false,
+  onExpired: () => status("Demo access has ended. Return to the workspace. Unsaved edits cannot be submitted.", true),
+});
 $("#prompt").onkeydown = (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
     event.preventDefault();
@@ -228,8 +234,9 @@ async function save(submit) {
         ["manager", "reviewer"].includes(r),
       );
       status(
-        "Tracks submitted for review. Return to the workspace to open the next revision.",
+        "Tracks submitted for review. Choose Keep working to open the next editable revision, or return to the workspace.",
       );
+      submissionComplete("Annotation submitted", "Your tracks are saved and waiting for review.", false);
     } else status("CVAT draft saved.");
   } finally {
     writing = false;
@@ -304,7 +311,60 @@ for (const [id, verdict] of [
         ? "Submitted revision accepted."
         : "Changes requested for the submitted revision.",
     );
+    submissionComplete("Review submitted", verdict === "accepted"
+      ? "Your review is saved as Good."
+      : "Your review is saved as Needs changes. Unsubmitted CVAT edits are not included.", true);
   });
+function submissionComplete(title, description, review) {
+  const dialog = $("#submission-complete");
+  $("#completion-title").textContent = title;
+  $("#completion-description").textContent = description + " Keep working on this clip, or return to the workspace.";
+  $("#completion-error").textContent = "";
+  $("#completion-return").onclick = () => {
+    location.assign("/" + (review ? "reviews" : "datasets") + "?project=" + encodeURIComponent(info.project.id));
+  };
+  $("#completion-continue").onclick = async () => {
+    const buttons = dialog.querySelectorAll("button");
+    buttons.forEach((button) => button.disabled = true);
+    try {
+      if (!info.editor.submitted_annotation_id) {
+        dialog.close();
+        return;
+      }
+      // A consumed CVAT task cannot edit its submitted revision. Open a new
+      // revision seeded from the saved tracks instead of silently losing edits.
+      const job = await api(`/videos/${info.video.id}/editor`, "POST", {
+        base_revision: info.video.revision,
+        mode: info.editor.mode,
+      });
+      const deadline = Date.now() + 180000;
+      while (Date.now() < deadline) {
+        const current = await api(`/jobs/${job.id}`);
+        if (current.status === "succeeded") {
+          const url = new URL(current.result.url, location.origin);
+          if (url.origin !== location.origin || !url.pathname.startsWith("/cvat/editor/"))
+            throw new Error("The editor returned an unexpected address.");
+          location.assign(url.href);
+          return;
+        }
+        if (["failed", "cancelled", "interrupted"].includes(current.status))
+          throw new Error(current.error || "Could not prepare the next revision.");
+        $("#completion-error").textContent = current.progress_message || "Preparing the next revision…";
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+      throw new Error("The editor is still preparing. Your submitted tracks are saved; reopen the clip from Datasets.");
+    } catch (error) {
+      $("#completion-error").textContent = error.message;
+    } finally {
+      buttons.forEach((button) => button.disabled = false);
+    }
+  };
+  dialog.oncancel = (event) => {
+    event.preventDefault();
+    if (!$("#completion-continue").disabled) $("#completion-continue").click();
+  };
+  dialog.showModal();
+}
 function message(text, user = false) {
   $("#welcome")?.remove();
   const node = document.createElement("p");
@@ -710,6 +770,7 @@ $("#update-frame").onclick = safely(() => updateVideo(false));
 $("#track-range").onclick = safely(() => updateVideo(true));
 
 async function start() {
+  await visitorSession.start();
   info = await api(`/cvat/editors/${editorId}`);
   $("#title").textContent = info.video.name;
   $("#revision").textContent =
@@ -738,6 +799,8 @@ async function start() {
     info.detection_models.some((m) => m.id === info.project.annotation_model_id)
   )
     $("#detection-model").value = info.project.annotation_model_id;
+  const astra = info.detection_models.find((model) => model.preset === "demo-gpt-astra");
+  if (astra) $("#detection-model").value = astra.id;
   labelObjects.set(
     $("#target-label").value.trim().toLocaleLowerCase(),
     objectIdentity,

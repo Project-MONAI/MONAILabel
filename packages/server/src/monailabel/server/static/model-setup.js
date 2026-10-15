@@ -241,7 +241,7 @@ export function setupModel(ui, path = "") {
         selectField(
           "Model type",
           "recipe",
-          [...state.recipes]
+          [...state.recipes].filter((r) => !state.visitor || ["monai-unet", "vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(r.id))
             .sort((a, b) =>
               a.id === "monai-unet" ? -1 : b.id === "monai-unet" ? 1 : 0,
             )
@@ -257,9 +257,9 @@ export function setupModel(ui, path = "") {
           "text",
           'required maxlength="120" placeholder="e.g. Spleen specialist"',
         ) +
-        '<p class="muted">Use this name in chat, for example “train Spleen specialist”.</p>' +
+        (state.visitor ? '<p class="muted">Demo preview: this creates a setup only, not trained weights. Live training is disabled.</p>' : '<p class="muted">Use this name in chat, for example “train Spleen specialist”.</p>') +
         labels() +
-        '<div id="recipe-settings"></div><p class="muted">Save the setup now, then start training when your reviewed data is ready.</p>',
+        '<div id="recipe-settings"></div>' + (state.visitor ? '<p class="muted">The demo preserves the base weights. U-Net previews use default 3D single-channel settings.</p>' : '<p class="muted">Save the setup now, then start training when your reviewed data is ready.</p>'),
       async (f) => {
         const ids = labelIds(f);
         const config = {};
@@ -293,7 +293,7 @@ export function setupModel(ui, path = "") {
         state.page = "models";
         state.modelsTab = "training";
         message(
-          `Created ${name}. Accept annotation reviews, then say “train this model” or use Start training.`,
+          `Created ${name}. ${state.visitor ? "Setup only: no new weights were trained. Live training is disabled in the demo." : "Accept annotation reviews, then say “train this model” or use Start training."}`,
         );
       },
       "Create model",
@@ -308,7 +308,7 @@ export function setupModel(ui, path = "") {
         form.elements.recipe.value === "nnunet-v2"
           ? selectField("Scan modality", "modality", '<option value="">Choose CT or MRI</option><option value="CT">CT</option><option value="MRI">MRI</option>') + '<p class="muted">Single-channel 3D scans. nnU-Net plans spacing, normalization, patch size and network from your training cases. Use one consistent MRI sequence per model.</p>'
           : form.elements.recipe.value === "monai-unet"
-          ? '<p class="muted">Train a U-Net from scratch on 2D images or 3D scans. The image format is detected automatically. Start with the recommended settings; adjust them when you start training.</p>'
+          ? (state.visitor ? '<p class="muted">Preview a U-Net setup with default 3D single-channel settings. Live training is disabled.</p>' : '<p class="muted">Train a U-Net from scratch on 2D images or 3D scans. The image format is detected automatically. Start with the recommended settings; adjust them when you start training.</p>')
           : form.elements.recipe.value === "vista3d"
             ? '<p class="muted">Create a separate CT model based on VISTA3D. Fine-tuning uses the selected organs; the shared base stays read-only.</p>'
             : `<p class="muted">${esc(recipe?.description || "Install a training runtime on the server to create a setup.")}</p>`;

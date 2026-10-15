@@ -153,7 +153,20 @@ class VideoStack:
             self.app.state.local_ca_certificate = certificate.authority.read_text()
             self.url = self.url.replace("http:", "https:")
         self.server = uvicorn.Server(
-            uvicorn.Config(self.app, access_log=False, log_level="error", **tls)
+            uvicorn.Config(
+                self.app,
+                access_log=False,
+                log_level="error",
+                proxy_headers=True,
+                forwarded_allow_ips="127.0.0.1",
+                ws="wsproto",
+                ws_max_size=16 * 1024 * 1024,
+                ws_per_message_deflate=False,
+                limit_concurrency=64
+                if os.environ.get("MONAILABEL_DEMO_HTTP_LIMITS") == "1"
+                else None,
+                **tls,
+            )
         )
         self.thread = threading.Thread(target=lambda: self.server.run(sockets=sockets), daemon=True)
         self.thread.start()

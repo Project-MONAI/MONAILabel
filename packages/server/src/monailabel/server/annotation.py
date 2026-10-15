@@ -134,7 +134,7 @@ class Annotations:
         def work(context: JobContext) -> Outcome:
             image = self.artifacts.array(asset.image_key)
             mask = np.zeros(asset.spatial_shape, dtype=np.uint8)
-            if asset.annotation_id:
+            if asset.annotation_id and not request.replace_existing:
                 previous = self.store.get(Annotation, asset.annotation_id)
                 mask = self.artifacts.array(previous.mask_key).copy()
             indices = (
@@ -240,6 +240,7 @@ class Annotations:
                     completed += 1
                     context.progress(completed / steps, detail)
             proposal = Proposal(
+                replace_existing=request.replace_existing,
                 project_id=project.id,
                 asset_id=asset.id,
                 base_revision=asset.revision,

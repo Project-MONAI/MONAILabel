@@ -26,6 +26,7 @@ import httpx
 import pytest
 from conftest import VideoStack
 from PIL import Image, ImageDraw
+from test_demo_session import account_deadline, countdown, expire_visitor, timed_visitor
 from test_video_cvat import (
     create_project,
     draw_rectangle,
@@ -37,10 +38,55 @@ from test_video_cvat import (
     open_editor,
 )
 
+from monailabel.client.client import Client
 from monailabel.core.chat import ChatMessage, Conversation, ToolCall
-from monailabel.core.models import ModelRecord, Project
+from monailabel.core.models import ModelRecord, Project, Role
 
 pytestmark = pytest.mark.video_e2e
+
+
+def test_managed_cvat_shared_countdown(
+    video_stack, browser_session, video_http, synthetic_clip, request
+):
+    stack = video_stack
+    old_username = stack.username
+    request.addfinalizer(lambda: setattr(stack, "username", old_username))
+    context, errors = browser_session
+    page = context.new_page()
+    login_workspace(page, stack)
+    project_id = create_project(page, "CVAT countdown", labels=("Grasper",))
+    video = import_video(page, stack, project_id, synthetic_clip)
+    # Only the host prepares the shared service; the visitor must reuse it.
+    stack.app.state.services.video_editors.configured()
+    identifier = timed_visitor(stack, Client(http=video_http))
+    stack.app.state.services.auth.add_member(project_id, identifier, [Role.MANAGER])
+    context.clear_cookies()
+    login_workspace(page, stack)
+    deadline = account_deadline(page)
+    _, viewer = open_editor(page, video_http, video["id"], keep_page=True)
+    native = viewer.frame_locator("#editor")
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=60000)
+    countdown(viewer)
+    assert account_deadline(viewer) == deadline
+    viewer.screenshot(path=str(stack.artifacts / "cvat-countdown.png"))
+    viewer.reload()
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
+    countdown(viewer)
+    assert account_deadline(viewer) == deadline
+    viewer.locator("#prompt").fill("Unsaved local test draft")
+    expire_visitor(stack, identifier)
+    viewer.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    expect(viewer.locator("#demo-countdown")).to_have_text("Demo access has ended.")
+    expect(viewer.locator("#prompt")).to_have_value("Unsaved local test draft")
+    assert viewer.evaluate("async () => (await fetch('/api/projects')).status") == 401
+    from monailabel.server.video.models import VideoEditor
+
+    for _ in range(100):
+        if all(e.ended for e in stack.app.state.services.store.list(VideoEditor, project_id)):
+            break
+        viewer.wait_for_timeout(100)
+    assert all(e.ended for e in stack.app.state.services.store.list(VideoEditor, project_id))
+    assert not errors
 
 
 @pytest.fixture(scope="module")
@@ -61,6 +107,7 @@ def video_stack(tmp_path_factory):
     ):
         environment.pop(key, None)
     environment["MONAILABEL_PRELOAD_MODELS"] = "0"
+    environment["MONAILABEL_DEMO_LIFECYCLE"] = "1"
     environment["MONAILABEL_ALLOWED_HOSTS"] = "127.0.0.1,cvat.test," + environment.get(
         "MONAILABEL_E2E_HOST", ""
     )
@@ -169,9 +216,26 @@ def test_managed_install_launch_and_track(
     assert document["document"]["tracks"][1]["keyframes"][0]["box"] == pytest.approx(
         [180, 50, 250, 130], abs=1
     )
-    page.locator("#review summary").click()
+    expect(page.get_by_role("dialog")).to_be_visible()
+    page.screenshot(path=stack.artifacts / "cvat-submitted.png")
+    page.get_by_role("button", name="Keep working", exact=True).click()
+    expect(page.get_by_role("dialog")).not_to_be_visible(timeout=120000)
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
+    assert page.url != stack.url + launched["url"]
+    expect(page.locator("#submit")).to_be_enabled()
+    # Continue opens an annotation task; review is a separate explicit mode.
+    review = video_http.post(
+        f"/api/videos/{video['id']}/editor", json={"base_revision": 1, "mode": "review"}
+    )
+    review.raise_for_status()
+    review_launch = wait_job(video_http, review.json()["id"])
+    page.goto(stack.url + review_launch["url"])
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
     page.locator("#accept").click()
     expect(page.locator("#status")).to_contain_text("revision accepted")
+    expect(page.locator("#completion-title")).to_have_text("Review submitted")
+    page.get_by_role("button", name="Return to workspace", exact=True).click()
+    page.wait_for_url(f"**/reviews?project={project_id}")
     log_step(
         stack,
         "managed launch, real SAM tracking, chat, stale draft protection and review",
@@ -393,7 +457,9 @@ def test_managed_real_tool_tracking_sample(
     page.reload()
     expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
     cvat_frame = page.frames[1]
-    expect(page.locator("#detection-model")).to_have_value("")
+    # The current model menu selects a compatible model instead of an
+    # empty Automatic option. Named chat requests must still override selection.
+    expect(page.locator("#detection-model")).to_have_value(model["id"])
     expect(page.locator("#options, #tracking-options, #track")).to_have_count(0)
     expect(page.locator("#send")).to_be_enabled()
     # Outline the visible shaft on frame 0 of the pinned HyperKvasir clip.
@@ -480,7 +546,7 @@ def test_managed_real_tool_tracking_sample(
     expect(page.locator("#detection-model")).to_have_value(other_model["id"])
     native.locator(".cvat-annotation-header-undo-button").click()
     expect(native.locator(".cvat-objects-sidebar-state-item")).to_have_count(0)
-    page.locator("#detection-model").select_option("")
+    page.locator("#detection-model").select_option(model["id"])
     located = annotate(
         "Locate the snare and track for 16 frames",
         {
@@ -1185,6 +1251,9 @@ def test_polygon_annotation_and_whole_video_tracking(
     reviewed = video_http.get(f"/api/videos/{video['id']}/tracks").json()
     assert reviewed["base_revision"] == 2
     assert reviewed["document"] == saved["document"]
+    page.get_by_role("button", name="Keep working", exact=True).click()
+    expect(page.get_by_role("dialog")).not_to_be_visible(timeout=120000)
+    expect(native.locator("#cvat_canvas_background")).to_be_visible(timeout=30000)
     page.locator("#accept").click()
     expect(page.locator("#status")).to_contain_text("revision accepted")
     assert len(detection_endpoint.calls) == 4

@@ -24,10 +24,28 @@ import numpy as np
 from monailabel.core.errors import DomainError
 from monailabel.core.models import ModelRecord, SliceScope, SpatialPrompt
 from monailabel.core.ports import Image, Prediction, Progress
+from monailabel.core.preparation import prepared_models_only
+from monailabel.nninteractive.environment import prepared_python, worker_command
 from monailabel.nninteractive.weights import cache_root, weights
 
 
 def run_worker(root: Path, progress: Progress) -> None:
+    command = (
+        worker_command()
+        if prepared_models_only() or prepared_python() is not None
+        else [
+            sys.executable,
+            "-m",
+            "uv",
+            "run",
+            "--no-project",
+            "--no-config",
+            "--locked",
+            "--python",
+            sys.executable,
+            "--script",
+        ]
+    )
     environment = os.environ | {
         "UV_CACHE_DIR": str(cache_root() / "runtime"),
         "UV_LINK_MODE": "copy",
@@ -40,24 +58,11 @@ def run_worker(root: Path, progress: Progress) -> None:
     environment.pop("PYTHONPATH", None)
     with (root / "worker.log").open("w+") as log:
         process = subprocess.Popen(
-            [
-                sys.executable,
-                "-m",
-                "uv",
-                "run",
-                "--no-project",
-                "--no-config",
-                "--locked",
-                "--python",
-                sys.executable,
-                "--script",
-                str(Path(__file__).with_name("worker.py")),
-                str(root),
-            ],
+            command + [str(Path(__file__).with_name("worker.py")), str(root)],
             env=environment,
             stdout=log,
             stderr=subprocess.STDOUT,
-            start_new_session=True,
+            start_new_session=os.environ.get("MONAILABEL_DEMO_WORKER") != "1",
         )
         try:
             while True:
@@ -73,11 +78,15 @@ def run_worker(root: Path, progress: Progress) -> None:
                 raise DomainError(f"nnInteractive worker failed: {log.read()[-4000:]}")
         finally:
             if process.poll() is None:
-                os.killpg(process.pid, signal.SIGTERM)
+                process.terminate() if os.environ.get(
+                    "MONAILABEL_DEMO_WORKER"
+                ) == "1" else os.killpg(process.pid, signal.SIGTERM)
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
+                    process.kill() if os.environ.get(
+                        "MONAILABEL_DEMO_WORKER"
+                    ) == "1" else os.killpg(process.pid, signal.SIGKILL)
                     process.wait()
 
 

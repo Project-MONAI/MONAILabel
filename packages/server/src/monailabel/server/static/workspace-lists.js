@@ -255,7 +255,12 @@ export function activity(state, canCancel) {
 }
 export function team(state, manage) {
   return (
-    `<div class="section-heading"><p class="muted">Your access: ${esc(state.roles.map((r) => r[0].toUpperCase() + r.slice(1)).join(", "))}</p><div class="toolbar">${manage ? button("Assign roles", "member", "", "primary") : ""}${state.user.is_admin ? button("Create user", "user") : ""}</div></div>` +
+    (state.user.is_admin ? `<section class="card" id="account-directory"><div class="section-heading"><h2>Users</h2>${button("Refresh users", "refresh-accounts")}</div><p>All registered accounts, including visitors not assigned to the selected project.</p>${table(
+      ["Username", "Account", "Access", "Status", "Expires"],
+      (state.accounts || []).map((account) => `<tr><td>${esc(account.username)}</td><td>${esc(account.kind)}</td><td>${esc(account.kind === "Administrator" ? "Full administration" : account.access)}</td><td>${esc(account.status)}</td><td>${account.expires_at ? esc(new Date(account.expires_at).toLocaleString()) : "—"}</td></tr>`),
+    )}</section>` : "") +
+    (state.user.is_admin && state.demoLifecycle ? `<section class="card"><h2>Demo administration</h2><p>Start a new round with fresh visitor accounts. Shared caches, prepared models and feedback records are retained.</p>${button("Start a fresh demo", "demo-reset")}</section>` : "") +
+    `<div class="section-heading"><p class="muted">${state.project ? `Your access: ${esc(state.roles.map((r) => r[0].toUpperCase() + r.slice(1)).join(", "))}` : "Server accounts"}</p><div class="toolbar">${manage ? button("Assign roles", "member", "", "primary") : ""}${state.user.is_admin ? button("Create user", "user") + button("Create demo visitor", "demo-user", "", "primary") : ""}</div></div>` +
     (manage
       ? state.members.length
         ? table(

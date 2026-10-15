@@ -25,6 +25,7 @@ limitations under the License.
       <a id="back" href="/datasets">← Workspace</a>
       <strong id="title">Preparing CVAT…</strong><span id="revision"></span>
     </header>
+    <p id="demo-countdown" role="timer" aria-label="Demo time remaining" aria-live="off" hidden></p>
     <main>
       <iframe id="editor" title="CVAT annotation editor"></iframe>
       <aside aria-label="MONAI Label Assistant">
@@ -90,7 +91,7 @@ limitations under the License.
           <textarea
             id="prompt"
             rows="3"
-            placeholder="Locate or segment a tool…"
+            placeholder="Locate and segment the tool using GPT Astra. Track it for the next 20 frames."
             required
           ></textarea>
           <div class="composer-actions">
@@ -115,5 +116,14 @@ limitations under the License.
         </div>
       </aside>
     </main>
+    <dialog id="submission-complete" aria-labelledby="completion-title">
+      <h2 id="completion-title"></h2>
+      <p id="completion-description"></p>
+      <p id="completion-error" role="alert"></p>
+      <div class="actions">
+        <button id="completion-continue" class="secondary" autofocus>Keep working</button>
+        <button id="completion-return">Return to workspace</button>
+      </div>
+    </dialog>
   </body>
 </html>

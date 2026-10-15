@@ -21,6 +21,7 @@ import javafx.scene.input.KeyCode
 import javafx.scene.layout.*
 import javafx.stage.Stage
 import javafx.stage.Screen
+import javafx.stage.WindowEvent
 import qupath.lib.gui.QuPathGUI
 import qupath.lib.objects.classes.PathClass
 import qupath.lib.images.servers.ImageServerProvider
@@ -85,7 +86,7 @@ class AnnotationPanel {
         history.editable = false; history.wrapText = true
         history.setId('monailabel-history')
         prompt.wrapText = true; prompt.prefRowCount = 4; prompt.setId('monailabel-prompt')
-        prompt.promptText = 'Annotate the selected region for nuclei\nOr: annotate the full image for nuclei'
+        prompt.promptText = 'Segment all nuclei in the selected region using GPT Astra.'
         prompt.setOnKeyPressed { event ->
             if (event.controlDown && event.code == KeyCode.ENTER) { send(); event.consume() }
         }
@@ -269,7 +270,8 @@ class AnnotationPanel {
             }
         }
         modelChoice.items.setAll(choices)
-        def selected = choices.find { it.id && it.id == project.annotation_model_id } ?: choices.find { it.id }
+        def selected = choices.find { it.id && it.preset == 'demo-gpt-astra' } ?:
+            choices.find { it.id && it.id == project.annotation_model_id } ?: choices.find { it.id }
         modelChoice.selectionModel.select(selected)
         def projectFile = data.root.resolve('project.qpproj').toFile()
         def nativeProject
@@ -516,11 +518,12 @@ class AnnotationPanel {
                 background({ backend.request('/api/assets/' + asset.id + '/review-complete', mask, false, ['X-MONAILABEL-REVIEW': header]) }, { annotation ->
                     asset = asset + [revision: annotation.revision, annotation_id: annotation.id]
                     proposalId = null; saveDraft(); reviewComment.clear(); controls()
-                    log('Review saved: Good · revision ' + annotation.revision + '. Open the next pending case in the web review queue.')
+                    submissionComplete('Review submitted', 'Good · revision ' + annotation.revision + '. Your corrections and review are saved.')
                 })
             } else {
                 background({ backend.request('/api/annotations/' + asset.annotation_id + '/decision', [verdict: 'changes_requested', comment: comment]) }, { decision ->
-                    reviewComment.clear(); log('Review saved: Needs changes · revision ' + decision.revision + '. Open the next pending case in the web review queue.')
+                    reviewComment.clear()
+                    submissionComplete('Review submitted', 'Needs changes · revision ' + decision.revision + '. The review is saved. Local segmentation edits are not included in this decision.')
                 })
             }
         } catch (Exception error) { log(error.message ?: error.toString()) }
@@ -548,7 +551,7 @@ class AnnotationPanel {
                     asset = asset + [revision: annotation.revision, annotation_id: annotation.id]
                     savedRegions = (savedRegions + regions).unique { backend.json.toJson(it) }
                     proposalId = null; submissionRegions.clear(); saveDraft()
-                    log('Submitted ' + regions.size() + ' region(s) for independent review. Unrelated regions are preserved.')
+                    submissionComplete('Annotation submitted', 'Submitted ' + regions.size() + ' region(s) for independent review. Unrelated regions are preserved.')
                 })
                 return
             }
@@ -557,8 +560,24 @@ class AnnotationPanel {
             background({ backend.request('/api/assets/' + asset.id + '/review-mask?' + params, mask) }, { annotation ->
                 asset = new HashMap(asset); asset.revision = annotation.revision; asset.annotation_id = annotation.id
                 proposalId = null; submissionRegions.clear(); wholeImageDraft = false
-                saveDraft(); log('Submitted revision ' + annotation.revision + ' for reviewer approval.')
+                saveDraft()
+                submissionComplete('Annotation submitted', 'Revision ' + annotation.revision + ' is saved and waiting for reviewer approval.')
             })
         } catch (Exception error) { log(error.message ?: error.toString()) }
+    }
+    void submissionComplete(String title, String text) {
+        log(text)
+        def keep = new ButtonType('Keep working', ButtonBar.ButtonData.CANCEL_CLOSE)
+        def exit = new ButtonType('Return to workspace', ButtonBar.ButtonData.OK_DONE)
+        def dialog = new Alert(Alert.AlertType.INFORMATION, text +
+            '\n\nReturn to the workspace to choose another sample? QuPath will close; save any other local edits before leaving.', keep, exit)
+        dialog.initOwner(qupath.stage)
+        dialog.title = title; dialog.headerText = title
+        dialog.dialogPane.lookupButton(keep).setDefaultButton(true)
+        dialog.dialogPane.lookupButton(exit).setDefaultButton(false)
+        if (dialog.showAndWait().orElse(keep) == exit) {
+            // Use QuPath's normal close handler, including its unsaved-work checks.
+            qupath.stage.fireEvent(new WindowEvent(qupath.stage, WindowEvent.WINDOW_CLOSE_REQUEST))
+        }
     }
 }

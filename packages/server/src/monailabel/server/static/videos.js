@@ -22,7 +22,7 @@ export function videoButtons(state, asset) {
     return '<span class="muted">CVAT unavailable</span>';
   return (
     button("CVAT", "video-open", asset.id) +
-    button("Submit saved tracks", "video-submit", asset.id)
+    (state.visitor ? "" : button("Submit saved tracks", "video-submit", asset.id))
   );
 }
 
@@ -37,7 +37,7 @@ export function videoReviews(state, statusOf) {
   const reviewer = state.roles.some((role) =>
     ["reviewer", "manager"].includes(role),
   );
-  return `<section class="video-list"><div class="section-heading"><h2>Video clips</h2></div><p class="muted">Review submitted tool tracks, or open CVAT to inspect and correct them.</p>${videos.length ? `<div class="table-wrap"><table class="compact-table"><thead><tr><th>Clip</th><th>Status</th><th>Actions</th></tr></thead><tbody>${videos.map((v) => `<tr><td>${esc(v.name)}<small>${v.width} × ${v.height} · ${v.frames} frames · ${v.duration.toFixed(2)} s · ${esc(v.group_id)} · Revision ${v.revision}</small></td><td>${badge(statusOf(v))} ${badge(v.split === "validation" ? "Evaluation only" : "Annotation")}</td><td><div class="row-actions">${state.videoCapabilities?.cvat && reviewer ? button("Inspect in CVAT", "video-inspect", v.id) + button("Submit saved tracks", "video-submit", v.id) : ""}${reviewer ? button("Review revision", "video-decision", v.id) : ""}${button("Track data", "video-tracks", v.id)}</div></td></tr>`).join("")}</tbody></table></div>` : '<p class="muted">No video clips match this view.</p>'}</section>`;
+  return `<section class="video-list"><div class="section-heading"><h2>Video clips</h2></div><p class="muted">Review submitted tool tracks, or open CVAT to inspect and correct them.</p>${videos.length ? `<div class="table-wrap"><table class="compact-table"><thead><tr><th>Clip</th><th>Status</th><th>Actions</th></tr></thead><tbody>${videos.map((v) => `<tr><td>${esc(v.name)}<small>${v.width} × ${v.height} · ${v.frames} frames · ${v.duration.toFixed(2)} s · ${esc(v.group_id)} · Revision ${v.revision}</small></td><td>${badge(statusOf(v))} ${badge(v.split === "validation" ? "Evaluation only" : "Annotation")}</td><td><div class="row-actions">${state.videoCapabilities?.cvat && reviewer ? button("Inspect in CVAT", "video-inspect", v.id) + (state.visitor ? "" : button("Submit saved tracks", "video-submit", v.id)) : ""}${reviewer ? button("Review revision", "video-decision", v.id) : ""}${button("Track data", "video-tracks", v.id)}</div></td></tr>`).join("")}</tbody></table></div>` : '<p class="muted">No video clips match this view.</p>'}</section>`;
 }
 
 export async function videoAction(name, id, ui) {

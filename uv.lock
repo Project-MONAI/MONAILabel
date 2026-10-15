@@ -2504,7 +2504,7 @@ requires-dist = [
     { name = "nibabel", specifier = ">=5.3,<6" },
     { name = "python-multipart", specifier = ">=0.0.20,<1" },
     { name = "pyyaml", specifier = ">=6,<7" },
-    { name = "uvicorn", specifier = ">=0.34,<1" },
+    { name = "uvicorn", specifier = ">=0.53,<1" },
     { name = "wsproto", specifier = ">=1.2,<2" },
 ]
 

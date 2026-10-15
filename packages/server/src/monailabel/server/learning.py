@@ -40,6 +40,8 @@ from monailabel.core.ports import TrainingProgress, TrainingVolume, Volume, Volu
 from monailabel.core.video import VideoAsset
 from monailabel.server.data import Datasets
 from monailabel.server.deletion import Deletion
+from monailabel.server.demo_policy import require_operator, require_setup, visitor
+from monailabel.server.demo_training import require_live_training
 from monailabel.server.evaluation_sets import EvaluationSets, check_training
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.models import Models
@@ -67,13 +69,16 @@ class Learning:
         self.recipes = models.recipes
 
     def create(self, project_id: str, request: LearnerCreate) -> Learner:
+        require_setup(self.store, project_id, request)
         project = self.store.get(Project, project_id)
         ids = request.label_ids
         parent = (
-            self.models.get(project_id, request.initial_model_id)
+            self.store.get(ModelRecord, request.initial_model_id)
             if request.initial_model_id
             else None
         )
+        if parent and (parent.project_id != project_id or parent.archived):
+            raise DomainError("Choose an active starting model in this project.", status=403)
         inherited = bool(
             parent
             and parent.provider == request.recipe
@@ -96,10 +101,9 @@ class Learning:
         if request.recipe == "nnunet-v2" and parent:
             settings = parent.config | settings
         if request.recipe == "monai-unet":
-            if request.initial_model_id:
-                parent = self.models.get(project_id, request.initial_model_id)
+            if parent:
                 settings = parent.config | settings
-            else:
+            elif not visitor(self.store):
                 layouts = {
                     (len(a.spatial_shape), self.artifacts.array(a.image_key).shape[-1])
                     for a in self.store.list(Asset, project_id)
@@ -124,8 +128,7 @@ class Learning:
                 ).items()
             }
         config = self.recipes.validate(request.recipe, settings)
-        if request.initial_model_id:
-            parent = self.models.get(project_id, request.initial_model_id)
+        if parent:
             if parent.provider != request.recipe:
                 raise DomainError("Initial model must use the requested training recipe.")
             if not inherited and parent.label_ids != [0] + [i for i in ids if i]:
@@ -295,6 +298,8 @@ class Learning:
         *,
         authorized_by: str | None = None,
     ) -> Job:
+        require_operator(self.store, "Live training")
+        require_live_training()
         learner = self.store.get(Learner, learner_id)
         project = self.store.get(Project, project_id)
         if (
@@ -438,6 +443,8 @@ class Learning:
         return job
 
     def train(self, project_id: str, request: TrainRequest, key: str | None = None) -> Job:
+        require_operator(self.store, "Live training")
+        require_live_training()
         project = self.store.get(Project, project_id)
         config = self.recipes.validate(request.recipe, request.config)
         snapshot = self.store.get(Snapshot, request.snapshot_id)

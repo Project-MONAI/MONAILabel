@@ -22,6 +22,9 @@ from typing import Literal
 from monailabel.core.errors import DomainError
 from monailabel.core.models import Asset, User
 from monailabel.server.auth import Auth, LoginSession
+from monailabel.server.demo_access import require_active
+from monailabel.server.demo_policy import visitor
+from monailabel.server.desktops.gateway import DesktopGateway
 from monailabel.server.desktops.models import DesktopSession
 from monailabel.server.jobs import JobContext
 from monailabel.server.storage import Store
@@ -44,6 +47,7 @@ class DesktopSessions:
         self.connections: dict[str, int] = {}
         self.pending_close: dict[str, threading.Timer] = {}
         self.closing = False
+        self.gateways: dict[str, DesktopGateway] = {}
 
     def connected(self, identifier: str, user: User) -> None:
         with self.lock:
@@ -98,6 +102,9 @@ class DesktopSessions:
             for timer in self.pending_close.values():
                 timer.cancel()
             self.pending_close.clear()
+            for gateway in self.gateways.values():
+                gateway.close()
+            self.gateways.clear()
 
     def owned(self, identifier: str, user: User) -> DesktopSession:
         if not user.active:
@@ -107,6 +114,10 @@ class DesktopSessions:
             raise DomainError("This desktop belongs to another account.", status=403)
         if desktop.ended:
             raise DomainError("This desktop session has ended. Open the sample again.", status=410)
+        if desktop.backend_url is None:
+            raise DomainError(
+                "This older desktop must be ended and reopened with network isolation.", status=409
+            )
         self.auth.require(
             user, desktop.project_id, "review" if desktop.mode == "review" else "read"
         )
@@ -129,10 +140,32 @@ class DesktopSessions:
             if session.get(DesktopSession, desktop.id).ended:
                 raise DomainError("The desktop session has ended.", status=410)
             credential = session.get(LoginSession, desktop.credential_id)
-            session.update(
-                credential.model_copy(
-                    update={"expires_at": datetime.now(UTC) + timedelta(hours=12)}
-                )
+            lease = require_active(session, session.get(User, desktop.user_id))
+            deadline = datetime.now(UTC) + timedelta(hours=12)
+            if lease and lease.expires_at:
+                deadline = min(deadline, lease.expires_at)
+            session.update(credential.model_copy(update={"expires_at": deadline}))
+        if desktop.backend_url is not None:
+            self.ensure_gateway(desktop)
+
+    def ensure_gateway(self, desktop: DesktopSession) -> None:
+        with self.lock:
+            if self.closing:
+                raise DomainError("The desktop service is shutting down.", status=503)
+            if desktop.id in self.gateways:
+                return
+            if desktop.backend_url is None:
+                raise DomainError("Reopen this desktop to enable network isolation.", status=409)
+
+            def authorize(token: str) -> None:
+                self.owned(desktop.id, self.auth.authenticate(token))
+
+            self.gateways[desktop.id] = DesktopGateway(
+                self.runtime.gateway_socket(desktop.id),
+                desktop.backend_url,
+                desktop.credential_id,
+                authorize,
+                desktop.ca_certificate,
             )
 
     def open(
@@ -175,6 +208,9 @@ class DesktopSessions:
                     "All desktop slots are in use. End an unused session from Browser desktops.",
                     status=409,
                 )
+            download = not visitor(self.store, user.id)
+            if not download:
+                self.runtime.preflight(viewer)
             token = self.auth.issue(user)
             desktop = DesktopSession(
                 project_id=asset.project_id,
@@ -183,11 +219,14 @@ class DesktopSessions:
                 viewer=viewer,
                 mode=mode,
                 credential_id=hashlib.sha256(token.encode()).hexdigest(),
+                backend_url=backend_url,
+                ca_certificate=ca_certificate,
             )
             self.starting.add(desktop.id)
             try:
                 with self.store.transaction() as session:
                     session.insert(desktop)
+                self.ensure_gateway(desktop)
 
                 def progress(message: str) -> None:
                     context.progress(0.5, message)
@@ -197,15 +236,16 @@ class DesktopSessions:
                     desktop.id,
                     viewer,
                     {
-                        "url": backend_url,
+                        "url": "http://127.0.0.1:8765",
                         "project_id": asset.project_id,
                         "asset_id": asset.id,
                         "mode": mode,
                         "shared_filesystem": False,
                         "token": token,
-                        "ca_certificate": ca_certificate,
+                        "ca_certificate": None,
                     },
                     progress,
+                    download=download,
                 )
                 with self.lock:
                     user = self.store.get(User, user.id)
@@ -237,6 +277,8 @@ class DesktopSessions:
         with self.store.transaction() as session:
             credential = session.get(LoginSession, desktop.credential_id)
             session.update(credential.model_copy(update={"expires_at": datetime.now(UTC)}))
+        if gateway := self.gateways.pop(desktop.id, None):
+            gateway.close()
         self.runtime.stop(desktop.id)
         with self.store.transaction() as session:
             session.update(desktop.model_copy(update={"ended": True}))

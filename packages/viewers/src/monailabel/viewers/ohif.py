@@ -40,7 +40,7 @@ class OhifManager:
         self.prepared = os.environ.get("MONAILABEL_OHIF_DIST")
         self.dist = Path(self.prepared) if self.prepared else self.source / "platform/app/dist"
 
-    def ensure(self, progress: Callable[[str], None] = print) -> Path:
+    def ensure(self, progress: Callable[[str], None] = print, *, download: bool = True) -> Path:
         if self.prepared:
             if not (self.dist / "index.html").is_file():
                 raise DomainError(
@@ -59,14 +59,31 @@ class OhifManager:
         digest.update(build.read_bytes())
         digest.update((_RESOURCES / "installers/ohif.json").read_bytes())
         signature = digest.hexdigest()
-        self.source.parent.mkdir(parents=True, exist_ok=True)
         manifest = self.source.parent / "build.json"
+
+        def prepared() -> bool:
+            try:
+                metadata = json.loads(manifest.read_text())
+                return (
+                    (self.dist / "index.html").is_file()
+                    and isinstance(metadata, dict)
+                    and metadata.get("extension_hash") == signature
+                )
+            except (OSError, ValueError):
+                return False
+
+        if prepared():
+            progress(f"Reusing OHIF {VERSION}")
+            return self.dist
+        if not download:
+            raise DomainError(
+                "OHIF is not prepared for this application version. Ask the demo host to build it.",
+                code="not_prepared",
+                status=503,
+            )
+        self.source.parent.mkdir(parents=True, exist_ok=True)
         with FileLock(str(self.source.parent / "build.lock"), timeout=1800):
-            if (
-                manifest.exists()
-                and (self.dist / "index.html").exists()
-                and json.loads(manifest.read_text()).get("extension_hash") == signature
-            ):
+            if prepared():
                 progress(f"Reusing OHIF {VERSION}")
                 return self.dist
             node = shutil.which("node")

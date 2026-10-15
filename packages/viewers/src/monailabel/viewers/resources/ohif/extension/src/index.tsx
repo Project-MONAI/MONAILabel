@@ -13,6 +13,7 @@ limitations under the License.
 
 import React, { useState } from "react";
 import Panel from "./Panel";
+import DemoCountdown from "./DemoCountdown";
 import { startAnnotationSession } from "./annotation-session";
 import { clearPanelSession } from "./panel-session";
 
@@ -22,6 +23,7 @@ function Workspace({ servicesManager, ManualPanel }) {
   const [manual, setManual] = useState(false);
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <DemoCountdown />
       <div
         className="monailabel-tabs"
         role="tablist"

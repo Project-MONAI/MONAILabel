@@ -37,6 +37,7 @@ from monailabel.core.video import (
     VideoTrackingRequest,
 )
 from monailabel.server.access import Principal, Service, authorize
+from monailabel.server.demo_policy import require_operator
 from monailabel.server.labels import resolve_labels
 from monailabel.server.video.assets import MAX_VIDEO_BYTES
 from monailabel.server.video.models import VideoEditor
@@ -65,6 +66,7 @@ async def upload(
     metadata: Annotated[VideoImport, Query()],
     service: Service,
 ) -> VideoAsset:
+    require_operator(service.store, "Dataset upload")
     length = request.headers.get("content-length")
     if length is not None:
         try:

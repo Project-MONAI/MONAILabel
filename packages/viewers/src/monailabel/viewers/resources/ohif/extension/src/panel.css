@@ -42,6 +42,27 @@ limitations under the License.
   font-size: 16px;
   font-weight: 600;
 }
+.monailabel-demo-session {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  color: #d1fae5;
+  background: #12382f;
+}
+.monailabel-demo-session p:not([hidden]),
+.monailabel-demo-session a {
+  display: block;
+  margin: 0;
+  padding: 8px 12px;
+}
+.monailabel-demo-session a {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+.monailabel-demo-session [role="alert"] {
+  color: #fecaca;
+}
 .monailabel-assistant a {
   color: #93c5fd;
 }

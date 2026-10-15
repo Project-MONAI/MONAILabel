@@ -18,6 +18,7 @@ from cryptography.fernet import Fernet
 
 from monailabel.core.errors import DomainError
 from monailabel.core.models import Credential, Record
+from monailabel.server.demo_policy import require_operator
 from monailabel.server.storage import Store
 
 
@@ -38,6 +39,7 @@ class Secrets:
     def save(
         self, project_id: str, name: str, value: str, identifier: str | None = None
     ) -> Credential:
+        require_operator(self.store, "Credential configuration")
         if not name.strip() or not value.strip():
             raise DomainError("A credential name and API key are required.")
         with self.store.transaction() as session:

@@ -41,6 +41,9 @@ from monailabel.server.assistant_tools import catalog
 from monailabel.server.assistant_tools.base import ToolContext
 from monailabel.server.assistant_tools.workspace import model_summary, native_viewer_command
 from monailabel.server.batch_annotation import candidates
+from monailabel.server.demo_access import require_active
+from monailabel.server.demo_context import acting_as
+from monailabel.server.demo_policy import visitor
 from monailabel.server.instructions import (
     WORKFLOW_TOOL_REMINDER,
     SkillSession,
@@ -58,8 +61,15 @@ class Assistants:
     def __init__(self, services: "Services", provider: ChatProvider):
         self.services = services
         self.provider = provider
-        # Lock stripes bound memory. The service has one owner process.
-        self.locks = [threading.Lock() for _ in range(64)]
+        # Track only active conversations: bounded without hash-stripe collisions
+        # that can falsely reject an unrelated visitor's first prompt.
+        self.active_lock = threading.Lock()
+        self.active: set[str] = set()
+        self.owners: dict[str, str] = {}
+
+    def running_for(self, user_id: str) -> bool:
+        with self.active_lock:
+            return user_id in self.owners.values()
 
     def run(
         self, project_id: str | None, request: AssistantRequest, user: "User"
@@ -67,16 +77,54 @@ class Assistants:
         if project_id:
             self.services.auth.require(user, project_id)
         identifier = request.conversation_id or request.request_id
-        lock = self.locks[int(identifier[:8], 16) % len(self.locks)]
-        if not lock.acquire(blocking=False):
-            raise Conflict(
-                "This conversation is processing a prompt. Wait for its reply "
-                "before sending another."
-            )
+        with self.active_lock:
+            if identifier in self.active:
+                raise Conflict(
+                    "This conversation is processing a prompt. Wait for its reply "
+                    "before sending another."
+                )
+            if len(self.active) >= 64:
+                raise DomainError("The assistant is busy. Retry shortly.", status=429)
+            self.active.add(identifier)
+            self.owners[identifier] = user.id
         try:
-            return self._run(identifier, project_id, request, user)
+            self.services.audit.record(
+                "assistant.request",
+                user.id,
+                conversation_id=identifier,
+                request_id=request.request_id,
+                project_id=project_id,
+                asset_id=request.context.asset_id,
+                message=request.message,
+            )
+            with acting_as(user.id, prepared_only=visitor(self.services.store, user.id)):
+                require_active(self.services.store, user)
+                reply = self._run(identifier, project_id, request, user)
+                require_active(self.services.store, user)
+            self.services.audit.record(
+                "assistant.reply",
+                user.id,
+                conversation_id=identifier,
+                request_id=request.request_id,
+                message=reply.message,
+                tools=",".join(reply.tools),
+                job_id=reply.job_id,
+                client_action=reply.data.get("client_action"),
+            )
+            return reply
+        except Exception as error:
+            self.services.audit.record(
+                "assistant.error",
+                user.id,
+                conversation_id=identifier,
+                request_id=request.request_id,
+                code=error.code if isinstance(error, DomainError) else type(error).__name__,
+            )
+            raise
         finally:
-            lock.release()
+            with self.active_lock:
+                self.active.remove(identifier)
+                self.owners.pop(identifier, None)
 
     def _run(
         self, identifier: str, project_id: str | None, request: AssistantRequest, user: "User"
@@ -210,6 +258,7 @@ class Assistants:
         repairs = 0
         native_command = native_viewer_command(request.message, context)
         for step in range(8):
+            require_active(store, user)
             if step == 0 and request.continue_tool:
                 if (
                     not conversation.turns
@@ -238,6 +287,7 @@ class Assistants:
                     # Typed validation and the repair loop still guard actual actions.
                     require_tool=not skill_session.active,
                 )
+            require_active(store, user)
             if response.role != "assistant" or len(response.tool_calls) > 1:
                 raise DomainError(
                     (

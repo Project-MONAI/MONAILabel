@@ -26,6 +26,7 @@ from monailabel.core.dicom import (
 from monailabel.core.errors import Cancelled, Conflict, DomainError
 from monailabel.core.models import Asset, DicomSeries, Job, JobStatus, Project, Split
 from monailabel.dicom.web import DicomwebClient, endpoint
+from monailabel.server.demo_policy import require_operator
 from monailabel.server.dicom.imports import prepare_series
 from monailabel.server.evaluation_sets import EvaluationSets
 from monailabel.server.jobs import JobContext, Jobs, Outcome
@@ -60,6 +61,7 @@ class DicomConnections:
         password: str = "",
         token: str = "",
     ) -> DicomConnection:
+        require_operator(self.store, "DICOM server connections")
         self.store.get(Project, project_id)
         url = endpoint(url)
         headers = self.headers(authentication, username, password, token)
@@ -87,6 +89,7 @@ class DicomConnections:
         return connection
 
     def client(self, connection: DicomConnection) -> DicomwebClient:
+        require_operator(self.store, "DICOM server access")
         headers = (
             json.loads(self.secrets.resolve(connection.project_id, connection.credential_id))
             if connection.credential_id
@@ -119,6 +122,7 @@ class DicomConnections:
     def import_selection(
         self, project_id: str, identifier: str, selection: DicomImportSelection
     ) -> Job:
+        require_operator(self.store, "DICOM imports")
         connection = self.get(project_id, identifier)
         selected = list({(s.study_uid, s.series_uid): s for s in selection.series}.values())
 

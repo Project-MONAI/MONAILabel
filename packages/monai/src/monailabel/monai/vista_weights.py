@@ -13,7 +13,6 @@
 
 import hashlib
 import os
-from functools import cache
 from pathlib import Path
 
 import httpx
@@ -21,18 +20,41 @@ from filelock import FileLock
 from platformdirs import user_cache_path
 
 from monailabel.core.errors import DomainError
+from monailabel.core.preparation import prepared_models_only, require_prepared
 from monailabel.providers.vista3d import CHECKSUM, REVISION, WEIGHT_BYTES, WEIGHT_URL
 
 
-@cache
-def pretrained_weights() -> Path:
-    root = (
+def checkpoint_path() -> Path:
+    return (
         Path(os.environ.get("MONAILABEL_MODELS_DIR", str(user_cache_path("monailabel") / "models")))
         / "vista3d"
         / REVISION
+        / "model.pt"
     )
+
+
+def prepared() -> bool:
+    path = checkpoint_path()
+    return path.is_file() and path.stat().st_size == WEIGHT_BYTES
+
+
+def verify(path: Path) -> None:
+    with path.open("rb") as stream:
+        if (
+            path.stat().st_size != WEIGHT_BYTES
+            or hashlib.file_digest(stream, "sha256").hexdigest() != CHECKSUM
+        ):
+            raise DomainError("Cached VISTA3D weights differ from the pinned checkpoint.")
+
+
+def pretrained_weights() -> Path:
+    path = checkpoint_path()
+    if prepared_models_only():
+        require_prepared(prepared(), "VISTA3D weights")
+        verify(path)
+        return path
+    root = path.parent
     root.mkdir(parents=True, exist_ok=True)
-    path = root / "model.pt"
     with FileLock(str(root / "download.lock"), timeout=1800):
         if not path.exists():
             temporary = root / "model.part"
@@ -56,10 +78,5 @@ def pretrained_weights() -> Path:
                 temporary.replace(path)
             finally:
                 temporary.unlink(missing_ok=True)
-        with path.open("rb") as stream:
-            if (
-                path.stat().st_size != WEIGHT_BYTES
-                or hashlib.file_digest(stream, "sha256").hexdigest() != CHECKSUM
-            ):
-                raise DomainError("Cached VISTA3D weights differ from the pinned checkpoint.")
+        verify(path)
     return path

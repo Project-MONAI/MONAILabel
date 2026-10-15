@@ -222,6 +222,10 @@ export class MaskTransfer {
 export function mergeMask(current, prediction, proposal, shape) {
   if (current.length !== prediction.length)
     throw new Error("Mask dimensions differ.");
+  if (proposal.replace_existing) {
+    if (proposal.slice) throw new Error("Replacement must cover the full volume.");
+    return prediction.slice();
+  }
   const result = current.slice(),
     labels = new Set(proposal.label_ids);
   const [width, height, depth] = shape;

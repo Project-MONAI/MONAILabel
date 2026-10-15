@@ -8,6 +8,19 @@ node --test tests/web/*.mjs
 
 Fixture tests verify software behavior, not model accuracy. Tests below use scripted or local models unless an endpoint is explicitly configured.
 
+## Private demo lifecycle
+
+These checks create disposable workspaces and synthetic accounts; never run the reset API against a deployed workspace as a test.
+
+```bash
+uv run pytest tests/test_demo_lifecycle.py tests/test_demo_access.py tests/test_demo_registration.py tests/test_demo_training.py
+uv run --group e2e pytest --browser-e2e tests/e2e/test_demo_training_browser.py tests/e2e/test_demo_reset_browser.py tests/e2e/test_demo_session.py tests/e2e/test_all_structures_browser.py
+uv run --group e2e pytest --desktop-e2e tests/e2e/test_viewer_countdown.py
+uv run --group e2e pytest --video-e2e tests/e2e/test_cvat_managed.py::test_managed_cvat_shared_countdown
+```
+
+The lifecycle tests cover fixed 60/120-minute deadlines, expiry without a browser, job attribution, worker-tree termination, failed-cleanup reservation retention, administrator-only reset, stale confirmation, preserved feedback/caches, and reused usernames with distinct visit identities. Browser checks cover both inline recorded-training cards, reset confirmation, shared countdowns, reloads without extension and expired access. Native-viewer/CVAT checks require the existing Docker/tool prerequisites below; pre-provision them to avoid downloads during an offline test. Inference termination uses a real synthetic local worker, not a paid model. CVAT's inability to cancel an already-started decode is tested as a retained reservation, not reported as successful termination.
+
 ## Workspace browser
 
 For real nnU-Net and TotalSegmentator CT/MRI training, continuation and source-grid prediction checks:

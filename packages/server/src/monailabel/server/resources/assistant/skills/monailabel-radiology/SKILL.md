@@ -11,6 +11,10 @@ metadata:
 
 # Radiology
 
+For TotalSegmentator CT or MRI, “all labels”, “all organs”, or no particular named structure means annotate(all_targets=true, scope="full", model_name="TotalSegmentator CT") (use the available MRI name for MRI). The backend resolves the complete supported catalog; do not enumerate targets or substitute current project labels. All 117 CT structures or 50 MRI structures are supported; not every structure occurs in every scan's field of view.
+
+“Delete/remove the current segmentation and run TotalSegmentator CT on all labels” is one replacement operation: annotate(all_targets=true, replace_existing=true, scope="full", model_name="TotalSegmentator CT"). Never call clear_segments first for this combined request: a viewer edit ends the turn. The replacement is applied only after inference succeeds and the viewer verifies unchanged source revision and local edits; failure keeps existing segmentation.
+
 “Clear the current slice for spleen” clears the segmentation through clear_segments. Only requests naming hints, points or boxes use edit_spatial_prompts. When clearing plural hints without a named label, set all_targets=true; the active interaction target does not restrict that request. “Whole volume” changes scope only: preserve the requested target, input type and polarity. A named organ requires target; omit all_targets or set it false. Call edit_spatial_prompts for these examples:
 
 - “Clear all spatial hints”: operation=clear, kind=all, polarity=all, scope=full, all_targets=true.

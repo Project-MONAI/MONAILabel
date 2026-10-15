@@ -26,6 +26,7 @@ from monailabel.core.reference_imports import (
 )
 from monailabel.core.video import VideoAsset
 from monailabel.server.data import MAX_FILE_BYTES, MAX_IMAGE_PIXELS, decode_image
+from monailabel.server.demo_policy import require_prepared_import
 from monailabel.server.evaluation_sets import EvaluationSets, components, reserved, training_history
 from monailabel.server.labels import imported_labels
 from monailabel.server.model_splits import refresh_percentage_sets
@@ -76,6 +77,7 @@ class ReferenceImports:
         label_content: bytes,
         user_id: str,
     ) -> EvaluationImportResult:
+        require_prepared_import(self.store, project_id)
         if not image_name or not label_name or max(len(image_name), len(label_name)) > 200:
             raise DomainError("Choose image and label files with names up to 200 characters.")
         image, affine = decode_image(image_name, image_content)

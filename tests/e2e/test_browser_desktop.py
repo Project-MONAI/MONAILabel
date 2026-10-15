@@ -21,18 +21,22 @@ import secrets
 import shutil
 import subprocess
 import time
+from contextlib import ExitStack
+from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 import nibabel as nib
 import numpy as np
 import pytest
 from conftest import ROOT, VideoStack
+from https_fixture import https_edge
 from PIL import Image
 from test_video_cvat import login_workspace
 
 from monailabel.client.client import Client
 from monailabel.core.chat import ChatMessage, ToolCall
-from monailabel.core.models import ModelRecord, Proposal, User
+from monailabel.core.models import ModelRecord, Proposal, Role, User
 from monailabel.core.ports import Prediction
 from monailabel.server.dataset_downloads import Downloads
 from monailabel.server.desktops.models import DesktopSession
@@ -78,6 +82,8 @@ def observe_desktop():
         'model_selector': center(dock.models),
         'selected_model': dock.models.currentText,
         'target_selector': center(dock.hint_target.lineEdit()),
+        'all_targets_button': center(dock.all_targets_button),
+        'all_targets_visible': dock.all_targets_button.visible,
         'model_names': [dock.models.itemText(i) for i in range(dock.models.count)
                         if dock.models.itemData(i)],
         'model_groups': [dock.models.itemText(i) for i in range(dock.models.count)
@@ -165,6 +171,15 @@ QUPATH_PROBE = """
                     text ? [(text): center(item)] : [:]
                 },
                 target_selector: center(panel.targetChoice.editor),
+                submit: center(panel.submitButton),
+                good: panel.reviewMode ? center(panel.goodButton) : null,
+                bad: panel.reviewMode ? center(panel.badButton) : null,
+                prompt_hint: panel.prompt.promptText,
+                dialog: javafx.stage.Window.windows.findAll { it.showing }.collectMany { w ->
+                    w.scene.root.lookupAll('.dialog-pane .button').toList()
+                }.findAll { it.visible && it.localToScreen(0, 0) != null }.collectEntries { item ->
+                    [(item.text): center(item)]
+                },
                 status: panel.status.text,
                 history: panel.history.text,
                 busy: panel.busy,
@@ -191,13 +206,34 @@ def desktop_stack(tmp_path, monkeypatch, request):
     )
     extension.write_text(text)
     monkeypatch.setattr(browser_desktop, "RESOURCES", bridges)
-    monkeypatch.setenv("MONAILABEL_TOOLS_DIR", str(ROOT / "workspace/.cache/tools"))
+    monkeypatch.setenv(
+        "MONAILABEL_TOOLS_DIR",
+        os.environ.get("MONAILABEL_TEST_VIEWER_TOOLS", str(ROOT / "workspace/.cache/tools")),
+    )
+    # An explicit cached image makes isolated/offline security checks possible.
+    # Never silently substitute a different runtime or download during this mode.
+    if image := os.environ.get("MONAILABEL_TEST_DESKTOP_IMAGE"):
+        browser_desktop.BrowserDesktop.run("image", "inspect", image)
+        novnc = os.environ.get("MONAILABEL_TEST_NOVNC_DIR")
+        if not novnc or not (Path(novnc) / "vnc.html").is_file():
+            pytest.fail("Offline desktop tests require MONAILABEL_TEST_NOVNC_DIR.")
+
+        def prepared(runtime, progress, *, download=True):
+            runtime.dist = Path(novnc)
+            return image
+
+        monkeypatch.setattr(browser_desktop.BrowserDesktop, "prepare", prepared)
     monkeypatch.setenv(
         "MONAILABEL_ALLOWED_HOSTS",
         "localhost,127.0.0.1,desktop.test," + os.environ.get("MONAILABEL_E2E_HOST", ""),
     )
     stack = VideoStack(tmp_path, artifacts)
     stack.https = getattr(request, "param", False)
+    stack.edge_spki = None
+    edge_cleanup = ExitStack()
+    if os.environ.get("MONAILABEL_TEST_HTTPS_EDGE") == "1":
+        assert not stack.https, "Choose the proxy or direct TLS test, not both."
+        monkeypatch.setenv("MONAILABEL_DEMO_HTTP_LIMITS", "1")
     stack.start_workspace()
     if stack.https:
         monkeypatch.setenv("SSL_CERT_FILE", str(stack.root / "workspace/.tls/ca.crt"))
@@ -219,6 +255,13 @@ def desktop_stack(tmp_path, monkeypatch, request):
             stack.url = stack.url.replace(
                 "127.0.0.1", os.environ.get("MONAILABEL_E2E_HOST", "desktop.test")
             )
+            if os.environ.get("MONAILABEL_TEST_HTTPS_EDGE") == "1":
+                backend = str(http.base_url).rstrip("/")
+                monkeypatch.setenv("MONAILABEL_DESKTOP_BACKEND_URL", backend)
+                edge = edge_cleanup.enter_context(
+                    https_edge(tmp_path / "edge", urlsplit(backend).port, "desktop.test")
+                )
+                stack.url, stack.edge_spki = edge.url, edge.spki
             yield stack, Client(http=http)
     finally:
         service = stack.app.state.services
@@ -234,7 +277,10 @@ def desktop_stack(tmp_path, monkeypatch, request):
                 pass
             # Serialize teardown with a close-tab timer already removing this container.
             service.desktops.end(session.id, service.store.get(User, session.user_id))
-        stack.stop_workspace()
+        try:
+            stack.stop_workspace()
+        finally:
+            edge_cleanup.close()
 
 
 def observed(path, predicate, page, timeout=120):
@@ -259,10 +305,11 @@ def fitted_desktop(page):
         """() => {
             const frame = document.querySelector('#display');
             const bounds = frame.getBoundingClientRect();
+            const viewport = document.querySelector('#viewport').getBoundingClientRect();
             const remote = frame.contentWindow;
             const canvas = frame.contentDocument.querySelector('#noVNC_container canvas');
-            return Math.abs(bounds.width - innerWidth) < 1
-                && Math.abs(bounds.height - innerHeight) < 1
+            return Math.abs(bounds.width - viewport.width) < 1
+                && Math.abs(bounds.height - viewport.height) < 1
                 && canvas?.width === remote.innerWidth && canvas?.height === remote.innerHeight;
         }""",
         timeout=15000,
@@ -273,8 +320,8 @@ def fitted_desktop(page):
     expect(canvas).to_have_attribute("height", str(size["height"]), timeout=15000)
     expect(canvas).to_be_visible()
     bounds = canvas.bounding_box()
-    viewport = page.evaluate("({width: innerWidth, height: innerHeight})")
-    assert bounds["x"] == 0 and bounds["y"] == 0
+    viewport = page.locator("#viewport").bounding_box()
+    assert bounds["x"] == viewport["x"] and bounds["y"] == viewport["y"]
     assert abs(bounds["width"] - viewport["width"]) < 1
     assert abs(bounds["height"] - viewport["height"]) < 1
     return canvas
@@ -335,9 +382,28 @@ def test_browser_native_viewer(desktop_stack, viewer, mode, mobile):
         f"/api/assets/{asset['id']}/review",
         {"base_revision": 0, "mask": mask, "covered_labels": [0, 1, 2]},
     )
+    visitor_id = None
+    if os.environ.get("MONAILABEL_TEST_DEMO_VISITOR") == "1":
+        # Prepare data as the host, then exercise both browser and native gateway
+        # with the same unprivileged, leased visitor identity.
+        service = stack.app.state.services
+        stack.username, stack.password = "invited-viewer", secrets.token_urlsafe(32)
+        visitor = service.auth.create_user(stack.username, stack.password, demo_minutes=60)
+        visitor_id = visitor.id
+        service.auth.add_member(project_id, visitor.id, [Role.MANAGER])
+        client.http.post(
+            "/api/auth/login", json={"username": stack.username, "password": stack.password}
+        ).raise_for_status()
+        assert client.get("/api/auth/session")["demo"] is True
+        assert client.get("/api/auth/me")["is_admin"] is False
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(
             args=["--host-resolver-rules=MAP desktop.test 127.0.0.1", "--no-proxy-server"]
+            + (
+                [f"--ignore-certificate-errors-spki-list={stack.edge_spki}"]
+                if stack.edge_spki
+                else []
+            )
         )
         options = (
             playwright.devices["iPad Pro 11"]
@@ -364,13 +430,24 @@ def test_browser_native_viewer(desktop_stack, viewer, mode, mobile):
                 ).click()
             desktop = popup.value
             desktop.wait_for_url("**/desktop/*", timeout=240000)
-            assert desktop.evaluate("isSecureContext") is False
+            assert desktop.evaluate("isSecureContext") is bool(stack.edge_spki)
             expect(desktop.locator("header")).not_to_be_visible()
             expect(desktop.locator("#display")).to_be_visible()
             bounds = desktop.locator("#display").bounding_box()
-            assert bounds["y"] == 0
-            assert abs(bounds["height"] - desktop.evaluate("innerHeight")) < 1
+            top = 0
+            if visitor_id:
+                banner = desktop.locator("#demo-countdown")
+                expect(banner).to_be_visible()
+                banner_bounds = banner.bounding_box()
+                top = banner_bounds["y"] + banner_bounds["height"]
+            assert abs(bounds["y"] - top) < 1
+            assert abs(bounds["height"] + top - desktop.evaluate("innerHeight")) < 1
             identifier = desktop.url.rsplit("/", 1)[-1]
+            if visitor_id:
+                assert (
+                    stack.app.state.services.store.get(DesktopSession, identifier).user_id
+                    == visitor_id
+                )
             runtime = stack.app.state.services.desktops.runtime
             report = runtime.root / identifier / "observed.json"
             frame = desktop.frame_locator("#display")

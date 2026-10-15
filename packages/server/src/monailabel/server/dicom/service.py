@@ -21,6 +21,7 @@ import pydicom
 from monailabel.core.errors import Cancelled, Conflict, DomainError
 from monailabel.core.models import Asset, DicomSeries, Job, JobStatus, Project, Split
 from monailabel.dicom.nifti_view import viewing_series
+from monailabel.server.demo_policy import require_operator
 from monailabel.server.dicom.imports import prepare_series
 from monailabel.server.evaluation_sets import EvaluationSets
 from monailabel.server.jobs import JobContext, Jobs, Outcome
@@ -43,6 +44,7 @@ class Dicom:
             ) from exc
 
     def import_series(self, project_id: str, series_uid: str) -> Job:
+        require_operator(self.store, "DICOM server imports")
         self.store.get(Project, project_id)
         if (
             not series_uid

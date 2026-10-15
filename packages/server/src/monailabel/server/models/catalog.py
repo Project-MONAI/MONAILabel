@@ -28,6 +28,7 @@ from monailabel.providers.catalog.presets import (
 )
 from monailabel.providers.catalog.selection import recent_models
 from monailabel.providers.vision import VisionProvider
+from monailabel.server.demo_policy import require_operator, visitor
 from monailabel.server.models.presets import Presets
 from monailabel.server.models.service import Models
 
@@ -76,6 +77,8 @@ class ModelCatalogs:
 
     def services(self, project_id: str) -> list[ServiceInfo]:
         self.models.store.get(Project, project_id)
+        if visitor(self.models.store):
+            return []
         return [
             ServiceInfo(
                 id=s.id,
@@ -107,6 +110,7 @@ class ModelCatalogs:
         *,
         latest_only: bool = True,
     ) -> ModelCatalog:
+        require_operator(self.models.store, "Hosted model discovery")
         self.models.store.get(Project, project_id)
         service = SERVICES[request.service]
         key = (
@@ -212,6 +216,7 @@ class ModelCatalogs:
     def change_provider(
         self, project_id: str, model_id: str, request: ProviderChangeRequest
     ) -> ModelRecord:
+        require_operator(self.models.store, "Model provider configuration")
         spec = self.preset(project_id, model_id)
         selected: PresetConnection | None
         if request.connection:

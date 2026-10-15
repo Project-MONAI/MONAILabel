@@ -10,6 +10,8 @@
 # limitations under the License.
 
 import argparse
+import os
+from ipaddress import ip_address
 from pathlib import Path
 
 import uvicorn
@@ -20,6 +22,17 @@ from monailabel.providers.chat.config import CoordinatorConfig
 from monailabel.server.app import create_app
 from monailabel.server.tls import ensure_local_certificate
 from monailabel.server.workspace import configure_workspace
+
+
+def trusted_proxy(value: str) -> str:
+    try:
+        if "%" in value:
+            raise ValueError("Scoped addresses are not supported")
+        return str(ip_address(value))
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "Use the exact IPv4/IPv6 address of a trusted proxy, never '*' or a network."
+        ) from error
 
 
 def main() -> None:
@@ -34,6 +47,14 @@ def main() -> None:
         "--host", default="127.0.0.1", help="Listen address (default: localhost only)."
     )
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument(
+        "--trusted-proxy",
+        action="append",
+        type=trusted_proxy,
+        default=[],
+        help="Trust forwarded client/scheme headers from this exact IP; repeat as needed. "
+        "Disabled by default. The proxy must replace untrusted forwarding headers.",
+    )
     parser.add_argument(
         "--https",
         action="store_true",
@@ -124,6 +145,12 @@ def main() -> None:
         app,
         host=args.host,
         port=args.port,
+        proxy_headers=bool(args.trusted_proxy),
+        forwarded_allow_ips=",".join(args.trusted_proxy),
+        ws="wsproto",
+        ws_max_size=16 * 1024 * 1024,
+        ws_per_message_deflate=False,
+        limit_concurrency=64 if os.environ.get("MONAILABEL_DEMO_HTTP_LIMITS") == "1" else None,
         ssl_certfile=str(args.ssl_certfile) if args.ssl_certfile else None,
         ssl_keyfile=str(args.ssl_keyfile) if args.ssl_keyfile else None,
     )

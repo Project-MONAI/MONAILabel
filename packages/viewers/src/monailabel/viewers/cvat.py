@@ -209,6 +209,30 @@ class CvatClient:
             pause()
         raise DomainError("CVAT is still preparing this clip. Retry opening it later.")
 
+    def cancel_preparation(self, request_id: str) -> bool:
+        """Cancel a queued import; report running imports honestly, without killing shared CVAT.
+
+        CVAT does not support cancellation of a started, mutating import. Keep
+        its visitor's capacity reserved until CVAT reports a terminal state.
+        """
+        try:
+            path = f"/api/requests/{request_id}"
+            response = self.http.get(path, timeout=5)
+            if response.status_code == 404:
+                return True
+            response.raise_for_status()
+            if response.json()["status"] in {"finished", "failed", "canceled"}:
+                return True
+            cancelled = self.http.post(path + "/cancel", timeout=5)
+            if cancelled.status_code in {200, 404}:
+                return True
+            if cancelled.status_code == 400:
+                return False
+            cancelled.raise_for_status()
+        except (httpx.HTTPError, KeyError, ValueError) as error:
+            raise DomainError("Could not confirm CVAT preparation stopped.", status=503) from error
+        return False
+
     def label_map(self, task_id: int, labels: list[Label]) -> dict[int, int]:
         response = self.request("GET", "/api/labels", params={"task_id": task_id, "page_size": 100})
         by_name = {item["name"]: int(item["id"]) for item in response["results"]}

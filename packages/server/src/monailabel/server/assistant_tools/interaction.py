@@ -103,11 +103,15 @@ def set_mode(ctx: ToolContext, args: InteractionArgs) -> AssistantReply:
     )
 
 
-def update(ctx: ToolContext, scope: str) -> AssistantReply:
+def update(ctx: ToolContext, scope: str, *, all_targets: bool = False) -> AssistantReply:
     """The toolbar uses the same validated annotation action without calling a coordinator."""
     ctx.service.auth.require(ctx.user, ctx.project.id, "edit")
     context = ctx.context
-    if context.base_revision is None or not context.interaction_target.strip():
+    if all_targets and scope != "full":
+        raise DomainError("All structures requires the full volume.")
+    if context.base_revision is None or (
+        not all_targets and not context.interaction_target.strip()
+    ):
         raise DomainError("Choose or type a target label before updating the mask.")
     if not context.model_id:
         raise DomainError("Select an annotation model first.")
@@ -123,7 +127,8 @@ def update(ctx: ToolContext, scope: str) -> AssistantReply:
         ctx,
         AnnotationArgs.model_validate(
             {
-                "targets": [context.interaction_target],
+                "targets": [] if all_targets else [context.interaction_target],
+                "all_targets": all_targets,
                 "model_id": model.id,
                 "scope": scope,
             }

@@ -253,7 +253,7 @@ def test_nifti_viewing_copy_preserves_geometry_and_intensity_with_bounded_roundi
 
 
 def test_nifti_ohif_cache_keeps_original_asset_and_reuses_dicom(client, http, monkeypatch):
-    monkeypatch.setattr("monailabel.viewers.ohif.OhifManager.ensure", lambda *args: None)
+    monkeypatch.setattr("monailabel.viewers.ohif.OhifManager.ensure", lambda *args, **kwargs: None)
     project = client.post("/api/projects", {"name": "NIfTI in OHIF"})
     source = nib.Nifti1Image(
         np.arange(60, dtype=np.float32).reshape(5, 4, 3) / 3.7, np.eye(4)
@@ -274,7 +274,7 @@ def test_nifti_ohif_cache_keeps_original_asset_and_reuses_dicom(client, http, mo
 
 
 def test_ohif_study_browser_is_scoped_to_the_selected_asset(client, http, monkeypatch):
-    monkeypatch.setattr("monailabel.viewers.ohif.OhifManager.ensure", lambda *args: None)
+    monkeypatch.setattr("monailabel.viewers.ohif.OhifManager.ensure", lambda *args, **kwargs: None)
     source = nib.Nifti1Image(np.zeros((5, 4, 3), dtype=np.float32), np.eye(4)).to_bytes()
     assets, series = [], []
     # The same source may legitimately exist in separate annotation projects.

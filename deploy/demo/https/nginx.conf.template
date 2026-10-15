@@ -1,0 +1,112 @@
+# Staging-first HTTPS edge. Render placeholders before use; never binds publicly.
+# This file is not an installation script and does not request certificates.
+worker_processes 1;
+pid /tmp/monailabel-nginx.pid;
+error_log stderr crit;
+
+events { worker_connections 256; }
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    server_tokens off;
+    access_log off;
+    client_body_temp_path /tmp/client_body;
+    proxy_temp_path /tmp/proxy;
+    fastcgi_temp_path /tmp/fastcgi;
+    uwsgi_temp_path /tmp/uwsgi;
+    scgi_temp_path /tmp/scgi;
+
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+    map $uri $login_source {
+        default '';
+        /api/auth/login $binary_remote_addr;
+        /api/auth/signup $binary_remote_addr;
+    }
+    map $request_method $write_source {
+        default $binary_remote_addr;
+        GET '';
+        HEAD '';
+    }
+    limit_req_zone $binary_remote_addr zone=requests:4m rate=20r/s;
+    limit_req_zone $write_source zone=writes:1m rate=5r/s;
+    limit_req_zone $login_source zone=logins:1m rate=6r/m;
+    limit_conn_zone $binary_remote_addr zone=source_connections:1m;
+    limit_conn_zone $server_name zone=all_connections:1m;
+
+    server {
+        listen 127.0.0.1:__HTTPS_PORT__ ssl default_server;
+        ssl_reject_handshake on;
+        return 444;
+    }
+
+    server {
+        listen 127.0.0.1:__HTTPS_PORT__ ssl;
+        server_name __PUBLIC_HOST__;
+        ssl_certificate __CERTIFICATE_FILE__;
+        ssl_certificate_key __PRIVATE_KEY_FILE__;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_session_cache shared:TLS:1m;
+        ssl_session_timeout 10m;
+        ssl_session_tickets off;
+
+        client_max_body_size 128m;
+        client_body_timeout 15s;
+        client_header_timeout 10s;
+        large_client_header_buffers 4 8k;
+        keepalive_timeout 30s;
+        keepalive_requests 100;
+        send_timeout 30s;
+        reset_timedout_connection on;
+
+        # Module/asset bursts are normal at viewer startup; mutations and login
+        # retain separate tighter budgets. Connection/body limits still apply.
+        limit_req zone=requests burst=256 nodelay;
+        limit_req zone=writes burst=40 nodelay;
+        limit_req zone=logins burst=6 nodelay;
+        limit_req_status 429;
+        limit_conn source_connections 16;
+        limit_conn all_connections 64;
+        limit_conn_status 429;
+        error_page 429 = @limited;
+
+        # The application owns CSP and other viewer-specific security headers.
+        add_header Strict-Transport-Security 'max-age=3600' always;
+
+        # Bootstrap, invitations, account administration and reset remain private.
+        location ~ ^/api/(auth/(setup|register-demo|users|demo-users|token)|demo-access/(reset-preview|reset|audit-status))(/|$) {
+            return 404;
+        }
+        location ~ ^/(docs|redoc|openapi\.json)(/|$) { return 404; }
+
+        location @limited {
+            add_header Retry-After 10 always;
+            add_header Cache-Control no-store always;
+            return 429;
+        }
+
+        location / {
+            proxy_pass http://127.0.0.1:__BACKEND_PORT__;
+            proxy_http_version 1.1;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            # Replace, rather than append, attacker-supplied forwarding headers.
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Forwarded '';
+            proxy_set_header X-Forwarded-Host '';
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 300s;
+            proxy_send_timeout 30s;
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_max_temp_file_size 0;
+            proxy_next_upstream off;
+        }
+    }
+}

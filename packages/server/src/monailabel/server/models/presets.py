@@ -25,6 +25,9 @@ from monailabel.providers.catalog.presets import (
 )
 from monailabel.providers.spatial import MODELS as SPATIAL_MODELS
 from monailabel.server.deletion import Deletion
+from monailabel.server.demo_gpt import enabled as gpt_enabled
+from monailabel.server.demo_gpt import ensure as ensure_gpt
+from monailabel.server.demo_policy import require_operator, visitor
 from monailabel.server.storage import Session, Store
 from monailabel.totalsegmentator.catalog import MODELS as TOTAL_MODELS
 
@@ -38,13 +41,21 @@ class Presets:
         self.manual_availability: dict[str, bool] = {}
 
     def ensure(self, project_id: str) -> None:
+        if gpt_enabled():
+            with self.store.transaction() as session:
+                session.get(Project, project_id)
+                ensure_gpt(session, project_id)
         if not self.enabled:
             return
+        # Local metadata is cheap; credential discovery and hosted connections
+        # belong to host preparation, never a visitor reading a project.
+        local_only = visitor(self.store)
         latest = {m.preset: m for m in self.store.list(ModelRecord, project_id) if m.preset}
         # Resolve credentials and network metadata before entering a store transaction.
         for model in latest.values():
             if (
-                model.preset in {spec.key for spec in HOSTED_PRESETS}
+                not local_only
+                and model.preset in {spec.key for spec in HOSTED_PRESETS}
                 and model.connection_mode == "manual"
                 and model.id not in self.manual_availability
             ):
@@ -93,6 +104,8 @@ class Presets:
                         )
                     )
             for spec in HOSTED_PRESETS:
+                if local_only:
+                    continue
                 active = [m for m in models if m.preset == spec.key and not m.archived]
                 current = active[-1] if active else None
                 previous_choice = latest.get(spec.key)
@@ -138,12 +151,12 @@ class Presets:
                 (
                     m
                     for m in session.list(ModelRecord, project_id)
-                    if m.preset == DEFAULT_HOSTED_PRESET and not m.archived
+                    if not local_only and m.preset == DEFAULT_HOSTED_PRESET and not m.archived
                 ),
                 None,
             )
             for previous in models:
-                if previous.preset == "nvidia-sol" and not previous.archived:
+                if not local_only and previous.preset == "nvidia-sol" and not previous.archived:
                     self.retire(session, previous, standard)
             project = session.get(Project, project_id)
             if project.annotation_model_id is None and initialize_defaults:
@@ -165,6 +178,7 @@ class Presets:
         )
 
     def manual_available(self, model: ModelRecord) -> bool:
+        require_operator(self.store, "Hosted model discovery")
         service = next(
             (
                 s
@@ -223,6 +237,7 @@ class Presets:
         *,
         automatic: bool,
     ) -> ModelRecord:
+        require_operator(self.store, "Model provider configuration")
         with self.store.transaction() as session:
             previous = session.get(ModelRecord, model_id)
             if previous.project_id != project_id:

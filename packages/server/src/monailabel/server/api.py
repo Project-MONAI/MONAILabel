@@ -82,6 +82,7 @@ from monailabel.server.assistant_tools.interaction import update as update_viewe
 from monailabel.server.data import decode_image, nifti_bytes
 from monailabel.server.dataset_exports import ExportRequest
 from monailabel.server.demo import create_demo
+from monailabel.server.demo_policy import require_operator
 from monailabel.server.training_samples import training_sources
 from monailabel.server.uploads import read_upload
 
@@ -163,6 +164,7 @@ async def upload_image(
     metadata: Annotated[ImageMetadata, Query()],
     service: Service,
 ) -> Asset:
+    require_operator(service.store, "Dataset upload")
     content = await read_upload(request)
     return await run_in_threadpool(service.datasets.import_content, project_id, metadata, content)
 
@@ -273,7 +275,7 @@ async def review_binary(
     service: Service,
     user: Principal,
     base_revision: Annotated[int, Query(ge=0)],
-    covered_labels: Annotated[list[int], Query(min_length=1, max_length=32)],
+    covered_labels: Annotated[list[int], Query(min_length=1, max_length=256)],
     proposal_id: str | None = None,
 ) -> Annotation:
     asset = service.store.get(Asset, asset_id)
@@ -517,6 +519,7 @@ def viewer_inference(
             service, project_id, user, body.context, "Update the selected target segmentation."
         ),
         body.scope,
+        all_targets=body.all_targets,
     )
 
 

@@ -12,6 +12,7 @@
 """Isolated upstream inference/training workers with immutable checkpoint artifacts."""
 
 import json
+import logging
 import os
 import signal
 import subprocess
@@ -30,12 +31,14 @@ from monailabel.core.models import Label, ModelRecord, TrainingMode
 from monailabel.core.ports import (
     IGNORE_LABEL,
     BinaryArtifacts,
+    Mask,
     Prediction,
     Progress,
     TrainingVolume,
     Volume,
     training_message,
 )
+from monailabel.totalsegmentator import prepared
 from monailabel.totalsegmentator.catalog import VERSION, mapping
 from monailabel.totalsegmentator.config import TotalConfig
 from monailabel.totalsegmentator.weights import manifest, pretrained_weights
@@ -74,7 +77,7 @@ def run_worker(directory: Path, request: dict[str, JsonValue], progress: Progres
             env=environment,
             stdout=log,
             stderr=subprocess.STDOUT,
-            start_new_session=True,
+            start_new_session=os.environ.get("MONAILABEL_DEMO_WORKER") != "1",
         )
         try:
             status = directory / "progress.json"
@@ -95,11 +98,15 @@ def run_worker(directory: Path, request: dict[str, JsonValue], progress: Progres
                 raise DomainError(f"TotalSegmentator worker failed: {detail}")
         finally:
             if process.poll() is None:
-                os.killpg(process.pid, signal.SIGTERM)
+                process.terminate() if os.environ.get(
+                    "MONAILABEL_DEMO_WORKER"
+                ) == "1" else os.killpg(process.pid, signal.SIGTERM)
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
+                    process.kill() if os.environ.get(
+                        "MONAILABEL_DEMO_WORKER"
+                    ) == "1" else os.killpg(process.pid, signal.SIGKILL)
                     process.wait()
 
 
@@ -129,6 +136,19 @@ class TotalSegmenter:
         selected = mapping(self.provider, labels)
         if not selected:
             raise DomainError("Choose at least one supported TotalSegmentator structure.")
+        cache = os.environ.get("MONAILABEL_TOTALSEG_PREDICTIONS")
+        if cache and not self.state:
+            cached = prepared.read(
+                Path(cache),
+                prepared.identity(self.provider, volume, config),
+                self.provider,
+                volume.image.shape[:-1],
+            )
+            if cached is not None:
+                logging.getLogger(__name__).info(
+                    "Reusing host-prepared TotalSegmentator base prediction"
+                )
+                return Prediction(self.remap(cached, selected))
         base = pretrained_weights(self.provider)
         with tempfile.TemporaryDirectory(prefix="monailabel-totalseg-") as temporary:
             root = Path(temporary)
@@ -152,10 +172,14 @@ class TotalSegmenter:
                 raise DomainError("TotalSegmentator could not restore the original image grid.")
             if not np.isfinite(values).all() or not np.array_equal(values, np.round(values)):
                 raise DomainError("TotalSegmentator returned invalid class values.")
-            mask = np.zeros(values.shape, dtype=np.uint8)
-            for identifier, original in selected.items():
-                mask[values == original] = identifier
-            return Prediction(mask)
+            return Prediction(self.remap(values, selected))
+
+    @staticmethod
+    def remap(values: Mask, selected: dict[int, int]) -> Mask:
+        mask = np.zeros(values.shape, dtype=np.uint8)
+        for identifier, original in selected.items():
+            mask[values == original] = identifier
+        return mask
 
 
 class TotalTrainer:

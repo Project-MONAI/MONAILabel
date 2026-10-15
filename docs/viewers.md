@@ -13,6 +13,8 @@ Open samples from **Datasets** to annotate or **Reviews** to review.
 
 Slicer/QuPath open native windows for localhost access and private browser desktops for network access. OHIF/CVAT always open in the browser. Use `/datasets?desktop=browser` for a headless host or SSH forwarding.
 
+Accounts with a demo lease always use managed browser desktops, including on localhost. The host must prepare their native viewers, desktop image and noVNC assets first; visitor launch never downloads or builds them. Likewise the host prepares OHIF's matching extension build and the managed CVAT service/UI before visitors open them. Missing resources fail a read-only preflight instead of starting installation. Ordinary non-demo accounts retain the normal first-launch setup workflow. See [visitor controls](demo-controls.md#visitor-capabilities).
+
 Browser desktops resize with the tab. The side toolbar provides a keyboard, touch controls and **Clipboard → Paste into viewer / Copy to computer**.
 
 Submit or save drafts before closing. Closing the last tab ends the desktop after ten seconds; **End session** closes it immediately. Refresh and network interruptions preserve the session. Server restarts retain running containers, but crashes/reboots lose unsaved native state. Saved desktop files remain under `workspace/viewers/desktop/`.
@@ -21,7 +23,9 @@ Submit or save drafts before closing. Closing the last tab ends the desktop afte
 
 Requires Linux x86_64/ARM64 and a local Docker daemon. See [Spark](spark.md) for ARM64 viewers and [Docker deployment](docker.md) for running the backend in a container.
 
-Configure HTTPS and allowed hosts for remote access. Reverse proxies must forward WebSocket upgrades for `/desktop/`. The viewer bridge must reach and trust the backend URL; `MONAILABEL_DESKTOP_BACKEND_URL` overrides it. For private development certificates, terminating TLS at the proxy avoids installing the CA in each viewer container.
+Configure HTTPS and allowed hosts for remote access. Reverse proxies must forward WebSocket upgrades for `/desktop/`. Start the backend with `--trusted-proxy` followed by the exact proxy IP only when that proxy replaces client-supplied forwarding headers. Repeat the option for multiple proxies; wildcards and network ranges are not accepted. Without it, the server ignores forwarded client/scheme headers, even if `FORWARDED_ALLOW_IPS` is set. Behind a TLS-terminating proxy, correct scheme forwarding is required for Secure sign-in cookies, same-origin checks and WebSocket URLs. Keep the backend's own port private.
+
+The server-side desktop gateway must reach and trust the backend origin; `MONAILABEL_DESKTOP_BACKEND_URL` overrides it. Local development HTTPS uses the workspace's public CA certificate for this connection. The native bridge talks to a fixed loopback relay inside its container; it does not receive the backend's private certificate key or direct network access.
 
 | Setting | Default |
 | --- | --- |
@@ -29,7 +33,11 @@ Configure HTTPS and allowed hosts for remote access. Reverse proxies must forwar
 | `MONAILABEL_DESKTOP_MEMORY` | 8g per desktop |
 | `MONAILABEL_DESKTOP_CPUS` | 4 per desktop |
 
-Desktops use host networking and software rendering. They are intended for trusted workspace users who can run native viewer scripts. Project access and session ownership are checked during display connections.
+Desktops use Docker's `none` network and software rendering. A read-only Unix-socket mount connects each desktop to its own gateway. The gateway accepts only that desktop's current credential, rechecks ownership and expiry for every request, forwards only application API paths to a fixed backend, and blocks credential creation, desktop-management routes, redirects and arbitrary proxy destinations. Native scripts cannot directly reach host loopback services, other desktops or the LAN through an IP interface. Project authorization remains enforced by the backend.
+
+Each gateway allows at most four simultaneous connections, 300 requests per minute and 128 MiB per request body, with bounded streaming buffers. These limits are separate from desktop CPU/memory limits and job admission. Native scripts still have writable private session/display directories on the host: disk quotas and stronger filesystem/resource containment remain public-release gates. Network isolation alone is not a complete hostile-code sandbox. Native drafts remain private and reconnectable; pre-isolation desktop records must be ended and reopened before use with this implementation.
+
+The desktop image explicitly gives its launcher and Openbox configuration read permission for the unprivileged viewer user. This also supports source snapshots created with a restrictive file-creation mask; the original workspace files remain private.
 
 ## Annotate and review
 

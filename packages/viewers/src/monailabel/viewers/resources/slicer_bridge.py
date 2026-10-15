@@ -231,6 +231,13 @@ class AnnotationDock:
         self.update_hints.setToolTip("Update the selected target on this slice or the whole volume")
         self.update_hints.clicked.connect(self.update_interaction)
         hints.addWidget(self.update_hints)
+        self.all_targets_button = qt.QPushButton("Segment all available labels")
+        self.all_targets_button.setObjectName("monailabel-segment-all")
+        self.all_targets_button.setToolTip(
+            "Segment every supported structure in the full volume; no single target is needed."
+        )
+        self.all_targets_button.clicked.connect(self.segment_all_targets)
+        hints.addWidget(self.all_targets_button)
         hints.addStretch(1)
         self.layout.addWidget(self.hint_panel)
         self.hint_panel.hide()
@@ -436,6 +443,7 @@ class AnnotationDock:
             not busy and bool(self.interaction_target) and (self.can_annotate or self.can_review)
         )
         self.update_hints.setEnabled(hint_ready)
+        self.all_targets_button.setEnabled(not busy and (self.can_annotate or self.can_review))
         self.views.setEnabled(not busy)
         for button in self.hint_buttons.values():
             button.setEnabled(hint_ready)
@@ -676,6 +684,9 @@ class AnnotationDock:
                 "Harden or remove transforms before saving to the source voxel grid."
             )
         reverse = self.reverses_slices(self.volume, self.asset)
+        shared = self.shared_mask(reverse)
+        if shared is not None:
+            return shared
         mask = np.zeros(self.asset["spatial_shape"], dtype=np.uint8)
         for label in self.project["labels"]:
             if label["id"] == 0:
@@ -692,6 +703,48 @@ class AnnotationDock:
                 )
             mask[selected] = label["id"]
         return mask
+
+    def shared_mask(self, reverse):
+        """Read an exact-grid shared layer once; fall back for cropped/overlapping edits."""
+        labels = [label for label in self.project["labels"] if label["id"]]
+        if not labels:
+            return None
+        segments = self.segmentation.GetSegmentation()
+        first = segments.GetSegment(str(labels[0]["id"]))
+        shared = first.GetRepresentation("Binary labelmap") if first else None
+        extent = tuple(value for size in self.asset["spatial_shape"] for value in (0, size - 1))
+        if not shared or shared.GetExtent() != extent:
+            return None
+        matrix, reference = vtk.vtkMatrix4x4(), vtk.vtkMatrix4x4()
+        shared.GetImageToWorldMatrix(matrix)
+        self.volume.GetIJKToRASMatrix(reference)
+        if not np.allclose(
+            slicer.util.arrayFromVTKMatrix(matrix),
+            slicer.util.arrayFromVTKMatrix(reference),
+            rtol=0,
+            atol=1e-6,
+        ):
+            return None
+        lookup = np.zeros(256, np.uint8)
+        for label in labels:
+            segment = segments.GetSegment(str(label["id"]))
+            representation = segment.GetRepresentation("Binary labelmap") if segment else None
+            if not representation or representation.GetAddressAsString(
+                ""
+            ) != shared.GetAddressAsString(""):
+                return None
+            value = segment.GetLabelValue()
+            if not 0 < value < len(lookup) or lookup[value]:
+                return None
+            lookup[value] = label["id"]
+        kji = slicer.util.arrayFromSegmentInternalBinaryLabelmap(
+            self.segmentation, str(labels[0]["id"])
+        )
+        if kji.dtype != np.uint8:
+            return None
+        if reverse:
+            kji = kji[::-1]
+        return lookup[kji.transpose(2, 1, 0)]
 
     def sync_labels(self, node):
         """Keep project display colors and IDs consistent without replacing mask data."""
@@ -716,14 +769,25 @@ class AnnotationDock:
             raise RuntimeError("Mask shape differs from the loaded volume.")
         if self.reverses_slices(volume, asset):
             mask = mask[:, :, ::-1]
+        # Import one shared multilabel grid, not one full-volume allocation per
+        # structure. Explicit IDs preserve sparse project labels and empty organs.
+        identifiers = vtk.vtkStringArray()
+        identifiers.SetNumberOfValues(max(label["id"] for label in self.project["labels"]))
         for label in self.project["labels"]:
             if label["id"]:
-                slicer.util.updateSegmentBinaryLabelmapFromArray(
-                    (mask == label["id"]).astype(np.uint8).transpose(2, 1, 0),
-                    segmentation,
-                    str(label["id"]),
-                    volume,
-                )
+                identifiers.SetValue(label["id"] - 1, str(label["id"]))
+        labelmap = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+        try:
+            matrix = vtk.vtkMatrix4x4()
+            volume.GetIJKToRASMatrix(matrix)
+            labelmap.SetIJKToRASMatrix(matrix)
+            slicer.util.updateVolumeFromArray(labelmap, mask.transpose(2, 1, 0))
+            if not slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
+                labelmap, segmentation, identifiers
+            ):
+                raise RuntimeError("Could not import the multilabel segmentation.")
+        finally:
+            slicer.mrmlScene.RemoveNode(labelmap)
         segmentation.GetDisplayNode().SetVisibility(True)
         segmentation.GetDisplayNode().SetVisibility2D(True)
         segmentation.GetDisplayNode().SetOpacity2DFill(0.25)
@@ -740,9 +804,13 @@ class AnnotationDock:
         except Exception as error:
             self.report_error(error)
 
-    def send_prompt(self, spatial_update=False):
+    def send_prompt(self, spatial_update=False, all_targets=False):
         message = (
-            "Update the selected target segmentation."
+            (
+                "Segment all available labels in this volume."
+                if all_targets
+                else "Update the selected target segmentation."
+            )
             if spatial_update
             else self.prompt.toPlainText().strip()
         )
@@ -796,7 +864,11 @@ class AnnotationDock:
             self.prompt.clear()
         route = "spatial-inference" if spatial_update else "assistant"
         body = (
-            {"context": context, "scope": self.hint_scope_value}
+            {
+                "context": context,
+                "scope": "full" if all_targets else self.hint_scope_value,
+                "all_targets": all_targets,
+            }
             if spatial_update
             else {
                 "message": message,
@@ -954,6 +1026,12 @@ class AnnotationDock:
             else self.hint_scope_value
         )
         self.hint_specification = specification
+        self.all_targets_button.setVisible(
+            model.get("provider", "").startswith("totalsegmentator-")
+        )
+        self.all_targets_button.setText(
+            f"Segment all {len(model.get('supported_targets') or [])} labels"
+        )
         self.hint_target.blockSignals(True)
         self.hint_target.clear()
         self.hint_target.addItem("")
@@ -978,6 +1056,14 @@ class AnnotationDock:
             return
         try:
             self.send_prompt(spatial_update=True)
+        except Exception as exc:
+            self.report_error(exc)
+
+    def segment_all_targets(self):
+        if self.future or self.job_id or self.loading:
+            return
+        try:
+            self.send_prompt(spatial_update=True, all_targets=True)
         except Exception as exc:
             self.report_error(exc)
 
@@ -1378,8 +1464,12 @@ class AnnotationDock:
             or proposal["base_revision"] != self.asset["revision"]
         ):
             raise RuntimeError("Proposal belongs to another volume or revision.")
+        if proposal.get("replace_existing") and proposal.get("slice"):
+            raise RuntimeError("Replacement must cover the full volume.")
         combined = merge_proposal(
-            self.current_mask(),
+            np.zeros_like(self.current_mask())
+            if proposal.get("replace_existing")
+            else self.current_mask(),
             np.asarray(mask, dtype=np.uint8),
             proposal["label_ids"],
             None if proposal.get("all_slices") else proposal.get("slice"),

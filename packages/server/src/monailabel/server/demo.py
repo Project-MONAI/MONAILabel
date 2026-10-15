@@ -23,6 +23,7 @@ from monailabel.core.models import (
     Split,
 )
 from monailabel.server.data import Datasets, nifti_bytes
+from monailabel.server.demo_policy import prepared_import
 from monailabel.server.storage import Artifacts, Store
 
 
@@ -73,15 +74,16 @@ def create_demo(store: Store, artifacts: Artifacts, datasets: Datasets) -> dict[
         signal = np.asarray([0.08, 0.49, 0.84], dtype=np.float32)[reference]
         image = (signal + rng.normal(0, 0.035, x.shape)).astype(np.float32)
         split = Split.TRAIN if index < 6 else Split.VALIDATION if index < 9 else Split.POOL
-        asset = datasets.import_image(
-            project.id,
-            ImageImport(
-                name=f"synthetic-{index:02}.nii",
-                group_id=f"synthetic-case-{index:02}",
-                split=split,
-                image_base64=base64.b64encode(nifti_bytes(image, affine)).decode(),
-            ),
-        )
+        with prepared_import(project.id):
+            asset = datasets.import_image(
+                project.id,
+                ImageImport(
+                    name=f"synthetic-{index:02}.nii",
+                    group_id=f"synthetic-case-{index:02}",
+                    split=split,
+                    image_base64=base64.b64encode(nifti_bytes(image, affine)).decode(),
+                ),
+            )
         with store.transaction() as session:
             session.update(asset.model_copy(update={"fixture_key": artifacts.put_array(reference)}))
     return {"project_id": project.id, "baseline_id": teacher.id}

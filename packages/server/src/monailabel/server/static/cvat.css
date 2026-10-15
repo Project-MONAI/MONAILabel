@@ -22,8 +22,12 @@ limitations under the License.
 }
 body {
   margin: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 header {
+  flex-shrink: 0;
   height: 48px;
   display: flex;
   align-items: center;
@@ -45,7 +49,16 @@ a {
 main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  height: calc(100dvh - 48px);
+  flex: 1;
+  min-height: 0;
+}
+#demo-countdown {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 16px;
+  background: #e6f4ed;
+  color: #174b37;
+  font-variant-numeric: tabular-nums;
 }
 iframe {
   border: 0;
@@ -345,3 +358,12 @@ summary {
   padding: 6px;
   margin-right: 5px;
 }
+ #submission-complete {
+  max-width: 480px;
+  border: 1px solid #c8d3dd;
+  border-radius: 10px;
+  padding: 24px;
+  color: #203039;
+}
+#submission-complete::backdrop { background: #10252d88; }
+#completion-error { color: #a32621; }

@@ -13,6 +13,7 @@
 
 import os
 from collections.abc import Callable
+from typing import cast
 
 import numpy as np
 
@@ -35,6 +36,7 @@ from monailabel.core.ports import (
     Volume,
     VolumeSegmenter,
 )
+from monailabel.core.preparation import prepared_models, prepared_models_only, require_prepared
 from monailabel.core.video import VideoAsset
 from monailabel.providers.catalog.presets import DEFAULT_HOSTED_PRESET, HOSTED_PRESETS
 from monailabel.providers.classification import RemoteClassifier
@@ -44,14 +46,30 @@ from monailabel.providers.spatial import MODELS as SPATIAL_MODELS
 from monailabel.providers.spatial import capabilities
 from monailabel.providers.vision import VISION_PROVIDERS
 from monailabel.server.deletion import Deletion
+from monailabel.server.demo_compute import TimedSpatial, isolated, timed_compute
+from monailabel.server.demo_gpt import approved as approved_gpt
+from monailabel.server.demo_policy import require_operator, visitor
 from monailabel.server.models.anatomy import ANATOMY_MODELS, inherited
 from monailabel.server.models.anatomy import supports as supports_target
 from monailabel.server.models.anatomy import targets as anatomy_targets
+from monailabel.server.models.preparation import prepared
 from monailabel.server.recipes import Recipes
 from monailabel.server.storage import Artifacts, Store
 
 
 class Models:
+    LOCAL_PROVIDERS = frozenset(
+        {
+            "threshold",
+            "pixel-gaussian",
+            "monai-unet",
+            "nnunet-v2",
+            "vista3d",
+            "totalsegmentator-ct",
+            "totalsegmentator-mr",
+            *SPATIAL_MODELS,
+        }
+    )
     CATALOG_GROUPS = (
         "Radiology segmentation",
         "Interactive segmentation",
@@ -80,7 +98,16 @@ class Models:
             raise DomainError("Model belongs to another project.", status=403)
         if model.archived:
             raise DomainError("This model has been deleted from the active catalog.")
+        self.require_visitor_model(model)
         return self.with_capabilities(model)
+
+    def require_visitor_model(self, model: ModelRecord) -> None:
+        if approved_gpt(model):
+            return
+        if model.provider not in self.LOCAL_PROVIDERS:
+            require_operator(self.store, "Hosted annotation")
+        if visitor(self.store) or prepared_models_only():
+            require_prepared(prepared(model, self.artifacts), model.name)
 
     def with_capabilities(self, model: ModelRecord, project: Project | None = None) -> ModelRecord:
         spec = capabilities(model)
@@ -123,10 +150,13 @@ class Models:
         if asset and asset.project_id != project_id:
             raise DomainError("Selected asset belongs to another project.")
         project = self.store.get(Project, project_id)
+        local_only = visitor(self.store)
         models = [
             self.with_capabilities(model, project)
             for model in self.store.list(ModelRecord, project_id)
-            if not model.archived and (asset is None or self.compatible(model, asset))
+            if not model.archived
+            and (asset is None or self.compatible(model, asset))
+            and (not local_only or approved_gpt(model) or prepared(model, self.artifacts))
         ]
         return sorted(models, key=lambda model: self.CATALOG_GROUPS.index(model.catalog_group))
 
@@ -360,6 +390,8 @@ class Models:
 
     @staticmethod
     def spatial_provider(model: ModelRecord) -> PromptedSegmenter:
+        if timed_compute():
+            return TimedSpatial()
         if model.provider == "nninteractive":
             from monailabel.nninteractive.runtime import NNInteractiveSegmenter
 
@@ -369,6 +401,7 @@ class Models:
         return SamSegmenter()
 
     def register(self, project_id: str, request: ModelRegister) -> ModelRecord:
+        require_operator(self.store, "Model registration")
         project = self.store.get(Project, project_id)
         ids = request.label_ids
         if len(ids) != len(set(ids)) or 0 not in ids:
@@ -403,6 +436,42 @@ class Models:
         prompt: str = "",
         affine: list[list[float]] | None = None,
     ) -> Mask:
+        self.require_visitor_model(model)
+        with prepared_models(visitor(self.store)):
+            return self._predict(project, model, image, prompt, affine)
+
+    def _predict(
+        self,
+        project: Project,
+        model: ModelRecord,
+        image: Image,
+        prompt: str,
+        affine: list[list[float]] | None,
+    ) -> Mask:
+        if timed_compute():
+            if not approved_gpt(model) and model.provider not in {
+                "threshold",
+                "pixel-gaussian",
+                "monai-unet",
+                "nnunet-v2",
+                "vista3d",
+                "totalsegmentator-ct",
+                "totalsegmentator-mr",
+            }:
+                raise DomainError("Choose a prepared local or host-approved GPT model.")
+            return cast(
+                Mask,
+                isolated(
+                    "predict",
+                    self.store.path,
+                    self.artifacts.root,
+                    project,
+                    model,
+                    image,
+                    prompt,
+                    affine,
+                ),
+            )
         if self.requires_spatial(model):
             raise DomainError(
                 f"{model.name} requires viewer spatial prompts; "

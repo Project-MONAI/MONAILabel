@@ -39,6 +39,7 @@ from monailabel.core.models import (
 )
 from monailabel.core.ports import Image, Mask
 from monailabel.core.video import VideoAsset
+from monailabel.server.demo_policy import require_prepared_import, require_project_creator
 from monailabel.server.evaluation_sets import EvaluationSets, reserved
 from monailabel.server.model_splits import assign as assign_model_split
 from monailabel.server.storage import Artifacts, Store
@@ -119,6 +120,7 @@ class Datasets:
         self.store, self.artifacts = store, artifacts
 
     def create(self, request: ProjectCreate) -> Project:
+        require_project_creator(self.store)
         project = Project(**request.model_dump())
         with self.store.transaction() as session:
             session.insert(project)
@@ -140,6 +142,7 @@ class Datasets:
         return updated
 
     def import_image(self, project_id: str, request: ImageImport) -> Asset:
+        require_prepared_import(self.store, project_id)
         self.store.get(Project, project_id)
         try:
             content = base64.b64decode(request.image_base64, validate=True)
@@ -148,6 +151,7 @@ class Datasets:
         return self.import_content(project_id, request, content)
 
     def import_content(self, project_id: str, request: ImageMetadata, content: bytes) -> Asset:
+        require_prepared_import(self.store, project_id)
         self.store.get(Project, project_id)
         image, affine = decode_image(request.name, content)
         image_key = self.artifacts.put_array(image)

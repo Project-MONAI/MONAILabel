@@ -200,12 +200,12 @@ export default function Panel({ servicesManager }) {
     )
       s.undo.shift();
   };
-  const send = (spatial = false, outputScope = hintScope) =>
+  const send = (spatial = false, outputScope = hintScope, allTargets = false) =>
     run(async () => {
       voice.current?.cancel();
       const spatialUpdate = spatial === true;
       const text = spatialUpdate
-        ? "Update the selected target segmentation."
+        ? allTargets ? "Segment all available labels in this volume." : "Update the selected target segmentation."
         : prompt.trim();
       if (!text) return;
       if (!spatialUpdate) setPrompt("");
@@ -254,6 +254,7 @@ export default function Panel({ servicesManager }) {
           ? {
               context,
               scope: outputScope,
+              all_targets: allTargets,
             }
           : {
               message: text,
@@ -673,6 +674,16 @@ export default function Panel({ servicesManager }) {
               <option key={name} value={name} />
             ))}
           </datalist>
+          {selectedModel.provider?.startsWith("totalsegmentator-") && (
+            <button
+              aria-label="Segment all available labels"
+              disabled={busy || !ready || !(permission || canReview)}
+              title="Segment every supported structure in the full volume; no single target is needed."
+              onClick={() => send(true, "full", true)}
+            >
+              Segment all {selectedModel.supported_targets?.length || "available"} labels
+            </button>
+          )}
           <div
             role="toolbar"
             aria-label={"Spatial prompts for " + interaction.target}

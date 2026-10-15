@@ -64,7 +64,7 @@ class BrowserDesktop:
             )
         return result.stdout.strip()
 
-    def prepare(self, progress: Callable[[str], None]) -> str:
+    def prepare(self, progress: Callable[[str], None], *, download: bool = True) -> str:
         if (
             platform.system() != "Linux"
             or platform.machine().casefold() not in {"x86_64", "aarch64", "arm64"}
@@ -78,6 +78,14 @@ class BrowserDesktop:
             b"".join(p.read_bytes() for p in sorted(context.iterdir()) if p.is_file())
         )
         image = "monailabel-desktop:" + digest.hexdigest()[:20]
+        if not download:
+            if not self.run("image", "ls", "-q", image) or not (self.dist / "vnc.html").is_file():
+                raise DomainError(
+                    "This browser desktop is not prepared. Ask the demo host to prepare it.",
+                    code="not_prepared",
+                    status=503,
+                )
+            return image
         cache = self.viewers.root / "desktop"
         cache.mkdir(parents=True, exist_ok=True)
         with FileLock(str(cache / "setup.lock"), timeout=900):
@@ -100,11 +108,19 @@ class BrowserDesktop:
                     (Path(temporary) / "unpacked" / f"noVNC-{NOVNC_VERSION}").rename(self.dist)
         return image
 
+    def preflight(self, viewer: str) -> None:
+        self.prepare(lambda _: None, download=False)
+        self.viewers.ensure(viewer, download=False, progress=lambda _: None)
+
     def name(self, identifier: str) -> str:
         return f"monailabel-desktop-{self.namespace}-{identifier}"
 
     def socket(self, identifier: str) -> Path:
         return self.sockets / identifier / "rfb.sock"
+
+    def gateway_socket(self, identifier: str) -> Path:
+        # This directory must never also be reachable through a writable mount.
+        return self.sockets / (identifier + "-api") / "api.sock"
 
     def running(self, identifier: str) -> bool:
         return bool(self.run("ps", "-q", "--filter", f"name=^/{self.name(identifier)}$"))
@@ -115,9 +131,11 @@ class BrowserDesktop:
         viewer: str,
         configuration: dict[str, object],
         progress: Callable[[str], None],
+        *,
+        download: bool = True,
     ) -> None:
-        image = self.prepare(progress)
-        installation = self.viewers.ensure(viewer, progress=progress)
+        image = self.prepare(progress, download=download)
+        installation = self.viewers.ensure(viewer, download=download, progress=progress)
         executable = Path(installation.executable).resolve()
         installation_root = executable.parent if viewer == "slicer" else executable.parent.parent
         # Docker on the host cannot bind-mount files from the server container's
@@ -156,11 +174,12 @@ class BrowserDesktop:
         self.run(
             "run",
             "-d",
+            "--pull=never",
             "--name",
             self.name(identifier),
             "--init",
             "--network",
-            "host",
+            "none",
             "--user",
             f"{os.getuid()}:{os.getgid()}",
             "--cap-drop",
@@ -186,6 +205,8 @@ class BrowserDesktop:
             f"{directory}:/session:rw",
             "--volume",
             f"{self.socket(identifier).parent}:/connection:rw",
+            "--volume",
+            f"{self.gateway_socket(identifier).parent}:/gateway:ro",
             "--volume",
             f"{installation_root}:/viewer:ro",
             "--volume",

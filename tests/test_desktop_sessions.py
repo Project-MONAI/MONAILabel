@@ -37,15 +37,19 @@ def runtime(http, tmp_path, monkeypatch):
     (runtime.dist / "vnc.html").write_text('<html><script type="module">upstream()</script></html>')
     running = set()
     calls = []
+    downloads = []
 
-    def start(identifier, viewer, configuration, progress):
+    def start(identifier, viewer, configuration, progress, *, download=True):
         calls.append((identifier, viewer, configuration))
+        downloads.append(download)
         running.add(identifier)
 
     monkeypatch.setattr(runtime, "start", start)
+    monkeypatch.setattr(runtime, "preflight", lambda viewer: None)
     monkeypatch.setattr(runtime, "running", lambda identifier: identifier in running)
     monkeypatch.setattr(runtime, "stop", lambda identifier: running.discard(identifier))
     runtime.calls = calls
+    runtime.downloads = downloads
     return runtime
 
 
@@ -53,6 +57,22 @@ def launch(client, asset, **kwargs):
     query = "&".join(f"{key}={value}" for key, value in kwargs.items())
     result = client.wait(client.post(f"/api/assets/{asset['id']}/viewer?{query}")["id"])
     return result["url"].rsplit("/", 1)[-1]
+
+
+def test_invited_desktop_disables_provisioning_without_lifecycle_flag(
+    client, http, seeded, runtime, monkeypatch
+):
+    monkeypatch.setenv("MONAILABEL_DEMO_LIFECYCLE", "0")
+    service = http.app.state.services
+    asset = seeded[1][0]
+    user = service.auth.create_user("invited-desktop", "test-password-1234", demo_minutes=60)
+    service.auth.add_member(asset["project_id"], user.id, [Role.MANAGER])
+    http.post(
+        "/api/auth/login", json={"username": "invited-desktop", "password": "test-password-1234"}
+    ).raise_for_status()
+    identifier = launch(client, asset)
+    assert runtime.downloads == [False]
+    assert service.store.get(DesktopSession, identifier).user_id == user.id
 
 
 @pytest.mark.parametrize(
@@ -114,17 +134,25 @@ def test_desktop_bridge_uses_actual_interface_and_preserves_tls_override(
     assert desktop_backend_url(request) == "https://bridge.example"
 
 
-def test_remote_launch_reuses_only_same_account_asset_and_mode(client, http, seeded, runtime):
+def test_remote_launch_reuses_only_same_account_asset_and_mode(
+    client, http, seeded, runtime, tmp_path
+):
+    from monailabel.server.tls import ensure_local_certificate
+
     _, assets = seeded
     asset = assets[0]
-    http.app.state.local_ca_certificate = "public-test-certificate"
+    certificate = ensure_local_certificate(tmp_path / "certificates", "127.0.0.1")
+    public_ca = certificate.authority.read_text()
+    http.app.state.local_ca_certificate = public_ca
     identifier = launch(client, asset)
     assert launch(client, asset) == identifier
     assert len(runtime.calls) == 1
     configuration = runtime.calls[0][2]
     service = http.app.state.services
     assert configuration["shared_filesystem"] is False
-    assert configuration["ca_certificate"] == "public-test-certificate"
+    assert configuration["ca_certificate"] is None
+    assert configuration["url"] == "http://127.0.0.1:8765"
+    assert service.store.get(DesktopSession, identifier).ca_certificate == public_ca
     assert configuration["asset_id"] == asset["id"]
     assert service.auth.authenticate(configuration["token"]).username == "owner"
     response = http.get(f"/api/desktops/{identifier}")
@@ -291,7 +319,7 @@ def test_tab_cleanup_preserves_connected_or_interrupted_drafts(
 
 
 def test_failed_start_revokes_token(client, http, seeded, runtime, monkeypatch):
-    def failed(*args):
+    def failed(*args, **kwargs):
         raise DomainError("The runtime failed.")
 
     monkeypatch.setattr(runtime, "start", failed)
@@ -314,10 +342,10 @@ def test_slow_launch_preserves_existing_connections_and_pending_session(
     entered, release = threading.Event(), threading.Event()
     start = runtime.start
 
-    def slow_start(*args):
+    def slow_start(*args, **kwargs):
         entered.set()
         assert release.wait(5)
-        start(*args)
+        start(*args, **kwargs)
 
     monkeypatch.setattr(runtime, "start", slow_start)
     job = client.post(f"/api/assets/{seeded[1][1]['id']}/viewer")
@@ -346,7 +374,7 @@ def test_launch_interrupted_during_setup_leaves_no_runtime_or_credential(
     start, stop = runtime.start, runtime.stop
     stopped = threading.Event()
 
-    def interrupted_start(identifier, viewer, configuration, progress):
+    def interrupted_start(identifier, viewer, configuration, progress, **kwargs):
         user = service.auth.authenticate(configuration["token"])
         if action == "end":
             service.desktops.end(identifier, user)
@@ -356,7 +384,7 @@ def test_launch_interrupted_during_setup_leaves_no_runtime_or_credential(
         else:
             with service.store.transaction() as session:
                 session.update(user.model_copy(update={"active": False}))
-        start(identifier, viewer, configuration, progress)
+        start(identifier, viewer, configuration, progress, **kwargs)
 
     def tracked_stop(identifier):
         stop(identifier)

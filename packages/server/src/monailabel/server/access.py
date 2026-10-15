@@ -14,6 +14,7 @@
 from typing import Annotated, cast
 
 from fastapi import Depends, Request
+from fastapi.concurrency import run_in_threadpool
 
 from monailabel.core.errors import DomainError
 from monailabel.core.models import (
@@ -27,8 +28,11 @@ from monailabel.core.models import (
     RegionProposal,
     User,
 )
+from monailabel.core.preparation import restricted
 from monailabel.core.review_units import ReviewUnit
 from monailabel.core.video import VideoAsset
+from monailabel.server.demo_context import actor
+from monailabel.server.demo_policy import visitor
 from monailabel.server.service import Services
 
 
@@ -48,8 +52,13 @@ def request_token(request: Request) -> str | None:
     )
 
 
-def principal(request: Request, service: Service) -> User:
-    return service.auth.authenticate(request_token(request))
+async def principal(request: Request, service: Service) -> User:
+    user = await run_in_threadpool(service.auth.authenticate, request_token(request))
+    service.request_throttle.check(user.id, read=request.method in {"GET", "HEAD"})
+    actor.set(user.id)
+    restricted.set(visitor(service.store, user.id))
+    request.state.audit_user_id = user.id
+    return user
 
 
 Principal = Annotated[User, Depends(principal)]
@@ -94,7 +103,9 @@ def authorize(request: Request, service: Service, user: Principal) -> None:
     action = "read"
     if request.method not in {"GET", "HEAD"}:
         endpoint = request.url.path.rsplit("/", 1)[-1]
-        if endpoint in {
+        if endpoint == "learners" and request.method == "POST":
+            action = "create_setup"
+        elif endpoint in {
             "review",
             "review-mask",
             "restore",

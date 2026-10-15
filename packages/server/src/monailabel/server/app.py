@@ -9,10 +9,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from importlib.resources import files
 from pathlib import Path
+from time import monotonic
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
@@ -30,12 +32,15 @@ from monailabel.providers.chat.config import CoordinatorConfig
 from monailabel.server.accounts_api import router as accounts_router
 from monailabel.server.api import router
 from monailabel.server.console_api import router as console_router
+from monailabel.server.demo_access import DemoBusy
+from monailabel.server.demo_api import router as demo_router
 from monailabel.server.desktops.api import router as desktop_router
 from monailabel.server.dicom.api import router as dicom_router
 from monailabel.server.evaluation_api import router as evaluation_router
 from monailabel.server.models.api import router as model_router
 from monailabel.server.network import allowed_hosts
 from monailabel.server.reference_api import router as reference_router
+from monailabel.server.request_limits import RequestLimits
 from monailabel.server.review_units.api import router as review_unit_router
 from monailabel.server.service import Services
 from monailabel.server.video.api import router as video_router
@@ -70,6 +75,7 @@ def create_app(
 
     @app.middleware("http")
     async def browser_boundary(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        started = monotonic()
         origin = request.headers.get("origin")
         if request.method not in {"GET", "HEAD", "OPTIONS"} and origin:
             parsed = urlparse(origin)
@@ -77,7 +83,30 @@ def create_app(
                 return JSONResponse(
                     status_code=403, content={"detail": "Cross-origin writes are disabled."}
                 )
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            app.state.services.audit.record(
+                "http.error",
+                getattr(request.state, "audit_user_id", None),
+                method=request.method,
+                status=500,
+                route=getattr(request.scope.get("route"), "path", "unmatched"),
+            )
+            raise
+        if (
+            request.url.path.startswith("/api/")
+            and not request.url.path.startswith("/api/demo-access/")
+            and (request.method != "GET" or response.status_code >= 400)
+        ):
+            app.state.services.audit.record(
+                "http.result",
+                getattr(request.state, "audit_user_id", None),
+                method=request.method,
+                status=response.status_code,
+                route=getattr(request.scope.get("route"), "path", "unmatched"),
+                duration_ms=round((monotonic() - started) * 1000),
+            )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Content-Security-Policy"] = (
@@ -120,7 +149,11 @@ def create_app(
 
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:
-        return JSONResponse(status_code=exc.status, content={"code": exc.code, "detail": str(exc)})
+        return JSONResponse(
+            status_code=exc.status,
+            content={"code": exc.code, "detail": str(exc)},
+            headers={"Retry-After": str(exc.retry_after)} if isinstance(exc, DemoBusy) else None,
+        )
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -148,6 +181,7 @@ def create_app(
         return Response(source.read_text(), media_type="text/javascript")
 
     app.include_router(accounts_router)
+    app.include_router(demo_router)
     app.include_router(router)
     app.include_router(console_router)
     app.include_router(dicom_router)
@@ -160,4 +194,6 @@ def create_app(
     app.include_router(cvat_router)
     app.include_router(desktop_router)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+    if os.environ.get("MONAILABEL_DEMO_HTTP_LIMITS") == "1":
+        app.add_middleware(RequestLimits)
     return app

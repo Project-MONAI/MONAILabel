@@ -12,6 +12,13 @@ limitations under the License.
 */
 
 import { watchDesktop } from "./desktop-lifecycle.js";
+import { demoSession } from "./demo-session.js";
+
+const visitorSession = demoSession({
+  banner: document.querySelector("#demo-countdown"),
+  surface: "desktop",
+  onExpired: () => { location.replace("/"); },
+});
 
 const identifier = location.pathname.split("/")[2];
 const status = document.querySelector("#status");
@@ -68,6 +75,7 @@ function fitDesktop(frame, viewer) {
 }
 
 async function start() {
+  await visitorSession.start();
   if (identifier) {
     const info = await request(`/${identifier}`);
     document.title = `${names[info.viewer]} — MONAI Label`;

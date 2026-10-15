@@ -170,12 +170,12 @@ def test_totalsegmentator_models_and_training_setup(tmp_path):
                 page.reload()
                 page.locator("#project-select").select_option(project["id"])
                 page.locator('#workspace nav [data-page="models"]').click()
-                for group, count in [("radiology", 3), ("interactive", 2), ("vision", 3)]:
+                for group, count in [("radiology", 3), ("interactive", 3), ("vision", 3)]:
                     expect(
                         page.locator(f'.model-group[aria-labelledby="model-group-{group}"] article')
                     ).to_have_count(count)
                 cards = page.locator("article[data-model-id]")
-                expect(cards.locator(".model-symbol svg")).to_have_count(7)
+                expect(cards.locator(".model-symbol svg")).to_have_count(8)
                 logo = cards.locator(".model-symbol img")
                 expect(logo).to_have_count(1)
                 assert logo.evaluate(

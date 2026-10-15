@@ -15,6 +15,7 @@ import gzip
 import io
 import json
 import math
+import os
 from pathlib import Path, PurePosixPath
 
 import nibabel as nib
@@ -29,6 +30,7 @@ from monailabel.core.reference_imports import EvaluationImportRequest
 from monailabel.server.annotation import Annotations
 from monailabel.server.data import MAX_NIFTI_BYTES, Datasets, decode_image, nifti_bytes
 from monailabel.server.dataset_downloads import Archive, Downloads, Source, sources
+from monailabel.server.demo_policy import prepared_import, visitor
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.labels import imported_labels
 from monailabel.server.raster_datasets import (
@@ -62,6 +64,7 @@ class DatasetTemplates:
         self.videos = videos
 
     def catalog(self) -> list[DatasetTemplate]:
+        cache_only = os.environ.get("MONAILABEL_DEMO_CACHE_ONLY") == "1" or visitor(self.store)
         return [
             DatasetTemplate.model_validate(
                 source.model_dump(include=set(DatasetTemplate.model_fields))
@@ -73,13 +76,44 @@ class DatasetTemplates:
                 }
             )
             for source in sources()
+            if not cache_only
+            or (
+                source.importable
+                and self.downloads._cached_here(source)
+                and (
+                    source.mask_download is None
+                    or self.downloads._cached_here(source.mask_download)
+                )
+            )
         ]
 
     def start(self, project_id: str, request: DatasetTemplateImport, user_id: str) -> Job:
         self.store.get(Project, project_id)
+        is_visitor = visitor(self.store, user_id)
+        if is_visitor and (request.limit is None or request.limit > 5):
+            raise DomainError(
+                "Choose at most five prepared samples per demo import, not the whole dataset.",
+                code="demo_import_limit",
+                status=413,
+            )
         source = next((s for s in sources() if s.id == request.template_id), None)
         if source is None or not source.importable:
             raise DomainError("Choose an importable dataset template.")
+        if (is_visitor or os.environ.get("MONAILABEL_DEMO_CACHE_ONLY") == "1") and not (
+            self.downloads._cached_here(source)
+            and (source.mask_download is None or self.downloads._cached_here(source.mask_download))
+        ):
+            choices = ", ".join(item.name for item in self.catalog())
+            raise DomainError(
+                "This dataset is not prepared for the demo. "
+                + (
+                    f"Available demo datasets: {choices}."
+                    if choices
+                    else "The host has not prepared any datasets yet."
+                ),
+                code="demo_cache_miss",
+                status=409,
+            )
         if source.format == "video":
             if source.video is None:
                 raise DomainError("This video template is missing its clip metadata.")
@@ -129,7 +163,7 @@ class DatasetTemplates:
         if source.format == "image" and request.offset:
             raise DomainError("This sample contains one image; start at case 1.")
 
-        def work(context: JobContext) -> Outcome:
+        def import_samples(context: JobContext) -> Outcome:
             path = self.downloads.fetch(source, context)
             if source.format == "video":
                 assert source.video is not None
@@ -165,6 +199,10 @@ class DatasetTemplates:
                     }
                 )
             return self.import_archive(project_id, request, source, path, user_id, context)
+
+        def work(context: JobContext) -> Outcome:
+            with prepared_import(project_id):
+                return import_samples(context)
 
         return self.jobs.submit(
             "dataset_import",

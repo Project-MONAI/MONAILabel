@@ -23,6 +23,13 @@ body {
   display: flex;
   flex-direction: column;
 }
+#demo-countdown {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  background: #263d38;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
 header {
   display: flex;
   gap: 1rem;

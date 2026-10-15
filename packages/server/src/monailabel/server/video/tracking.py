@@ -36,6 +36,7 @@ from monailabel.providers.sam import MODELS
 from monailabel.providers.tool_detection import RemoteToolDetector
 from monailabel.providers.video_geometry import box_from_mask, mask_png, polygon_from_mask
 from monailabel.providers.vision import VISION_PROVIDERS
+from monailabel.server.demo_compute import isolated, timed_compute
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.models import Models
 from monailabel.server.storage import Artifacts, Store
@@ -88,6 +89,8 @@ class VideoTracking:
         return asset
 
     def frame(self, asset: VideoAsset, frame: int) -> np.ndarray:
+        if timed_compute():
+            return isolated("frame", self.artifacts.root, asset, frame)  # type: ignore[no-any-return]
         try:
             decoded = subprocess.run(
                 [
@@ -144,6 +147,8 @@ class VideoTracking:
         def run(context: JobContext) -> Outcome:
             self.validate(video_id, request)
             self.models.get(asset.project_id, model.id)
+            if context.timed() and model.provider in VISION_PROVIDERS:
+                raise DomainError("Hosted annotation is unavailable in this timed local demo.")
             image = self.frame(asset, request.frame).astype(np.float32) / np.float32(255)
             prediction = self.models.spatial_provider(model).predict_prompted(
                 image,
@@ -327,20 +332,56 @@ class VideoTracking:
                 0.01,
                 "Tracking the selected tool with SAM 2.1. The first run downloads model weights.",
             )
-            if self.provider is None:
-                from monailabel.sam.video import SamVideoTracker
+            if timed_compute():
+                result = isolated(
+                    "track",
+                    self.artifacts.path(asset.source_key),
+                    asset.width,
+                    asset.height,
+                    request.seed,
+                    request.frame_count,
+                    request.output,
+                    seed_mask,
+                )
+            else:
+                result = self.track_locally(asset, request, context, seed_mask)
+        return self.proposal(
+            asset, request, context, detection, seed_warnings, annotation_only, result
+        )
 
-                self.provider = SamVideoTracker()
-            result = self.provider.track(
-                self.artifacts.path(asset.source_key),
-                asset.width,
-                asset.height,
-                request.seed,
-                request.frame_count,
-                context.progress,
-                request.output,
-                seed_mask,
-            )
+    def track_locally(
+        self,
+        asset: VideoAsset,
+        request: VideoTrackingRequest,
+        context: JobContext,
+        seed_mask: bytes | None,
+    ) -> VideoTrackingResult:
+        if self.provider is None:
+            from monailabel.sam.video import SamVideoTracker
+
+            self.provider = SamVideoTracker()
+        return self.provider.track(
+            self.artifacts.path(asset.source_key),
+            asset.width,
+            asset.height,
+            request.seed,
+            request.frame_count,
+            context.progress,
+            request.output,
+            seed_mask,
+        )
+
+    def proposal(
+        self,
+        asset: VideoAsset,
+        request: VideoTrackingRequest,
+        context: JobContext,
+        detection: VideoDetectionProvenance | None,
+        seed_warnings: list[str] | None,
+        annotation_only: bool,
+        result: VideoTrackingResult,
+    ) -> Outcome:
+        context.check_cancelled()
         keyframes = result.keyframes
         self.validate(asset.id, request)
         if [k.frame for k in keyframes] != list(

@@ -115,11 +115,11 @@ class DesktopProvisioner:
                 f"{platform.machine()}. Set MONAILABEL_{viewer.upper()}_EXECUTABLE "
                 "to an existing installation."
             )
-        self.root.mkdir(parents=True, exist_ok=True)
         destination = self.root / spec.name / f"{spec.version}-{spec.system}-{spec.machine}"
-        with FileLock(str(self.root / f"{spec.name}.lock"), timeout=1800):
+
+        def cached() -> Installation | None:
             manifest = destination / "installation.json"
-            if manifest.exists():
+            try:
                 metadata = json.loads(manifest.read_text())
                 path = (destination / metadata["executable"]).resolve()
                 if path.is_relative_to(destination.resolve()) and executable_file(
@@ -127,10 +127,22 @@ class DesktopProvisioner:
                 ):
                     progress(f"Reusing cached {viewer}: {path}")
                     return Installation(viewer, str(path), "cache", spec.version)
-            if not download:
-                raise DomainError(
-                    f"{viewer} is not installed or cached. Enable download to install it."
-                )
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+            return None
+
+        if not download:
+            if installation := cached():
+                return installation
+            raise DomainError(
+                f"{viewer} is not installed or cached. Ask the demo host to prepare it.",
+                code="not_prepared",
+                status=503,
+            )
+        self.root.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(self.root / f"{spec.name}.lock"), timeout=1800):
+            if installation := cached():
+                return installation
             if spec.system != platform.system():
                 raise DomainError("The installation recipe does not match this operating system.")
             progress(f"Downloading verified {viewer} {spec.version} to {destination} ...")

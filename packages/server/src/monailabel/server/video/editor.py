@@ -30,6 +30,8 @@ from monailabel.core.video import (
     VideoAsset,
     VideoEditorRequest,
 )
+from monailabel.server.demo_context import actor
+from monailabel.server.demo_policy import visitor
 from monailabel.server.jobs import JobContext, Jobs, Outcome
 from monailabel.server.secrets import EncryptedCredential, Secrets
 from monailabel.server.storage import Store
@@ -65,6 +67,13 @@ class VideoEditors:
             self.client.close()
 
     def configured(self, context: JobContext | None = None) -> CvatClient:
+        leased = visitor(self.store)
+        if leased and not self.managed:
+            raise DomainError(
+                "Demo visitors require managed CVAT with revocable access.",
+                code="demo_restricted",
+                status=403,
+            )
         if self.managed and not self.client:
             with self.setup_lock:
                 if not self.client:
@@ -74,6 +83,12 @@ class VideoEditors:
                         None,
                     )
                     if stored is None:
+                        if leased:
+                            raise DomainError(
+                                "CVAT is not prepared. Ask the demo host to prepare it.",
+                                code="not_prepared",
+                                status=503,
+                            )
                         stored = EncryptedCredential(
                             id=identifier,
                             ciphertext=self.credentials.cipher.encrypt(
@@ -88,6 +103,7 @@ class VideoEditors:
                         username,
                         password,
                         lambda message: context.progress(0.02, message) if context else None,
+                        download=not leased,
                     )
                     try:
                         with httpx.Client(timeout=30) as http:
@@ -124,6 +140,22 @@ class VideoEditors:
             ) from exc
 
     def start(self, video_id: str, request: VideoEditorRequest) -> Job:
+        if visitor(self.store):
+            if not self.managed:
+                raise DomainError(
+                    "Demo visitors require managed CVAT with revocable access.",
+                    code="demo_restricted",
+                    status=403,
+                )
+            self.manager.prepared()
+            if not self.client and not any(
+                r.id == "managed-cvat-service" for r in self.store.list(EncryptedCredential)
+            ):
+                raise DomainError(
+                    "CVAT is not prepared. Ask the demo host to prepare it.",
+                    code="not_prepared",
+                    status=503,
+                )
         if not self.managed:
             self.configured()
         asset = self.store.get(VideoAsset, video_id)
@@ -163,6 +195,7 @@ class VideoEditors:
                 project.labels,
             )
             editor = VideoEditor(
+                user_id=actor.get(),
                 project_id=asset.project_id,
                 asset_id=asset.id,
                 base_revision=asset.revision,
@@ -175,6 +208,15 @@ class VideoEditors:
             request_id = client.upload(
                 task_id, self.videos.artifacts.path(asset.source_key), asset.name
             )
+            # Cleanup metadata must survive a deadline crossed during upload.
+            if context.timed():
+                from monailabel.server.demo_context import acting_as
+
+                with acting_as(None), self.store.transaction() as session:
+                    current = session.get(VideoEditor, editor.id)
+                    session.update(
+                        current.model_copy(update={"preparation_request_id": request_id})
+                    )
 
             def pause() -> None:
                 context.progress(0.4, "CVAT is decoding the original video frames.")
@@ -200,6 +242,7 @@ class VideoEditors:
                     "job_id": client.job_id(task_id),
                     "label_map": labels,
                     "track_ids": identities,
+                    "preparation_request_id": None,
                 }
             )
             with self.store.transaction() as session:

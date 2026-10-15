@@ -13,7 +13,6 @@
 
 import hashlib
 import os
-from functools import cache
 from pathlib import Path
 
 import httpx
@@ -21,19 +20,34 @@ from filelock import FileLock
 from platformdirs import user_cache_path
 
 from monailabel.core.errors import DomainError
+from monailabel.core.preparation import prepared_models_only, require_prepared
 from monailabel.providers.sam import MODELS
 
 
-@cache
-def weights(provider: str) -> Path:
+def checkpoint_path(provider: str) -> Path:
     spec = MODELS[provider]
     root = (
         Path(os.environ.get("MONAILABEL_MODELS_DIR", str(user_cache_path("monailabel") / "models")))
         / provider
         / spec.revision
     )
+    return root / spec.filename
+
+
+def prepared(provider: str) -> bool:
+    path = checkpoint_path(provider)
+    return path.is_file() and path.stat().st_size == MODELS[provider].size
+
+
+def weights(provider: str) -> Path:
+    spec = MODELS[provider]
+    path = checkpoint_path(provider)
+    if prepared_models_only():
+        require_prepared(prepared(provider), spec.name + " weights")
+        verify(path, spec.size, spec.checksum)
+        return path
+    root = path.parent
     root.mkdir(parents=True, exist_ok=True)
-    path = root / spec.filename
     with FileLock(str(root / "download.lock"), timeout=1800):
         if not path.exists():
             temporary = root / "weights.part"

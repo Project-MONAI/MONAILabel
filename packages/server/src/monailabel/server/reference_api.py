@@ -25,6 +25,7 @@ from monailabel.core.reference_imports import (
 )
 from monailabel.server.access import Principal, Service, authorize
 from monailabel.server.data import MAX_FILE_BYTES
+from monailabel.server.demo_policy import require_operator
 
 router = APIRouter(prefix="/api/projects/{project_id}", dependencies=[Depends(authorize)])
 
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/api/projects/{project_id}", dependencies=[Depends(au
 async def import_reference(
     project_id: str, request: Request, service: Service, user: Principal
 ) -> EvaluationImportResult:
+    require_operator(service.store, "Dataset upload")
     size = 0
 
     async def receive() -> Message:

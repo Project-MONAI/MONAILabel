@@ -20,8 +20,14 @@ import { trainingSettingLabel } from "./training-settings.js";
 import { escapeHTML, badge, button, targetNames } from "./ui.js";
 import { targetSummary } from "./model-targets.js";
 import { reviewItems } from "./review-items.js";
+import { recordedTrainingCardsHTML } from "./demo-training.js";
 
 export function modelLibrary(state, canManage, latestDecision) {
+  const canCreateSetup = () => canManage() || (
+    state.visitor?.restricted_roles &&
+    state.project?.id === state.visitor.initial_project_id &&
+    state.roles.includes("annotator")
+  );
   const tab = state.modelsTab;
   const activeSets = state.evaluationSets.filter((s) => !s.archived);
   const currentVersion = state.evaluationVersions.find(
@@ -139,7 +145,7 @@ export function modelLibrary(state, canManage, latestDecision) {
       ["vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(
         m.provider,
       ) &&
-      canManage();
+      canCreateSetup();
     return `<article class="card" data-model-id="${escapeHTML(m.id)}">
       <div class="model-top"><span class="model-symbol${logo ? " model-symbol-image" : ""}" aria-hidden="true">${logo ? `<img src="/static/model-icons/${logo}" alt="" width="30" height="30">` : icon(symbol)}</span><h3>${escapeHTML(m.name)}</h3>${isDefault ? badge("Default") : ""}</div>
       <p class="model-provenance">${escapeHTML(origin(m))}</p>
@@ -223,7 +229,7 @@ export function modelLibrary(state, canManage, latestDecision) {
     ${tab === "annotation" && !state.models.length ? '<div class="empty">No annotation models connected. Add a hosted model or an existing segmentation service to begin.</div>' : ""}
     ${
       tab === "training"
-        ? `<div class="section-heading"><div><h2>Training setups</h2><p class="muted">${accepted("train") + accepted("pool")} source files with accepted coverage · each model has its own split</p></div>${canManage() ? button("Create model", "model", "learner") : ""}</div>
+        ? `${state.trainingPreview ? recordedTrainingCardsHTML() : ""}<div class="section-heading"><div><h2>Training setups</h2>${state.visitor ? '<p class="muted">Create a setup to explore the workflow. No new weights are trained; live training is disabled for demo visitors.</p>' : ""}<p class="muted">${accepted("train") + accepted("pool")} source files with accepted coverage · each model has its own split</p></div>${canCreateSetup() ? button("Create model", "model", "learner") : ""}</div>
     <div class="model-grid">${
       state.learners
         .map((l) => {
@@ -241,7 +247,7 @@ export function modelLibrary(state, canManage, latestDecision) {
               j.request.learner_id === l.id &&
               ["queued", "running"].includes(j.status),
           );
-          return `<article class="card" data-learner-id="${l.id}"><div class="model-top"><h3>${escapeHTML(l.name)}</h3>${badge(running ? "training" : versions.length ? `${versions.length} trained versions` : "Not trained")}</div><p>${escapeHTML(state.recipes.find((r) => r.id === l.recipe)?.name || l.recipe)} · ${escapeHTML(names(l.label_ids) || (l.inherit_targets ? "Choose organs when training" : "No targets"))}</p><p class="muted">${["monai-unet", "nnunet-v2", "vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(l.recipe) ? (l.recipe === "monai-unet" && l.config.spatial_dims === 2 ? "Local neural network · 2D images" : "Local neural network · scalar volumes") : "Workflow demonstration baseline"}</p><div class="toolbar">${canManage() && !running ? button("Start training", "start-training", l.id, "primary") : ""}${state.modelSplits.some((s) => s.learner_id === l.id) ? button("Evaluation set", "model-split", l.id) : ""}${completed ? button("Results", "job-details", completed.id) : ""}${canManage() && !running ? button("Rename", "rename-learner", l.id) + button("Delete", "delete-learner", l.id) : ""}</div><details><summary>Recommended training settings</summary><p class="muted">Override these when you start a training run.</p><dl class="details-list">${Object.entries(
+          return `<article class="card" data-learner-id="${l.id}"><div class="model-top"><h3>${escapeHTML(l.name)}</h3>${badge(running ? "training" : versions.length ? `${versions.length} trained versions` : "Not trained")}</div><p>${escapeHTML(state.recipes.find((r) => r.id === l.recipe)?.name || l.recipe)} · ${escapeHTML(names(l.label_ids) || (l.inherit_targets ? "Choose organs when training" : "No targets"))}</p><p class="muted">${["monai-unet", "nnunet-v2", "vista3d", "totalsegmentator-ct", "totalsegmentator-mr"].includes(l.recipe) ? (l.recipe === "monai-unet" && l.config.spatial_dims === 2 ? "Local neural network · 2D images" : "Local neural network · scalar volumes") : "Workflow demonstration baseline"}</p><div class="toolbar">${canManage() && !running ? button(state.trainingPreview ? "Preview training" : "Start training", "start-training", l.id, "primary") : ""}${state.modelSplits.some((s) => s.learner_id === l.id) ? button("Evaluation set", "model-split", l.id) : ""}${completed ? button("Results", "job-details", completed.id) : ""}${canManage() && !running ? button("Rename", "rename-learner", l.id) + button("Delete", "delete-learner", l.id) : ""}</div><details><summary>Recommended training settings</summary><p class="muted">Override these when you start a training run.</p><dl class="details-list">${Object.entries(
             {
               ...state.recipes.find((r) => r.id === l.recipe)?.default_config,
               ...l.config,

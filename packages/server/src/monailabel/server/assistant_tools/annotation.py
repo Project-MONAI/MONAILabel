@@ -36,9 +36,19 @@ from .spatial import prompt_for
 
 
 class AnnotationArgs(Contract):
+    replace_existing: bool = Field(
+        default=False,
+        description="For an explicit 'delete current segmentation and segment' request only. "
+        "Prepare first; keep existing work if inference fails. Requires all_targets.",
+    )
+    all_targets: bool = Field(
+        default=False,
+        description="For TotalSegmentator, segment every supported structure in the full volume. "
+        "Use for 'all labels/organs'; omit targets. Never enumerate the catalog or name 'all'.",
+    )
     targets: list[str] = Field(
         default_factory=list,
-        max_length=31,
+        max_length=255,
         description=(
             "Anatomical/segmentation names; empty uses current labels. "
             "Correct obvious typos, e.g. nuclie to nuclei."
@@ -60,6 +70,14 @@ class AnnotationArgs(Contract):
         le=2048,
         description="Only for the full 2D image; never tile a selected region.",
     )
+
+    @model_validator(mode="after")
+    def target_selection(self) -> "AnnotationArgs":
+        if self.replace_existing and not self.all_targets:
+            raise ValueError("Whole segmentation replacement requires all_targets=true.")
+        if self.all_targets and (self.targets or self.scope not in {"auto", "full"}):
+            raise ValueError("All structures requires the full volume without a target subset.")
+        return self
 
 
 class BatchAnnotationArgs(Contract):
@@ -110,7 +128,7 @@ class RemoveRegionArgs(Contract):
 class ClearArgs(Contract):
     targets: list[str] = Field(
         default_factory=list,
-        max_length=31,
+        max_length=255,
         description="Exact foreground label names. For all annotations, omit targets and set "
         "all_targets=true; never use 'all' as a label.",
     )
@@ -121,7 +139,7 @@ class ClearArgs(Contract):
 
 
 class ColorArgs(Contract):
-    targets: list[str] = Field(min_length=1, max_length=31)
+    targets: list[str] = Field(min_length=1, max_length=255)
     color: Literal["anatomical"] | Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6}$")] = Field(
         default="anatomical",
         description=(
@@ -153,7 +171,9 @@ def register(registry: ToolRegistry) -> None:
             "Segment structures in the current sample with an annotation "
             "model. Full means all slices/whole image. Uses exact viewer "
             "crop for selected_region, no tiling. Current_slice needs a "
-            "viewer slice."
+            "viewer slice. For TotalSegmentator all labels, use all_targets=true. "
+            "For 'clear/remove/delete and segment', use replace_existing=true in this SAME call; "
+            "do not call clear_segments first."
         ),
         AnnotationArgs,
         lambda a: annotate(ctx, a),
@@ -244,9 +264,24 @@ def annotate(ctx: ToolContext, args: AnnotationArgs) -> AssistantReply:
         for label in project.labels
         if label.id and (not context.label_ids or label.id in context.label_ids)
     ]
-    model_id = ctx.model_id(args.model_id, args.model_name, targets=targets)
+    model_id = ctx.model_id(
+        args.model_id, args.model_name, targets=None if args.all_targets else targets
+    )
+    if args.all_targets:
+        if not model_id:
+            raise DomainError("Select TotalSegmentator CT or MRI to annotate all structures.")
+        model = service.models.get(project.id, model_id)
+        if (
+            model.provider not in {"totalsegmentator-ct", "totalsegmentator-mr"}
+            or not model.supported_targets
+            or asset.kind != "volume3d"
+        ):
+            raise DomainError("All structures requires a TotalSegmentator model and a volume.")
+        targets = model.supported_targets
     scope = args.scope
-    if scope == "auto":
+    if args.all_targets:
+        scope = "full"
+    elif scope == "auto":
         scope = (
             "selected_region"
             if context.image_region
@@ -265,8 +300,8 @@ def annotate(ctx: ToolContext, args: AnnotationArgs) -> AssistantReply:
             "Tile size applies to a full 2D image or pathology slide; selected "
             "regions are one crop."
         )
-    if args.targets:
-        names = list(dict.fromkeys(n.strip() for n in args.targets))
+    if args.targets or args.all_targets:
+        names = list(dict.fromkeys(n.strip() for n in targets))
         project, labels = resolve_labels(service.store, project.id, names, model_id)
     else:
         labels = context.label_ids or [label.id for label in project.labels if label.id]
@@ -316,6 +351,7 @@ def annotate(ctx: ToolContext, args: AnnotationArgs) -> AssistantReply:
     job = service.annotations.annotate(
         asset.id,
         AnnotateRequest(
+            replace_existing=args.replace_existing,
             model_id=model_id,
             label_ids=labels,
             prompt=project.instructions + "\n" + ctx.message,
@@ -349,6 +385,12 @@ def annotate(ctx: ToolContext, args: AnnotationArgs) -> AssistantReply:
         message=(
             f"Annotating {description} using {', '.join(m.name for m in models)}. "
             f"You can cancel this job."
+            + (
+                " Existing segmentation will be replaced only after a successful result, "
+                "with revision and local-edit checks."
+                if args.replace_existing
+                else ""
+            )
         ),
         data={"project": project.model_dump(mode="json")},
     )

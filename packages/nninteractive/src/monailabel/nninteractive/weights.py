@@ -21,6 +21,7 @@ from platformdirs import user_cache_path
 
 from monailabel.core.errors import DomainError
 from monailabel.core.ports import Progress
+from monailabel.core.preparation import prepared_models_only, require_prepared
 
 REVISION = "3f308d751c00644e4fde6f09c600264b393b21b5"
 FILES = {
@@ -54,8 +55,22 @@ def verify(path: Path, size: int, checksum: str) -> None:
             raise DomainError("nnInteractive model checksum verification failed.")
 
 
+def prepared() -> bool:
+    root = cache_root() / REVISION
+    return all(
+        (root / name).is_file() and (root / name).stat().st_size == size
+        for name, (size, _) in FILES.items()
+    )
+
+
 def weights(progress: Progress) -> Path:
     root = cache_root() / REVISION
+    if prepared_models_only():
+        require_prepared(prepared(), "nnInteractive weights")
+        for name, (size, checksum) in FILES.items():
+            progress(0)
+            verify(root / name, size, checksum)
+        return root
     root.mkdir(parents=True, exist_ok=True)
     with FileLock(str(root / "download.lock"), timeout=1800):
         for name, (size, checksum) in FILES.items():

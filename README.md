@@ -1,5 +1,24 @@
 # MONAI Label
 
+## Demo development branch
+
+This `andres-1.0-demo` branch shares the source changes used for the hosted MONAI Label demo, based on the [1.0 release candidate](https://github.com/Project-MONAI/MONAILabel/tree/1.0). It is an experimental demo branch, not a new stable release or a replacement for `main` or `1.0`.
+
+The additions include optional timed visitor accounts and self-registration, per-visitor access and resource controls, prepared radiology/pathology/endoscopy examples, viewer review feedback, optional GPT annotation and chat, and configurable multi-GPU visitor inference. Demo visitors can explore model creation and recorded training previews; they cannot launch live training.
+
+To obtain this version rather than the packaged release:
+
+```bash
+git clone --branch andres-1.0-demo --single-branch https://github.com/Project-MONAI/MONAILabel.git
+cd MONAILabel
+```
+
+Start with the [staged installation guide](docs/demo-installation.md), [demo controls](docs/demo-controls.md), and [prepared examples](docs/demo-examples.md). The general quickstart below describes the underlying release candidate; installing with `pip install monailabel` does not select this branch. Public signup, hosted models and deployment controls require explicit operator configuration and are not enabled by cloning the source.
+
+This repository does not contain the hosted demo's accounts, passwords, API keys, annotations, datasets, model weights or private deployment configuration. Filesystem paths in deployment templates are examples to review and adapt. Before exposing your own installation, review [HTTPS deployment](docs/https-deployment.md), [bounded storage](docs/demo-storage.md) and [backup/restore](docs/demo-backups.md). Paid providers require your own credentials and incur charges; the GPT demo opt-in is not a spending cap. Use public research data only, not patient information.
+
+## Overview
+
 MONAI Label is an open-source image labeling and learning tool for interactive AI annotation of medical images and videos. Use an assistant in **[3D Slicer](https://www.slicer.org/), [QuPath](https://qupath.github.io/), [OHIF](https://ohif.org/) or [CVAT](https://www.cvat.ai/)** for radiology, pathology and endoscopy.
 
 Import datasets, review annotations, train and fine-tune models, and compare their results from one web workspace.

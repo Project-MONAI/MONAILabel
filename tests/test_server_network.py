@@ -90,6 +90,38 @@ def test_server_listen_default_and_override(tmp_path, monkeypatch, args, host, p
     main.main()
     assert calls[0]["host"] == host
     assert calls[0]["port"] == port
+    assert calls[0]["proxy_headers"] is False
+    assert calls[0]["forwarded_allow_ips"] == ""
+    assert calls[0]["ws"] == "wsproto"
+    assert calls[0]["ws_max_size"] == 16 * 1024 * 1024
+    assert calls[0]["ws_per_message_deflate"] is False
+
+
+def test_proxy_trust_is_explicit_and_does_not_inherit_wildcard_environment(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setenv("FORWARDED_ALLOW_IPS", "*")
+    monkeypatch.setenv("MONAILABEL_DEMO_HTTP_LIMITS", "1")
+    monkeypatch.setattr(
+        "sys.argv",
+        ["monailabel-server", "--trusted-proxy", "127.0.0.1", "--trusted-proxy", "::1"],
+    )
+    monkeypatch.setattr(main, "configure_workspace", lambda _: tmp_path)
+    monkeypatch.setattr(
+        main, "create_app", lambda *args, **kwargs: SimpleNamespace(state=SimpleNamespace())
+    )
+    monkeypatch.setattr(main.uvicorn, "run", lambda app, **kwargs: calls.append(kwargs))
+    main.main()
+    assert calls[0]["proxy_headers"] is True
+    assert calls[0]["forwarded_allow_ips"] == "127.0.0.1,::1"
+    assert calls[0]["limit_concurrency"] == 64
+
+
+@pytest.mark.parametrize("value", ["*", "0.0.0.0/0", "localhost", "127.0.0.1,::1", "fe80::1%eth0"])
+def test_proxy_trust_rejects_broad_or_ambiguous_values(monkeypatch, value):
+    monkeypatch.setattr("sys.argv", ["monailabel-server", "--trusted-proxy", value])
+    with pytest.raises(SystemExit) as error:
+        main.main()
+    assert error.value.code == 2
 
 
 def test_network_host_access_still_requires_login(http, monkeypatch):

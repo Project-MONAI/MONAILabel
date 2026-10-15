@@ -22,8 +22,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
        libqt5opengl5 libqt5sql5-sqlite libqt5webengine5 libqt5webenginewidgets5 \
        libqt5designer5; fi \
     && rm -rf /var/lib/apt/lists/*
-COPY entrypoint.py /opt/desktop.py
-COPY rc.xml /etc/monailabel-openbox.xml
+COPY --chmod=0444 entrypoint.py /opt/desktop.py
+COPY --chmod=0444 relay.py /opt/desktop-relay.py
+COPY --chmod=0444 rc.xml /etc/monailabel-openbox.xml
 ENV HOME=/session DISPLAY=:1 LIBGL_ALWAYS_SOFTWARE=1 \
     MONAILABEL_VIEWER_SESSION=/session/launch.json \
     MONAILABEL_QUPATH_DATA=/session/projects \

@@ -212,8 +212,17 @@ def viewer(
         if asset.kind != "volume3d":
             raise DomainError("Open 2D pathology images in QuPath. OHIF requires a 3D volume.")
 
+        from monailabel.server.demo_policy import visitor
+
+        download = not visitor(service.store, user.id)
+        if not download:
+            OhifManager().ensure(lambda _: None, download=False)
+
         def prepare(context: JobContext) -> Outcome:
-            OhifManager().ensure(lambda message: context.progress(0.3, message))
+            OhifManager().ensure(
+                lambda message: context.progress(0.3, message),
+                download=not visitor(service.store, user.id),
+            )
             series = service.dicom.ensure_view(asset_id, context)
             return Outcome(
                 {
@@ -231,9 +240,17 @@ def viewer(
 
     if (selected == "slicer") != (asset.kind == "volume3d"):
         raise DomainError("Use Slicer for volumes or QuPath for 2D pathology images.")
-    if target == "auto" and local_desktop(request):
+    # Leased visitors never launch unrestricted native processes on the host,
+    # independently of the optional automatic expiry sweeper.
+    from monailabel.server.demo_policy import visitor
+
+    leased = visitor(service.store, user.id)
+    if target == "auto" and local_desktop(request) and not leased:
 
         def launch_native(context: JobContext) -> Outcome:
+            from monailabel.server.demo_policy import require_operator
+
+            require_operator(service.store, "Native desktop launch")
             manager = ViewerManager()
             installation = manager.ensure(
                 selected, progress=lambda message: context.progress(0.3, message)
@@ -273,6 +290,8 @@ def viewer(
             {"asset_id": asset_id, "viewer": selected, "mode": mode, "target": "native"},
             launch_native,
         )
+    if leased:
+        service.desktops.runtime.preflight(selected)
     url = desktop_backend_url(request)
 
     def work(context: JobContext) -> Outcome:

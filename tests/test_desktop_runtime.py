@@ -20,6 +20,15 @@ import pytest
 from monailabel.viewers.browser_desktop import BrowserDesktop
 
 
+def test_image_resources_are_readable_with_private_build_context():
+    from monailabel.viewers.browser_desktop import RESOURCES
+
+    dockerfile = (RESOURCES / "desktop/Dockerfile").read_text()
+    assert "COPY --chmod=0444 entrypoint.py /opt/desktop.py" in dockerfile
+    assert "COPY --chmod=0444 relay.py /opt/desktop-relay.py" in dockerfile
+    assert "COPY --chmod=0444 rc.xml /etc/monailabel-openbox.xml" in dockerfile
+
+
 @pytest.mark.parametrize("log_failure", [False, True])
 def test_stop_preserves_host_files_and_removes_runtime(tmp_path, monkeypatch, log_failure):
     runtime = BrowserDesktop(tmp_path / "sessions", "fixture", tmp_path / "tools")
@@ -58,7 +67,8 @@ def test_stop_preserves_host_files_and_removes_runtime(tmp_path, monkeypatch, lo
         assert stat.S_IMODE(log.stat().st_mode) == 0o600
 
 
-def test_server_container_stages_host_visible_bridges(tmp_path, monkeypatch):
+@pytest.mark.parametrize("download", [False, True])
+def test_server_container_stages_host_visible_bridges(tmp_path, monkeypatch, download):
     from monailabel.viewers.browser_desktop import RESOURCES
 
     monkeypatch.setenv("MONAILABEL_DESKTOP_SOCKET_DIR", str(tmp_path / "socket-mount"))
@@ -67,12 +77,18 @@ def test_server_container_stages_host_visible_bridges(tmp_path, monkeypatch):
     executable = tmp_path / "tools/slicer/Slicer"
     executable.parent.mkdir(parents=True)
     executable.touch()
-    monkeypatch.setattr(runtime, "prepare", lambda progress: "fixture-image")
-    monkeypatch.setattr(
-        runtime.viewers,
-        "ensure",
-        lambda *args, **kwargs: SimpleNamespace(executable=str(executable)),
-    )
+    preparation = []
+
+    def prepare(progress, *, download=True):
+        preparation.append(("desktop", download))
+        return "fixture-image"
+
+    def ensure(viewer, *, download=True, progress):
+        preparation.append((viewer, download))
+        return SimpleNamespace(executable=str(executable))
+
+    monkeypatch.setattr(runtime, "prepare", prepare)
+    monkeypatch.setattr(runtime.viewers, "ensure", ensure)
     calls = []
 
     def run(*args, **kwargs):
@@ -83,7 +99,13 @@ def test_server_container_stages_host_visible_bridges(tmp_path, monkeypatch):
 
     monkeypatch.setattr(runtime, "run", run)
     monkeypatch.setattr(runtime, "running", lambda identifier: True)
-    runtime.start("viewer", "slicer", {}, lambda message: None)
+    runtime.start("viewer", "slicer", {}, lambda message: None, download=download)
+    assert preparation == [("desktop", download), ("slicer", download)]
+    assert "--pull=never" in calls[0]
+    assert calls[0][calls[0].index("--network") + 1] == "none"
+    gateway_mount = f"{runtime.gateway_socket('viewer').parent}:/gateway:ro"
+    assert gateway_mount in calls[0]
+    assert runtime.gateway_socket("viewer").parent != runtime.socket("viewer").parent
     mount = next(arg for arg in calls[0] if arg.endswith(":/bridges:ro"))
     from pathlib import Path
 

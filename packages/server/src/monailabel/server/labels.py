@@ -32,9 +32,9 @@ def imported_labels(project: Project, names: dict[int, str]) -> tuple[Project, d
             raise DomainError("Foreground structures cannot use the background label.")
         if clean not in by_name:
             identifier = max(label.id for label in labels) + 1
-            if len(labels) >= 32 or identifier > 255:
+            if len(labels) >= 256 or identifier > 255:
                 raise DomainError(
-                    "This import would exceed the project's 31 foreground label limit."
+                    "This import would exceed the project's 255 foreground label limit."
                 )
             labels.append(Label(id=identifier, name=clean.capitalize()))
             by_name[clean] = identifier
@@ -76,12 +76,14 @@ def resolve_labels(
         clean = name.strip()
         if not clean or len(clean) > 80:
             raise DomainError("Structure names must contain 1 to 80 characters.")
-        unique.setdefault(clean.casefold(), clean)
+        unique.setdefault(normalize(clean), clean)
     names = list(unique.values())
     with store.transaction() as session:
         project = session.get(Project, project_id)
-        existing = {label.name.casefold(): label for label in project.labels}
-        missing = [name for name in names if name.casefold() not in existing]
+        existing = {normalize(label.name): label for label in project.labels}
+        if len(existing) != len(project.labels):
+            raise DomainError("Project contains ambiguous normalized structure names.")
+        missing = [name for name in names if normalize(name) not in existing]
         if missing:
             if not model_id:
                 raise DomainError(
@@ -93,8 +95,8 @@ def resolve_labels(
             if model.project_id != project_id:
                 raise DomainError("Model belongs to another project.")
             Models.validate_targets(model, missing)
-            if len(project.labels) + len(missing) > 32:
-                raise DomainError("This project has reached its 32-label limit.")
+            if len(project.labels) + len(missing) > 256:
+                raise DomainError("This project has reached its 255 foreground label limit.")
             labels = list(project.labels)
             defaults = dict(project.defaults)
             for name in missing:
@@ -106,14 +108,14 @@ def resolve_labels(
                     name=name[:1].upper() + name[1:],
                 )
                 labels.append(label)
-                existing[name.casefold()] = label
+                existing[normalize(name)] = label
                 if set_defaults:
                     defaults[identifier] = model_id
             project = project.model_copy(
                 update={"labels": labels, "defaults": defaults, "version": project.version + 1}
             )
             session.update(project)
-        return project, [existing[name.casefold()].id for name in names]
+        return project, [existing[normalize(name)].id for name in names]
 
 
 def update_colors(store: Store, project_id: str, request: LabelColorsUpdate) -> Project:

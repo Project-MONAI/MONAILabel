@@ -105,6 +105,43 @@ def run():
             ]
         }
         print("SLICER_UNDEFINED_HINT_PRESERVES_POINT_LABELS_OK", flush=True)
+        # The all-organ path must use one shared grid, retain sparse uint8 IDs,
+        # clear absent labels, and remain compatible with native undo.
+        identifiers = [*range(1, 117), 240]
+        dock.project = {
+            "labels": [{"id": 0, "name": "Background", "color": "#000000"}]
+            + [{"id": i, "name": f"Structure {i}", "color": "#66aa88"} for i in identifiers]
+        }
+        dock.sync_labels(dock.segmentation)
+        all_structures = np.zeros_like(original)
+        all_structures.ravel()[:117] = identifiers
+        dock.apply_mask(all_structures)
+        assert dock.shared_mask(False) is not None
+        np.testing.assert_array_equal(dock.current_mask(), all_structures)
+        segments = dock.segmentation.GetSegmentation()
+        first = segments.GetSegment("1").GetRepresentation("Binary labelmap")
+        last = segments.GetSegment("240").GetRepresentation("Binary labelmap")
+        assert first.GetAddressAsString("") == last.GetAddressAsString("")
+        dock.editor.saveStateForUndo()
+        dock.apply_mask(np.zeros_like(original))
+        assert not np.any(dock.current_mask())
+        dock.editor.undo()
+        np.testing.assert_array_equal(dock.current_mask(), all_structures)
+        print("SLICER_ALL_STRUCTURES_SHARED_GRID_SPARSE_IDS_AND_UNDO_OK", flush=True)
+        # A native edit may put segments in independent, overlapping layers.
+        # Such edits must retain the old overlap rejection, not silently flatten.
+        overlapping = (all_structures == 1).transpose(2, 1, 0).astype(np.uint8)
+        slicer.util.updateSegmentBinaryLabelmapFromArray(
+            overlapping, dock.segmentation, "240", dock.volume
+        )
+        assert dock.shared_mask(False) is None
+        try:
+            dock.current_mask()
+        except RuntimeError as error:
+            assert "mutually exclusive" in str(error)
+        else:
+            raise AssertionError("Overlapping native edits were silently flattened")
+        print("SLICER_OVERLAPPING_LAYERS_REJECTED_OK", flush=True)
         slicer.util.exit(0)
     except Exception:
         import traceback
