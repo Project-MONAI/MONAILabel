@@ -172,8 +172,7 @@ def gpu_memory_map():
             gpu_memory = [int(x) for x in result.strip().split("\n")]
             return dict(zip(range(len(gpu_memory)), gpu_memory))
         except Exception as e:
-            logger.info(f"nvidia-smi command didn't work ({e})! - Using default image size [128, 128, 64]")
-            return {0: 4300}
+            logger.info(f"nvidia-smi command didn't work ({e})! - Trying rocm-smi")
 
     if shutil.which("rocm-smi") is not None:
         logger.info("Using rocm-smi command")
@@ -181,20 +180,24 @@ def gpu_memory_map():
             # rocm-smi reports total + used VRAM in bytes per card; free = total - used.
             result = subprocess.check_output(["rocm-smi", "--showmeminfo", "vram", "--csv"], encoding="utf-8")
             gpu_memory = {}
-            idx = 0
             for line in result.strip().split("\n"):
                 cols = line.split(",")
                 # Skip the header and any warning lines rocm-smi prints to stdout.
                 if not cols or not cols[0].startswith("card"):
                     continue
+                # Parse device index from "cardN"; preserve a zero entry for unparsable rows.
+                try:
+                    dev_idx = int(cols[0][4:])
+                except ValueError:
+                    continue
                 try:
                     total_b, used_b = int(cols[1]), int(cols[2])
+                    gpu_memory[dev_idx] = (total_b - used_b) // (1024 * 1024)  # bytes -> MB free
                 except (IndexError, ValueError):
-                    continue
-                gpu_memory[idx] = max(0, (total_b - used_b) // (1024 * 1024))  # bytes -> MB free
-                idx += 1
+                    gpu_memory[dev_idx] = 0
             if gpu_memory:
                 return gpu_memory
+            logger.info("rocm-smi output had no parsable card rows! - Using default image size [128, 128, 64]")
         except Exception as e:
             logger.info(f"rocm-smi command didn't work ({e})! - Using default image size [128, 128, 64]")
         return {0: 4300}
