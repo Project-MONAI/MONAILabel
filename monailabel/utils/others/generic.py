@@ -199,7 +199,9 @@ def gpu_memory_map():
                 return gpu_memory
             logger.info("rocm-smi output had no parsable card rows! - Using default image size [128, 128, 64]")
         except Exception as e:
-            logger.info(f"rocm-smi command didn't work ({e})! - Using default image size [128, 128, 64]")
+            logger.info(
+                f"rocm-smi command didn't work ({e})! - Using fallback free-memory estimate 4300 MB for image-size planning"
+            )
         return {0: 4300}
 
     logger.info("Neither nvidia-smi nor rocm-smi found! - Using default image size [128, 128, 64]")
