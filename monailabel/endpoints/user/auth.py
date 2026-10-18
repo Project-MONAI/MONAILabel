@@ -46,6 +46,11 @@ def get_public_key(realm_uri) -> str:
 
 @cached(cache={})
 def open_id_configuration(realm_uri):
+    """Fetch and cache the OpenID discovery configuration for ``realm_uri``.
+
+    HTTP errors propagate before JSON parsing, so failed responses are not
+    cached and a later call can retry discovery.
+    """
     response = requests.get(
         url=f"{realm_uri}/.well-known/openid-configuration",
         timeout=settings.MONAI_LABEL_AUTH_TIMEOUT,
