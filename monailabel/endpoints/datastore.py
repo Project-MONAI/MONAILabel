@@ -69,6 +69,12 @@ def add_image(
     file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
 
     image_id = image if image else os.path.basename(file.filename).replace(file_ext, "")
+    # Normalize a caller-supplied image ID to a plain file name
+    # (no directory components) before it is used to build a path.
+    if image:
+        image_id = os.path.basename(image_id)
+        if not image_id or image_id in (".", "..") or image_id.startswith("."):
+            raise HTTPException(status_code=400, detail="Invalid image ID")
     image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 
     with open(image_file, "wb") as buffer:
