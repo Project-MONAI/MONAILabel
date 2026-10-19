@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v6
       - name: Set up Python
@@ -54,7 +54,7 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v6
       - name: Set up Python
@@ -71,6 +71,8 @@ jobs:
         run: |
           $(pwd)/runtests.sh --clean
       - name: PyType
+        # NOTE: pytype is currently a no-op in CI (see issue #1917). The echo is
+        # intentional until the pre-existing pytype errors are triaged.
         run: |
           echo $(pwd)/runtests.sh --pytype
       - name: Unit Tests
@@ -88,7 +90,7 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v6
         with:

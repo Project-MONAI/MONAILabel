@@ -12,8 +12,10 @@
 import unittest
 
 import numpy as np
+import pytest
+from monai import __version__ as monai_version
 from monai.transforms import LoadImage
-from monai.utils import set_determinism
+from monai.utils import set_determinism, version_geq
 from parameterized import parameterized
 
 from monailabel.scribbles.infer import HistogramBasedGraphCut
@@ -25,6 +27,7 @@ from monailabel.scribbles.transforms import (
     MakeLikelihoodFromScribblesHistogramd,
     SoftenProbSoftmax,
 )
+from monailabel.scribbles.utils import has_numpymaxflow
 from monailabel.transform.writer import Writer
 
 set_determinism(seed=123)
@@ -305,6 +308,7 @@ class TestScribblesTransforms(unittest.TestCase):
         self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
 
     @parameterized.expand(TEST_CASE_OPTIM_TX)
+    @unittest.skipUnless(has_numpymaxflow, "numpymaxflow is not installed")
     def test_optimisation_transforms(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
         for current_tx in [ApplyGraphCutOptimisationd]:
@@ -386,6 +390,13 @@ class TestScribblesTransforms(unittest.TestCase):
 
 class TestScribblesInferers(unittest.TestCase):
     @parameterized.expand(TEST_CASE_HISTOGRAM_GRAPHCUT)
+    @pytest.mark.xfail(
+        version_geq(monai_version, "1.6"),
+        reason="MONAI >= 1.6 Spacingd regression on '<key>_*' non-dict entries such as image_path "
+        "(Project-MONAI/MONAI#9165, fix in Project-MONAI/MONAI#9167)",
+        strict=False,
+    )
+    @unittest.skipUnless(has_numpymaxflow, "numpymaxflow is not installed")
     def test_histogram_graphcut_inferer(self, test_input, expected_shape):
         test_input.update({"image_path": "fakepath.nii"})
 

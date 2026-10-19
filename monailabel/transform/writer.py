@@ -30,7 +30,13 @@ logger = logging.getLogger(__name__)
 def write_nifti(data, filename, affine=None, original_affine=None, output_dtype=np.float32):
     writer = NibabelWriter(output_dtype=output_dtype)
     writer.set_data_array(data, channel_dim=None, spatial_ndim=None)
-    writer.set_metadata({"affine": affine, "original_affine": original_affine})
+    meta = {"affine": affine, "original_affine": original_affine}
+    if original_affine is None and np.ndim(data) == 2:
+        # Without a target affine the output keeps the input grid, so the spatial shape is
+        # the input shape. Passing it explicitly works around a MONAI 1.6 regression where
+        # 2D channel-less arrays fail to resample (spatial_size=None reaches fall_back_tuple).
+        meta["spatial_shape"] = np.asarray(np.shape(data))
+    writer.set_metadata(meta)
     writer.write(filename)
 
 
