@@ -105,7 +105,7 @@ jobs:
         run: |
           echo "datew=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
       - name: cache for pip
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache
         with:
           path: |
@@ -164,7 +164,7 @@ jobs:
         run: |
           echo "datew=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
       - name: cache for pip
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache
         with:
           path: |
