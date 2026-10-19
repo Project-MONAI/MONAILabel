@@ -171,7 +171,8 @@ class Main:
             root_dir = os.path.dirname(os.path.realpath(dataset_dir))
             os.makedirs(root_dir, exist_ok=True)
             tarfile_name = f"{dataset_dir}.tar"
-            download_and_extract(resource[args.name], tarfile_name, root_dir, md5.get(args.name))
+            # DecathlonDataset publishes md5 digests; MONAI >= 1.6 defaults hash_type to sha256
+            download_and_extract(resource[args.name], tarfile_name, root_dir, md5.get(args.name), hash_type="md5")
 
             junk_files = pathlib.Path(dataset_dir).rglob("._*")
             for j in junk_files:
