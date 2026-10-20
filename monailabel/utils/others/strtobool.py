@@ -30,9 +30,9 @@ def strtobool(s):
         raise TypeError(f"strtobool expects a string or bool, got {type(s).__name__}: {s!r}")
 
     val = s.lower()
-    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+    if val in ("y", "yes", "t", "true", "on", "1"):
         return True
-    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+    elif val in ("n", "no", "f", "false", "off", "0"):
         return False
     else:
         raise ValueError(f"invalid truth value {s!r}")
