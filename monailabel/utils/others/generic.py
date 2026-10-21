@@ -197,7 +197,7 @@ def gpu_memory_map():
                     total_b, used_b = int(cols[1]), int(cols[2])
                     gpu_memory[dev_idx] = (total_b - used_b) // (1024 * 1024)  # bytes -> MB free
                 except (IndexError, ValueError):
-                    gpu_memory[dev_idx] = 0
+                    continue  # skip unparsable row; unknown != exhausted
             if gpu_memory:
                 return gpu_memory
             logger.info("rocm-smi output had no parsable card rows! - Using default image size [128, 128, 64]")

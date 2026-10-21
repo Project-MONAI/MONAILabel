@@ -86,7 +86,7 @@ class HeuristicPlanner:
         # This should return an image according to the free gpu memory available
         # Equation obtained from curve fitting using table:
         # https://tinyurl.com/tableGPUMemory
-        gpu_mem = gpu_memory_map()[0]
+        gpu_mem = gpu_memory_map().get(0, 4300)
         # Get a number in base 2 close to the mean depth
         depth_base_2 = int(2 ** np.ceil(np.log2(target_img_size[2])))
         # Get the maximum width according available GPU memory
