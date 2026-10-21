@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import csv
 import distutils.util
 import hashlib
 import json
@@ -169,7 +170,9 @@ def gpu_memory_map():
             result = subprocess.check_output(
                 ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
             )
-            gpu_memory = [int(x) for x in result.strip().split("\n")]
+            gpu_memory = [int(x) for x in result.strip().splitlines() if x.strip()]
+            if not gpu_memory:
+                raise ValueError("nvidia-smi returned no GPU memory information!")
             return dict(zip(range(len(gpu_memory)), gpu_memory))
         except Exception as e:
             logger.info(f"nvidia-smi command didn't work ({e})! - Trying rocm-smi")
@@ -180,16 +183,16 @@ def gpu_memory_map():
             # rocm-smi reports total + used VRAM in bytes per card; free = total - used.
             result = subprocess.check_output(["rocm-smi", "--showmeminfo", "vram", "--csv"], encoding="utf-8")
             gpu_memory = {}
-            for line in result.strip().split("\n"):
-                cols = line.split(",")
+            reader = csv.reader(result.strip().splitlines())
+            for cols in reader:
                 # Skip the header and any warning lines rocm-smi prints to stdout.
                 if not cols or not cols[0].startswith("card"):
                     continue
-                # Parse device index from "cardN"; preserve a zero entry for unparsable rows.
-                try:
-                    dev_idx = int(cols[0][4:])
-                except ValueError:
+                # Parse device index from "cardN" (e.g. "card0" -> 0).
+                idx_match = re.findall(r"card([0-9]+)", cols[0])
+                if not idx_match:
                     continue
+                dev_idx = int(idx_match[0])
                 try:
                     total_b, used_b = int(cols[1]), int(cols[2])
                     gpu_memory[dev_idx] = (total_b - used_b) // (1024 * 1024)  # bytes -> MB free
