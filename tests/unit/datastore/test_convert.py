@@ -264,8 +264,6 @@ class TestConvert(unittest.TestCase):
             count_diff_ratio < 0.01
         ), f"Nonzero count changed significantly: {original_nonzero_count} vs {result_nonzero_count}"
 
-        os.unlink(result)
-
     def _test_nifti_to_dicom_seg_with_label_info_impl(self, use_itk):
         """Helper: Test NIfTI to DICOM SEG conversion with custom label info."""
         series_dir, label = self._get_test_paths()

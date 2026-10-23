@@ -32,11 +32,11 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - if: runner.os == 'Linux'
@@ -54,11 +54,11 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -71,13 +71,15 @@ jobs:
         run: |
           $(pwd)/runtests.sh --clean
       - name: PyType
+        # NOTE: pytype is currently a no-op in CI (see issue #1917). The echo is
+        # intentional until the pre-existing pytype errors are triaged.
         run: |
           echo $(pwd)/runtests.sh --pytype
       - name: Unit Tests
         run: |
           $(pwd)/runtests.sh --unittests
       - name: Upload coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           fail_ci_if_error: false
           file: ./coverage.xml
@@ -88,14 +90,14 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: cache weekly timestamp
@@ -103,7 +105,7 @@ jobs:
         run: |
           echo "datew=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
       - name: cache for pip
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: cache
         with:
           path: |
@@ -152,9 +154,9 @@ jobs:
       matrix:
         python-version: ["3.10"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: cache weekly timestamp
@@ -162,7 +164,7 @@ jobs:
         run: |
           echo "datew=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
       - name: cache for pip
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: cache
         with:
           path: |
