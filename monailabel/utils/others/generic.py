@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import distutils.util
 import hashlib
 import json
 import logging
@@ -31,6 +30,7 @@ from monai.bundle.scripts import get_all_bundles_list
 
 from monailabel.config import settings
 from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
+from monailabel.utils.others.strtobool import strtobool  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -239,10 +239,6 @@ def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img
     return [
         {"image": i, "label": l} for i, l in zip(images, labels) if get_basename_no_ext(i) == get_basename_no_ext(l)
     ]
-
-
-def strtobool(s):
-    return False if s is None else s if isinstance(s, bool) else bool(distutils.util.strtobool(s))
 
 
 def is_openslide_supported(name):

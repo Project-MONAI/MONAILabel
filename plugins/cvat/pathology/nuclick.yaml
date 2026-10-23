@@ -25,7 +25,7 @@ metadata:
 
 spec:
   description: A pre-trained NuClick model for interactive cell segmentation for Pathology
-  runtime: 'python:3.8'
+  runtime: 'python:3.10'
   handler: interactor:handler
   eventTimeout: 30s
 

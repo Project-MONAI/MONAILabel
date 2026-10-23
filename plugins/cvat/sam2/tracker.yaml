@@ -19,7 +19,7 @@ metadata:
 
 spec:
   description: A pre-trained SAM2 model for tracking model
-  runtime: 'python:3.8'
+  runtime: 'python:3.10'
   handler: tracker:handler
   eventTimeout: 30s
 
