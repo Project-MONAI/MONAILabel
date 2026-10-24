@@ -35,7 +35,7 @@ except ImportError:
 
 from monailabel import __version__
 from monailabel.config import settings
-from monailabel.datastore.utils.colors import get_segment_color
+from monailabel.datastore.utils.colors import _RGB_CHANNELS, fixed_segment_color, get_segment_color
 from monailabel.transform.writer import write_itk
 
 logger = logging.getLogger(__name__)
@@ -417,6 +417,23 @@ def _itk_nifti_to_dicom_seg(series_dir, label, label_info) -> str:
     if unique_labels is None:
         return ""
 
+    # Reserve every color fixed by explicit metadata, a known anatomy name, or a
+    # custom segmentAttribute before assigning fallback colors, so an unknown
+    # segment never duplicates a color already given to another segment
+    # (CodeRabbit review on #1909 / issue #1751).
+    reserved_colors = set()
+    for label_id in unique_labels:
+        info = info_by_label_id.get(int(label_id), {})
+        segment_attr = info.get("segmentAttribute")
+        if segment_attr:
+            rgb = segment_attr.get("recommendedDisplayRGBValue")
+            if rgb:
+                reserved_colors.add(tuple(int(c) for c in rgb[:_RGB_CHANNELS]))
+            continue
+        fixed = fixed_segment_color(info.get("name", f"Segment_{label_id}"), info)
+        if fixed is not None:
+            reserved_colors.add(tuple(fixed))
+
     # Build ITK segment descriptions
     segment_descriptions = []
     for i, label_id in enumerate(unique_labels):
@@ -436,8 +453,10 @@ def _itk_nifti_to_dicom_seg(series_dir, label, label_info) -> str:
         else:
             # Build default template for ITK method. Segments without an explicit
             # color or a known anatomy name get a distinct fallback color (keyed on
-            # their index) instead of all defaulting to red (see issue #1751).
-            rgb = get_segment_color(name, info, i)
+            # their index) that avoids every reserved color (see issue #1751).
+            rgb = get_segment_color(name, info, i, reserved=reserved_colors)
+            # Keep this fallback out of later unknown segments' choices too.
+            reserved_colors.add(tuple(rgb))
 
             segment_attr = {
                 "labelID": int(label_id),

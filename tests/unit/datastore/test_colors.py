@@ -47,6 +47,16 @@ class TestGetSegmentColor(unittest.TestCase):
         for i in range(len(GENERIC_ANATOMY_COLORS)):
             self.assertNotEqual(get_segment_color("no-such-name", {}, i), _BLACK)
 
+    def test_fallback_avoids_reserved_colors(self):
+        # CodeRabbit review on #1909: an unknown segment's fallback color must
+        # not duplicate a color already assigned to another segment. Reserving
+        # the color the unknown segment would otherwise pick must push it to a
+        # different, still-distinct color.
+        default = get_segment_color("no-such-name", {}, 0)
+        avoided = get_segment_color("no-such-name", {}, 0, reserved={tuple(default)})
+        self.assertNotEqual(avoided, default)
+        self.assertNotEqual(avoided, _BLACK)
+
 
 if __name__ == "__main__":
     unittest.main()
