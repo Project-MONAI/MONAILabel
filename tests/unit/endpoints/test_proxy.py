@@ -29,6 +29,14 @@ class TestEndPointLogs(BasicEndpointTestSuite):
     def test_proxy(self, mock_get):
         self.client.get("/proxy/dicom/studies")
 
+    def test_proxy_forwards_query(self, mock_get):
+        query = "PatientName=*Horse*&limit=101&offset=0&includefield=00081030%2C00080060"
+        self.client.get(f"/proxy/dicom/qido/studies?{query}")
+        self.assertTrue(mock_get.call_args.args[0].endswith(f"/studies?{query}"), mock_get.call_args.args[0])
+
+        self.client.get("/proxy/dicom/qido/studies")
+        self.assertTrue(mock_get.call_args.args[0].endswith("/studies"), mock_get.call_args.args[0])
+
 
 if __name__ == "__main__":
     unittest.main()
