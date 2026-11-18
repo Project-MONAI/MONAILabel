@@ -715,9 +715,9 @@ class TestConvert(unittest.TestCase):
                 ), f"Segment {i + 1}: missing RecommendedDisplayCIELabValue"
                 decoded_rgb = hd.color.CIELabColor.from_dicom_value(seg.RecommendedDisplayCIELabValue).to_rgb()
                 expected_rgb = tuple(expected_info["color"])
-                assert all(abs(a - b) <= 2 for a, b in zip(decoded_rgb, expected_rgb)), (
-                    f"Segment {i + 1}: expected color close to {expected_rgb}, got {decoded_rgb}"
-                )
+                assert all(
+                    abs(a - b) <= 2 for a, b in zip(decoded_rgb, expected_rgb)
+                ), f"Segment {i + 1}: expected color close to {expected_rgb}, got {decoded_rgb}"
 
         # Verify all 3 real segments are present in metadata
         segments_in_metadata = [seg.SegmentNumber for seg in real_segments]
