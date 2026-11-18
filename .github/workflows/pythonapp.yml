@@ -42,7 +42,8 @@ jobs:
       - if: runner.os == 'Linux'
         name: Cleanup (Linux only)
         run: |
-          rm -rf /opt/hostedtoolcache
+          # keep the interpreter installed by setup-python; drop the rest of the tool cache to free disk
+          find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 ! -name Python -exec rm -rf {} +
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
@@ -63,7 +64,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          rm -rf /opt/hostedtoolcache
+          # keep the interpreter installed by setup-python; drop the rest of the tool cache to free disk
+          find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 ! -name Python -exec rm -rf {} +
           sudo apt-get install openslide-tools -y
           python -m pip install --upgrade pip wheel
           pip install -r requirements-dev.txt
@@ -114,7 +116,8 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
-          rm -rf /opt/hostedtoolcache
+          # keep the interpreter installed by setup-python; drop the rest of the tool cache to free disk
+          find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 ! -name Python -exec rm -rf {} +
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
           python -m pip install torch torchvision
@@ -173,7 +176,8 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
-          rm -rf /opt/hostedtoolcache
+          # keep the interpreter installed by setup-python; drop the rest of the tool cache to free disk
+          find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 ! -name Python -exec rm -rf {} +
           sudo apt-get install openslide-tools -y
           python -m pip install --upgrade pip wheel
           python -m pip install -r docs/requirements.txt

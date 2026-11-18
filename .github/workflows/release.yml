@@ -49,7 +49,8 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
-          rm -rf /opt/hostedtoolcache
+          # keep the interpreter installed by setup-python; drop the rest of the tool cache to free disk
+          find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 ! -name Python -exec rm -rf {} +
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
           python -m pip install torch torchvision

@@ -39,7 +39,8 @@ jobs:
           python -m pip install --upgrade pip wheel
       - name: Build
         run: |
-          rm -rf /opt/hostedtoolcache
+          # keep the interpreter installed by setup-python; drop the rest of the tool cache to free disk
+          find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 ! -name Python -exec rm -rf {} +
           docker --version
           cd plugins/dsa
           docker system prune -f
