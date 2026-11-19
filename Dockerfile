@@ -15,7 +15,7 @@
 
 #ARG FINAL_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 ARG FINAL_IMAGE=ubuntu:22.04
-ARG BUILD_IMAGE=python:3.10
+ARG BUILD_IMAGE=python:3.11
 ARG NODE_IMAGE=node:slim
 
 # Phase1: Build OHIF Viewer

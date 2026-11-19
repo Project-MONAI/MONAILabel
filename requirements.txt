@@ -34,11 +34,11 @@ huggingface_hub
 numpymaxflow==0.0.7; python_version < "3.13"
 setuptools>=61
 setuptools-scm<8.0.0
-girder-client==3.2.3
+girder-client==3.2.9
 ninja==1.11.1.1
 einops==0.7.0
 pyyaml==6.0.1
-filelock==3.20.3
+filelock==4.2.1
 passlib==1.7.4
 pyjwt==2.15.0
 bcrypt==4.1.2
