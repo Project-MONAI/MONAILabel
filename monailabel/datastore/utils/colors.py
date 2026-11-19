@@ -321,3 +321,81 @@ GENERIC_ANATOMY_COLORS = {
     "unknown": (100, 100, 130),
     "cyst": (205, 205, 100),
 }
+
+# Key of the black background entry, excluded from the fallback palette so that a
+# segment never resolves to an invisible (0, 0, 0) color.
+_BACKGROUND_KEY = "background"
+
+# Number of channels in an RGB color triple.
+_RGB_CHANNELS = 3
+
+# Distinct, non-background colors used to give segments without a known anatomy
+# name (and without an explicit color) different colors instead of all defaulting
+# to red. See issue #1751.
+_FALLBACK_COLORS = list(
+    dict.fromkeys(color for name, color in GENERIC_ANATOMY_COLORS.items() if name != _BACKGROUND_KEY)
+)
+
+
+def fixed_segment_color(name, info=None):
+    """Return the *fixed* ``[r, g, b]`` color for a segment, or ``None``.
+
+    A segment has a fixed color when its metadata carries an explicit ``color``
+    or when its ``name`` matches a known anatomy entry in
+    ``GENERIC_ANATOMY_COLORS``. Unknown segments have no fixed color and fall
+    back to an index-based palette choice in :func:`get_segment_color`.
+
+    Args:
+        name: Segment label used to look up a known anatomy color.
+        info: Optional segment metadata; an explicit ``color`` takes precedence.
+
+    Returns:
+        A list of three ``int`` RGB channel values, or ``None`` when the segment
+        has neither an explicit color nor a known anatomy name.
+    """
+    info = info or {}
+    color = info.get("color")
+    if color:
+        return [int(c) for c in list(color)[:_RGB_CHANNELS]]
+    if name in GENERIC_ANATOMY_COLORS:
+        return [int(c) for c in GENERIC_ANATOMY_COLORS[name][:_RGB_CHANNELS]]
+    return None
+
+
+def get_segment_color(name, info=None, index=0, reserved=None):
+    """Return an ``[r, g, b]`` display color for a DICOM SEG segment.
+
+    Resolution order:
+
+    1. an explicit ``color`` provided in ``info`` (from the label metadata);
+    2. the palette entry whose key matches ``name`` in ``GENERIC_ANATOMY_COLORS``;
+    3. a palette color chosen by ``index`` so that consecutive segments without a
+       known anatomy name receive *distinct* colors instead of all defaulting to
+       red (see issue #1751).
+
+    For the fallback case (3), any color listed in ``reserved`` is skipped so an
+    unknown segment never duplicates a color already assigned to another segment
+    in the same export (CodeRabbit review on #1909). If every fallback color is
+    reserved, the plain index-based choice is returned as a last resort.
+
+    Args:
+        name: Segment label used to look up a known anatomy color.
+        info: Optional segment metadata; an explicit ``color`` takes precedence.
+        index: Position of the segment, used to pick a distinct fallback color.
+        reserved: Optional iterable of ``(r, g, b)`` colors already assigned to
+            other segments, avoided when selecting a fallback color.
+
+    Returns:
+        A list of three ``int`` RGB channel values.
+    """
+    fixed = fixed_segment_color(name, info)
+    if fixed is not None:
+        return fixed
+
+    palette_size = len(_FALLBACK_COLORS)
+    reserved_set = {tuple(color) for color in reserved} if reserved else set()
+    for offset in range(palette_size):
+        candidate = _FALLBACK_COLORS[(index + offset) % palette_size]
+        if tuple(candidate) not in reserved_set:
+            return [int(c) for c in candidate[:_RGB_CHANNELS]]
+    return [int(c) for c in _FALLBACK_COLORS[index % palette_size][:_RGB_CHANNELS]]
