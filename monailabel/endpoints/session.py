@@ -87,7 +87,12 @@ def create_session(
         logger.info(f"Input has multiple files; Saving ALL into: {received_dir}")
         input_image = received_dir
 
-    session_id, session_info = sessions.add_session(input_image, expiry, uncompress)
+    try:
+        session_id, session_info = sessions.add_session(input_image, expiry, uncompress)
+    except ValueError as e:
+        logger.error(f"Failed to create session: {e}")
+        remove_file(received_dir)
+        raise HTTPException(status_code=400, detail=str(e)) from e
     background_tasks.add_task(remove_file, received_dir)
 
     if total_files == 0:
