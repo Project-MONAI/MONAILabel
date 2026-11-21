@@ -31,6 +31,14 @@ Refer to full [MONAI Label documentations](https://monai.readthedocs.io/projects
 
 Refer to [MONAI Label Tutorial](https://github.com/Project-MONAI/tutorials/tree/main/monailabel) series for application and viewer workflows with different medical image tasks. Notebook-like tutorials are created for detailed instructions.
 
+> [!WARNING]
+> **Security notice: MONAI Label is not intended to be run as an internet-facing application.**
+>
+> There are a number of known, unpatched security issues that make MONAI Label fragile when it is exposed to untrusted
+> networks. Given the sensitivity of the medical imaging data it processes, MONAI Label should only be deployed on a
+> closed, trusted local area network (LAN). Do not expose the MONAI Label server, or any proxy in front of it, to the
+> public internet.
+
 ### Table of Contents
 - [Overview](#overview)
   - [Highlights and Features](#highlights-and-features)
