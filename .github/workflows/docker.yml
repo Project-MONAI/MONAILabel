@@ -33,7 +33,8 @@ jobs:
           echo Before Cleanup...
           df -h
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          rm -rf /opt/hostedtoolcache
+          # keep the interpreter installed by setup-python; drop the rest of the tool cache to free disk
+          find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 ! -name Python -exec rm -rf {} +
           rm -rf /usr/share/dotnet/
           cd /opt
           find . -maxdepth 1 -mindepth 1 '!' -path ./containerd '!' -path ./actionarchivecache '!' -path ./runner '!' -path ./runner-cache -exec rm -rf '{}' ';'
