@@ -15,6 +15,7 @@ import random
 import time
 import unittest
 
+import torch
 from fastapi.testclient import TestClient
 
 from monailabel.config import settings
@@ -28,6 +29,8 @@ def create_client(app_dir, studies, data_dir, conf=None):
         "debug": "true",
         "models": "deepedit",
         "tracking": True,
+        # SAM2 needs an 856MB checkpoint download at startup; only the GPU-only SAM tests use it
+        "sam2": "false",
     }
     if conf:
         app_conf.update(conf)
@@ -108,7 +111,14 @@ class BasicEndpointV2TestSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.client = create_client(
-            cls.app_dir, cls.studies, cls.data_dir, {"models": "deepgrow_2d,deepgrow_3d,segmentation_spleen,deepedit"}
+            cls.app_dir,
+            cls.studies,
+            cls.data_dir,
+            {
+                "models": "deepgrow_2d,deepgrow_3d,segmentation_spleen,deepedit",
+                # test_sam_2d / test_sam_3d run only with CUDA
+                "sam2": "true" if torch.cuda.is_available() else "false",
+            },
         )
 
     @classmethod

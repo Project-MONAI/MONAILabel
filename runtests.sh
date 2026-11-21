@@ -459,7 +459,8 @@ function run_integration_tests() {
 
 # network training/inference/eval integration tests
 if [ $doNetTests = true ]; then
-  run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "." true
+  # last argument: load SAM2 (downloads an 856MB checkpoint at startup); no integration test uses it
+  run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "." false
   run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "." false
   run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation" "bundles" false
   run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "." false
