@@ -93,6 +93,9 @@ def create_session(
         logger.error(f"Failed to create session: {e}")
         remove_file(received_dir)
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception:
+        remove_file(received_dir)
+        raise
     background_tasks.add_task(remove_file, received_dir)
 
     if total_files == 0:

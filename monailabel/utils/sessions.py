@@ -13,12 +13,14 @@ import json
 import logging
 import os
 import pathlib
+import re
 import shutil
 import tarfile
 import tempfile
 import time
 import uuid
 import zipfile
+import zlib
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -63,7 +65,8 @@ def safe_unpack_archive(archive: str, extract_dir: str) -> None:
                 else:
                     tf.extractall(base, members=members)
             return
-    except (tarfile.TarError, zipfile.BadZipFile) as e:
+    except (tarfile.TarError, zipfile.BadZipFile, EOFError, zlib.error) as e:
+        # EOFError / zlib.error: truncated or corrupt compressed stream
         raise ValueError(f"Invalid archive: {name!r} could not be extracted ({e})") from e
 
     raise ValueError(f"Invalid archive: {name!r} is not a supported zip or tar file")
@@ -109,7 +112,7 @@ class Sessions(dict):
             if os.path.isdir(os.path.join(self.store_path, item)):
                 session_id = item
                 session_info = self.get_session(session_id, update_ts=False, fetch_cache=False)
-                expiry_ts = session_info.last_access_ts + session_info.expiry
+                expiry_ts = session_info.last_access_ts + session_info.expiry if session_info else 0
 
                 if session_info and session_info.expiry > 0 and expiry_ts < current_ts:
                     logger.info(f"Removing expired; current ts: {current_ts}\n{session_info.to_str()}")
@@ -127,10 +130,12 @@ class Sessions(dict):
         return count
 
     def _session_path(self, session_id: str) -> Optional[str]:
-        """Directory for ``session_id``; None unless the id is a plain directory name inside the store."""
-        if not session_id or not isinstance(session_id, str) or session_id in (".", ".."):
-            return None
-        if any(sep in session_id for sep in ("/", "\\", os.sep)):
+        """Directory for ``session_id``; None unless the id is a plain directory name inside the store.
+
+        Ids are joined onto the store path, so only letters, digits, ``_``, ``-`` and ``.`` are accepted,
+        not starting with a dot (no path separators, no ``..``, no Windows drive prefix such as ``C:``).
+        """
+        if not isinstance(session_id, str) or not re.fullmatch(r"\w[\w.\-]*", session_id):
             return None
         return os.path.join(self.store_path, session_id)
 
@@ -174,6 +179,11 @@ class Sessions(dict):
         start = time.time()
         logger.debug(f"Load Data from: {data_file}")
 
+        session_id = session_id if session_id else str(uuid.uuid1()).lower()
+        path = self._session_path(session_id)
+        if path is None:
+            raise ValueError(f"Invalid session-id: {session_id!r}")
+
         if os.path.isdir(data_file):
             image_path = data_file
             logger.debug(f"Input Dir (Multiple Input): {image_path}")
@@ -192,10 +202,6 @@ class Sessions(dict):
                     raise
                 image_path = tmp_folder
 
-        session_id = session_id if session_id else str(uuid.uuid1()).lower()
-        path = self._session_path(session_id)
-        if path is None:
-            raise ValueError(f"Invalid session-id: {session_id!r}")
         expiry = expiry if expiry > 0 else self.expiry
 
         logger.debug(f"Using Path: {path} to save session")

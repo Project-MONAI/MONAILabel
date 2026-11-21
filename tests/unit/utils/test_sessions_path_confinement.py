@@ -111,6 +111,17 @@ class TestSessionsPathConfinement(unittest.TestCase):
         with self.assertRaises(ValueError):
             safe_unpack_archive(not_archive, self.extract_dir)
 
+    def test_rejects_truncated_archive(self):
+        archive = self._tar([("series/1.dcm", os.urandom(100000))], name="archive.tar.gz", mode="w:gz")
+        with open(archive, "rb") as fp:
+            data = fp.read()
+        for name, payload in (("magic.tar.gz", data[:2]), ("half.tar.gz", data[: len(data) // 2])):
+            truncated = os.path.join(self.base, name)
+            with open(truncated, "wb") as fp:
+                fp.write(payload)
+            with self.assertRaises(ValueError):
+                safe_unpack_archive(truncated, self.extract_dir)
+
     def test_add_session_rejects_tar_with_parent_dirs(self):
         sessions = Sessions(self.store)
         archive = self._tar([("../../../outside/pwned.txt", b"pwned")])
@@ -134,7 +145,18 @@ class TestSessionsPathConfinement(unittest.TestCase):
         with open(os.path.join(victim, "meta.info"), "w") as fp:
             fp.write(json.dumps({"name": "victim", "path": victim, "image": os.path.join(victim, "missing")}))
 
-        for session_id in (os.path.relpath(victim, self.store), victim, "..", ".", "", "a/b", "a\\b"):
+        for session_id in (
+            os.path.relpath(victim, self.store),
+            victim,
+            "..",
+            ".",
+            "",
+            "...",
+            "a/b",
+            "a\\b",
+            "C:..",
+            "C:x",
+        ):
             self.assertIsNone(sessions.get_session(session_id))
             sessions.remove_session(session_id)
         self.assertTrue(os.path.exists(os.path.join(victim, "meta.info")))
@@ -143,6 +165,27 @@ class TestSessionsPathConfinement(unittest.TestCase):
         with self.assertRaises(ValueError):
             sessions.add_session(os.path.join(victim, "meta.info"), session_id="../outside/victim2")
         self.assertFalse(os.path.exists(os.path.join(self.outside, "victim2")))
+
+        # an invalid id is rejected before the archive is extracted
+        tmp = os.path.join(self.base, "tmp")
+        os.makedirs(tmp)
+        archive = self._tar([("series/1.dcm", b"one")])
+        tempdir = tempfile.tempdir
+        tempfile.tempdir = tmp
+        try:
+            with self.assertRaises(ValueError):
+                sessions.add_session(archive, uncompress=True, session_id="../bad")
+        finally:
+            tempfile.tempdir = tempdir
+        self.assertEqual(os.listdir(tmp), [])
+
+    def test_remove_expired_skips_directories_that_are_not_sessions(self):
+        sessions = Sessions(self.store)
+        os.makedirs(os.path.join(self.store, "not a session"))
+        os.makedirs(os.path.join(self.store, "no-meta"))
+        self.assertEqual(sessions.remove_expired(), 0)
+        self.assertTrue(os.path.isdir(os.path.join(self.store, "not a session")))
+        self.assertFalse(os.path.exists(os.path.join(self.store, "no-meta")))
 
 
 if __name__ == "__main__":
