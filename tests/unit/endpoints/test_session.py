@@ -8,7 +8,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import io
 import os
+import shutil
+import tarfile
+import tempfile
 import time
 import unittest
 
@@ -75,6 +79,32 @@ class EndPointSession(BasicEndpointTestSuite):
 
         response = self.client.delete(f"/session/{response.json()['session_id']}")
         assert response.status_code == 200
+
+    def test_008_create_session_rejects_archive_member_outside_extract_dir(self):
+        # keep the extraction directory (and the path the archive tries to reach) under a scratch directory
+        base = tempfile.mkdtemp(prefix="monailabel_session_confine_")
+        nested = os.path.join(base, "a", "b")
+        os.makedirs(nested)
+
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode="w") as tf:
+            info = tarfile.TarInfo("../../pwned.txt")
+            info.size = 5
+            tf.addfile(info, io.BytesIO(b"pwned"))
+
+        tempdir = tempfile.tempdir
+        tempfile.tempdir = nested
+        try:
+            files = [("files", ("archive.tar", archive.getvalue()))]
+            response = self.client.put("/session/?uncompress=true", files=files)
+        finally:
+            tempfile.tempdir = tempdir
+
+        try:
+            assert response.status_code == 400
+            assert not os.path.exists(os.path.join(base, "a", "pwned.txt"))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
 
 
 if __name__ == "__main__":

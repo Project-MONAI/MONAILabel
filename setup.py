@@ -45,7 +45,7 @@ if build_ohif:
     script = "build.bat" if any(platform.win32_ver()) else "build.sh"
     command = os.path.realpath(os.path.join(os.path.dirname(__file__), "plugins", "ohifv3", script))
     if os.path.exists(command):
-        subprocess.call(["sh", command])
+        subprocess.check_call(["sh", command])
 else:
     print("Building OHIF (SKIPPED)...")
 

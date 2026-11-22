@@ -13,13 +13,63 @@ import json
 import logging
 import os
 import pathlib
+import re
 import shutil
+import tarfile
 import tempfile
 import time
 import uuid
-from typing import Dict
+import zipfile
+import zlib
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _is_inside(path: str, base: str) -> bool:
+    try:
+        return os.path.commonpath([os.path.realpath(path), base]) == base
+    except ValueError:
+        # e.g. Windows paths on different drives have no common path
+        return False
+
+
+def safe_unpack_archive(archive: str, extract_dir: str) -> None:
+    """Extract a zip/tar archive, requiring every member to stay inside ``extract_dir``.
+
+    Tar member names are written as-is by :mod:`tarfile` on Python < 3.14, so each one is
+    resolved against the extraction directory before anything is written, and links and
+    special files (devices, fifos) are not extracted. :mod:`zipfile` already drops absolute
+    and ``..`` components from member names. Raises :class:`ValueError` for a rejected
+    member, a corrupt archive or an unsupported format.
+    """
+    base = os.path.realpath(extract_dir)
+    name = os.path.basename(archive)
+
+    try:
+        if zipfile.is_zipfile(archive):
+            with zipfile.ZipFile(archive) as zf:
+                zf.extractall(base)
+            return
+
+        if tarfile.is_tarfile(archive):
+            with tarfile.open(archive) as tf:
+                members = tf.getmembers()
+                for member in members:
+                    if not (member.isfile() or member.isdir()):
+                        raise ValueError(f"Invalid archive: member {member.name!r} is a link or special file")
+                    if os.path.isabs(member.name) or not _is_inside(os.path.join(base, member.name), base):
+                        raise ValueError(f"Invalid archive: member {member.name!r} is outside the extraction directory")
+                if hasattr(tarfile, "data_filter"):
+                    tf.extractall(base, members=members, filter="data")
+                else:
+                    tf.extractall(base, members=members)
+            return
+    except (tarfile.TarError, zipfile.BadZipFile, EOFError, zlib.error) as e:
+        # EOFError / zlib.error: truncated or corrupt compressed stream
+        raise ValueError(f"Invalid archive: {name!r} could not be extracted ({e})") from e
+
+    raise ValueError(f"Invalid archive: {name!r} is not a supported zip or tar file")
 
 
 class SessionInfo:
@@ -62,7 +112,7 @@ class Sessions(dict):
             if os.path.isdir(os.path.join(self.store_path, item)):
                 session_id = item
                 session_info = self.get_session(session_id, update_ts=False, fetch_cache=False)
-                expiry_ts = session_info.last_access_ts + session_info.expiry
+                expiry_ts = session_info.last_access_ts + session_info.expiry if session_info else 0
 
                 if session_info and session_info.expiry > 0 and expiry_ts < current_ts:
                     logger.info(f"Removing expired; current ts: {current_ts}\n{session_info.to_str()}")
@@ -79,10 +129,24 @@ class Sessions(dict):
                     self.remove_session(session_id)
         return count
 
+    def _session_path(self, session_id: str) -> Optional[str]:
+        """Directory for ``session_id``; None unless the id is a plain directory name inside the store.
+
+        Ids are joined onto the store path, so only letters, digits, ``_``, ``-`` and ``.`` are accepted,
+        not starting with a dot (no path separators, no ``..``, no Windows drive prefix such as ``C:``).
+        """
+        if not isinstance(session_id, str) or not re.fullmatch(r"\w[\w.\-]*", session_id):
+            return None
+        return os.path.join(self.store_path, session_id)
+
     def get_session(self, session_id: str, update_ts: bool = True, fetch_cache: bool = True):
+        path = self._session_path(session_id)
+        if path is None:
+            logger.warning(f"Invalid session-id: {session_id!r}")
+            return None
+
         session_info = self.get(session_id) if fetch_cache else None
         if session_info is None:
-            path = os.path.join(self.store_path, session_id)
             if os.path.exists(path):
                 meta_file = os.path.join(path, "meta.info")
                 if os.path.exists(meta_file):
@@ -101,15 +165,24 @@ class Sessions(dict):
         return session_info
 
     def remove_session(self, session_id: str):
+        path = self._session_path(session_id)
+        if path is None:
+            logger.warning(f"Invalid session-id: {session_id!r}")
+            return
+
         session_info = self.get(session_id)
         if session_info:
             self.pop(session_id)
-        path = os.path.join(self.store_path, session_id)
         shutil.rmtree(path, ignore_errors=True)
 
     def add_session(self, data_file: str, expiry: int = 0, uncompress: bool = False, session_id=None):
         start = time.time()
         logger.debug(f"Load Data from: {data_file}")
+
+        session_id = session_id if session_id else str(uuid.uuid1()).lower()
+        path = self._session_path(session_id)
+        if path is None:
+            raise ValueError(f"Invalid session-id: {session_id!r}")
 
         if os.path.isdir(data_file):
             image_path = data_file
@@ -119,15 +192,16 @@ class Sessions(dict):
             logger.debug(f"Input File (Single): {image_path}")
 
             if uncompress:
-                tmp_folder = tempfile.TemporaryDirectory().name
-                os.makedirs(tmp_folder, exist_ok=True)
+                tmp_folder = tempfile.mkdtemp()
 
                 logger.debug(f"UnArchive: {image_path} to {tmp_folder}")
-                shutil.unpack_archive(data_file, tmp_folder)
+                try:
+                    safe_unpack_archive(data_file, tmp_folder)
+                except Exception:
+                    shutil.rmtree(tmp_folder, ignore_errors=True)
+                    raise
                 image_path = tmp_folder
 
-        session_id = session_id if session_id else str(uuid.uuid1()).lower()
-        path = os.path.join(self.store_path, session_id)
         expiry = expiry if expiry > 0 else self.expiry
 
         logger.debug(f"Using Path: {path} to save session")
@@ -155,7 +229,9 @@ class Sessions(dict):
         return session_id, session_info
 
     def _write_meta_info(self, session_id, session_info):
-        path = os.path.join(self.store_path, session_id)
+        path = self._session_path(session_id)
+        if path is None:
+            raise ValueError(f"Invalid session-id: {session_id!r}")
         meta_file = os.path.join(path, "meta.info")
         with open(meta_file, "w") as meta:
             meta.write(session_info.to_str())

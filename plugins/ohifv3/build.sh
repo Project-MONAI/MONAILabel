@@ -17,6 +17,9 @@ my_dir="$(dirname "$(readlink -f "$0")")"
 echo "Installing requirements..."
 sh $my_dir/requirements.sh
 
+# stop at the first failing step, so a broken build is not packaged as an empty viewer
+set -e
+
 install_dir=${1:-$my_dir/../../monailabel/endpoints/static/ohif}
 
 echo "Current Dir: ${curr_dir}"
@@ -27,7 +30,8 @@ cd ${my_dir}
 rm -rf Viewers
 git clone https://github.com/OHIF/Viewers.git
 cd Viewers
-git checkout d8ef36ed24466988586e19b855d2bbb86f8c657a
+# OHIF v3.11.0 - keep in sync with the @ohif/* versions in extensions/monai-label and modes/monai-label
+git checkout 522531cc5c97ed05470f55a7a8f6571d9a512bd4
 
 #cp -r ../extensions/monai-label extensions/
 #cp -r ../modes/monai-label modes/monai-label
@@ -55,6 +59,6 @@ echo "Copied OHIF to ${install_dir}"
 
 cd ..
 rm -rf Viewers
-find .  -type d -name "node_modules" -exec rm -rf "{}" +
+find . -type d -name "node_modules" -prune -exec rm -rf "{}" +
 
 cd ${curr_dir}

@@ -14,9 +14,11 @@
 # to use different version of MONAI pass `--build-arg FINAL_IMAGE=...`
 
 #ARG FINAL_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
-ARG FINAL_IMAGE=ubuntu:22.04
+# monailabel needs python >= 3.11 (ubuntu:22.04 ships 3.10)
+ARG FINAL_IMAGE=ubuntu:24.04
 ARG BUILD_IMAGE=python:3.11
-ARG NODE_IMAGE=node:slim
+# OHIF builds with yarn 1.x, which the node images stopped bundling after node 24
+ARG NODE_IMAGE=node:22-slim
 
 # Phase1: Build OHIF Viewer
 FROM ${NODE_IMAGE} AS ohifbuild
@@ -28,6 +30,9 @@ RUN cd /opt/ohifv3 && ./build.sh /opt/ohifv3/release
 FROM ${BUILD_IMAGE} AS build
 WORKDIR /opt/monailabel
 RUN python -m pip install pip setuptools wheel twine
+# setup.cfg lists torch and ninja in setup_requires; install them with pip (CPU build is enough here)
+# because setuptools can no longer fetch them itself
+RUN python -m pip install --no-cache-dir ninja torch --extra-index-url https://download.pytorch.org/whl/cpu
 ADD . /opt/monailabel/
 COPY --from=ohifbuild /opt/ohifv3/release /opt/monailabel/monailabel/endpoints/static/ohif
 RUN BUILD_OHIF=false python setup.py bdist_wheel --build-number $(date +'%Y%m%d%H%M')
@@ -38,7 +43,13 @@ LABEL maintainer="monai.contact@gmail.com"
 WORKDIR /opt/monailabel
 COPY requirements.txt /opt/monailabel/requirements.txt
 
-RUN apt update -y && apt install -y git curl openslide-tools python3 python-is-python3 python3-pip
+RUN apt update -y && apt install -y git curl openslide-tools python3 python-is-python3 python3-pip python3-venv
+
+# install into a virtual environment (the system python is externally managed, PEP 668) with a current pip;
+# packages that FINAL_IMAGE already provides stay visible
+RUN python3 -m venv --system-site-packages /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN python -m pip install --no-cache-dir pytest torch torchvision torchaudio
 
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
