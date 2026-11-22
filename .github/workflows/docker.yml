@@ -19,6 +19,10 @@ on:
         description: 'Tag name to publish'
         required: true
         default: 'latest'
+      ref:
+        description: 'Git ref (tag, branch or commit) to build; default is the ref this workflow is run from'
+        required: false
+        default: ''
 
 jobs:
   docker_build:
@@ -28,13 +32,16 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          # full history and tags, so the package version is derived from the release tag
+          fetch-depth: 0
       - name: Cleanup
         run: |
           echo Before Cleanup...
           df -h
+          # this job does not use setup-python, so the whole tool cache ($AGENT_TOOLSDIRECTORY) can go
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          # keep the interpreter installed by setup-python; drop the rest of the tool cache to free disk
-          find /opt/hostedtoolcache -mindepth 1 -maxdepth 1 ! -name Python -exec rm -rf {} +
           rm -rf /usr/share/dotnet/
           cd /opt
           find . -maxdepth 1 -mindepth 1 '!' -path ./containerd '!' -path ./actionarchivecache '!' -path ./runner '!' -path ./runner-cache -exec rm -rf '{}' ';'

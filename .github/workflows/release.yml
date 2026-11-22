@@ -23,6 +23,10 @@ on:
         description: 'Publish package to main PY Repository'
         required: true
         default: 'false'
+      ref:
+        description: 'Git ref (tag, branch or commit) to build; default is the ref this workflow is run from'
+        required: false
+        default: ''
 
 jobs:
   packaging:
@@ -33,6 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.inputs.ref }}
           fetch-depth: 0
       - uses: actions/setup-node@v7
       - name: Set up Python 3.11
@@ -61,7 +66,9 @@ jobs:
       - name: Build Package
         run: |
           ./runtests.sh --clean
-          BUILD_OHIF=true python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
+          # no --build-number: it also renames the wheel's .data directory, which uv then does not install
+          # (no monailabel command, no sample apps)
+          BUILD_OHIF=true python setup.py sdist bdist_wheel
           ls -l dist
       - name: Verify Package
         run: |
