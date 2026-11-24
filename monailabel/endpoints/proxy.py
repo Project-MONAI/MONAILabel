@@ -67,12 +67,17 @@ async def proxy_dicom(request: Request, op: str, path: str):
     else:
         proxy_path = f"{path}"
 
+    # keep the query string, ohif sends the qido search filters and paging in it
+    url = f"{server}/{proxy_path}"
+    if request.url.query:
+        url = f"{url}?{request.url.query}"
+
     logger.debug(f"Proxy connecting to /dicom/{op}/{path} => {proxy_path}")
     start = time.time()
     if request.method == "POST":
         headers.update(request.headers)
         rp_resp = requests.post(
-            f"{server}/{proxy_path}",
+            url,
             auth=auth,
             stream=True,
             headers=headers,
@@ -80,7 +85,7 @@ async def proxy_dicom(request: Request, op: str, path: str):
         )
     else:
         rp_resp = requests.get(
-            f"{server}/{proxy_path}",
+            url,
             auth=auth,
             stream=True,
             headers=headers,
