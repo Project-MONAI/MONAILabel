@@ -120,6 +120,11 @@ class Settings(BaseSettings):
         strtobool(os.environ.get("MONAI_LABEL_USE_ITK_FOR_DICOM_SEG", "True"))
     )
 
+    # Skip SAM/SAM2 model download and initialization at server/app startup.
+    # Useful when running apps with their own interactive models (e.g. DeepEdit)
+    # where the generic SAM overhead (VRAM + startup latency) is not wanted.
+    MONAI_LABEL_SKIP_SAM: bool = bool(strtobool(os.environ.get("MONAI_LABEL_SKIP_SAM", "False")))
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
