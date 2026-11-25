@@ -190,9 +190,9 @@ if __name__ == "__main__":
     #     "num_threads_per_worker": 1,
     #     "num_workers": 0,
     #     "scheduler": "",
-    #     "server": "http://10.117.16.216:8000/",
-    #     "girderApiUrl": "http://10.117.16.216/api/v1",
-    #     "girderToken": "zBsr184BByiRK0BUyMMB01v3O8kTqkXPbqxndpfi",
+    #     "server": "http://127.0.0.1:8000/",
+    #     "girderApiUrl": "http://127.0.0.1/api/v1",
+    #     "girderToken": "<girder token>",
     # }
     # ns = Namespace(**args)
     # main(ns)

@@ -23,10 +23,10 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from monailabel.config import RBAC_USER, settings
-from monailabel.endpoints.user.auth import RBAC, User
+from monailabel.endpoints.user.auth import RBAC, User, can_annotate
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
-from monailabel.utils.others.generic import get_mime_type, remove_file
+from monailabel.utils.others.generic import UnsafeRequestError, get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,7 @@ def run_wsi_inference(
     file: Union[UploadFile, None] = None,
     wsi: WSIInput = WSIInput(),
     output: Optional[ResultType] = ResultType.dsa,
+    can_save_label: bool = True,
 ):
     request = {"model": model, "image": image, "output": output.value if output else None}
 
@@ -100,6 +101,10 @@ def run_wsi_inference(
     if wsi.params:
         request.update(wsi.params)
 
+    # saving the result as a label of the image is a datastore write: same role as PUT /datastore/label
+    if not can_save_label:
+        request["save_label"] = False
+
     if session_id:
         session = instance.sessions().get_session(session_id)
         if session:
@@ -108,7 +113,10 @@ def run_wsi_inference(
 
     logger.info(f"WSI Infer Request: {request}")
 
-    result = instance.infer_wsi(request)
+    try:
+        result = instance.infer_wsi(request)
+    except UnsafeRequestError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute wsi infer")
     return send_response(instance.datastore(), result, output, background_tasks)
@@ -129,7 +137,7 @@ async def api_run_wsi_inference(
     output: Optional[ResultType] = None,
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
-    return run_wsi_inference(background_tasks, model, image, session_id, None, wsi, output)
+    return run_wsi_inference(background_tasks, model, image, session_id, None, wsi, output, can_annotate(user))
 
 
 @router.post("/wsi_v2/{model}", summary=f"{RBAC_USER}Run WSI Inference for supported model")
@@ -144,4 +152,4 @@ async def api_run_wsi_v2_inference(
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
     w = WSIInput.parse_obj(json.loads(wsi))
-    return run_wsi_inference(background_tasks, model, image, session_id, file, w, output)
+    return run_wsi_inference(background_tasks, model, image, session_id, file, w, output, can_annotate(user))

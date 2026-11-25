@@ -13,6 +13,7 @@ import glob
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 from typing import Dict, Optional, Sequence
@@ -27,7 +28,13 @@ from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.class_utils import unload_module
-from monailabel.utils.others.generic import device_list, name_to_device
+from monailabel.utils.others.generic import (
+    UnsafeConfigValueError,
+    check_config_value,
+    device_list,
+    is_plain_filename,
+    name_to_device,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +176,8 @@ class BundleTrainTask(TrainTask):
             for idx, d in enumerate(datalist):
                 with open(d["label"]) as fp:
                     json_object = json.loads(fp.read())  # load box coordinates from subject JSON
-                    bboxes = [bdict["center"] + bdict["size"] for bdict in json_object["markups"]]
+                    # the label file was uploaded by a client and the boxes go into the bundle config: numbers only
+                    bboxes = [[float(v) for v in bdict["center"] + bdict["size"]] for bdict in json_object["markups"]]
 
                 # Only support detection, classification label do not suppot in bundle yet,
                 # 0 is used for all positive boxes, wait for sync.
@@ -212,12 +220,18 @@ class BundleTrainTask(TrainTask):
         logger.info(f"Train Request: {request}")
         ds = self._fetch_datalist(request, datastore)
         train_ds, val_ds = self._partition_datalist(ds, request)
+        check_config_value(train_ds, "train_ds")
+        check_config_value(val_ds, "val_ds")
 
-        max_epochs = request.get("max_epochs", 50)
+        # request values end up in the bundle config (or its command line), where "$..." is evaluated as Python
+        max_epochs = check_config_value(request.get("max_epochs", 50), "max_epochs")
         pretrained = request.get("pretrained", True)
         multi_gpu = request.get("multi_gpu", True)
         force_multi_gpu = request.get("force_multi_gpu", False)
+        # the id of the bundle config section to run; in the multi gpu case it is also a command line argument
         run_id = request.get("run_id", "run")
+        if not isinstance(run_id, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_#:]*", run_id):
+            raise UnsafeConfigValueError("Invalid value for 'run_id': a bundle config id is expected")
 
         multi_gpu = multi_gpu if torch.cuda.device_count() > 1 else False
 
@@ -227,18 +241,24 @@ class BundleTrainTask(TrainTask):
         logger.info(f"Using Multi GPU: {multi_gpu}; GPUS: {gpus}")
         logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
 
-        device = name_to_device(request.get("device", "cuda"))
+        device = name_to_device(check_config_value(request.get("device", "cuda"), "device"))
         logger.info(f"Using device: {device}; Type: {type(device)}")
 
         tracking = request.get(
             "tracking", "mlflow" if self.enable_tracking and settings.MONAI_LABEL_TRACKING_ENABLED else ""
         )
         tracking = tracking[0] if isinstance(tracking, list) else tracking
+        # MONAI loads any other string as a tracking settings *file*, i.e. as more bundle config to evaluate
+        tracking = "mlflow" if isinstance(tracking, str) and tracking.lower() == "mlflow" else None
         tracking_uri = request.get("tracking_uri")
-        tracking_uri = tracking_uri if tracking_uri else settings.MONAI_LABEL_TRACKING_URI
+        tracking_uri = check_config_value(
+            tracking_uri if tracking_uri else settings.MONAI_LABEL_TRACKING_URI, "tracking_uri"
+        )
         tracking_experiment_name = request.get("tracking_experiment_name")
-        tracking_experiment_name = tracking_experiment_name if tracking_experiment_name else request.get("model")
-        tracking_run_name = request.get("tracking_run_name")
+        tracking_experiment_name = check_config_value(
+            tracking_experiment_name if tracking_experiment_name else request.get("model"), "tracking_experiment_name"
+        )
+        tracking_run_name = check_config_value(request.get("tracking_run_name"), "tracking_run_name")
         logger.info(f"(Experiment Management) Tracking: {tracking}")
         logger.info(f"(Experiment Management) Tracking URI: {tracking_uri}")
         logger.info(f"(Experiment Management) Experiment Name: {tracking_experiment_name}")
@@ -248,6 +268,8 @@ class BundleTrainTask(TrainTask):
 
         model_filename = request.get("model_filename", "model.pt")
         model_filename = model_filename if isinstance(model_filename, str) else model_filename[0]
+        if not is_plain_filename(model_filename):
+            raise ValueError(f"Invalid model_filename: {model_filename!r} must be a file name in the bundle's models")
         model_pytorch = os.path.join(self.bundle_path, "models", model_filename)
 
         self._load_checkpoint(model_pytorch, pretrained, train_handlers)
@@ -264,9 +286,9 @@ class BundleTrainTask(TrainTask):
         for k in self.const.key_displayable_configs():
             if self.bundle_config.get(k):
                 displayable_configs = self.bundle_config.get_parsed_content(k, instantiate=True)
-                overrides[k] = {c: request[c] for c in displayable_configs.keys()}
+                overrides[k] = {c: check_config_value(request[c], c) for c in displayable_configs.keys()}
 
-        if tracking and tracking.lower() != "none":
+        if tracking:
             overrides[self.const.key_tracking()] = tracking
             if tracking_uri:
                 overrides[self.const.key_tracking_uri()] = tracking_uri
@@ -324,10 +346,11 @@ class BundleTrainTask(TrainTask):
                 logging_file,
             ]
 
+            # The command line is parsed again (python-fire turns "--x=y" into an override and evaluates literals),
+            # so no client string goes there: tracking is the constant "mlflow"; tracking_uri, experiment and run
+            # name are in the exported config file above.
             if tracking:
                 cmd.extend(["--tracking", tracking])
-                if tracking_uri:
-                    cmd.extend(["--tracking_uri", tracking_uri])
 
             self.run_multi_gpu(request, cmd, env)
         else:

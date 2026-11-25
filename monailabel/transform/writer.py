@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import logging
+import re
 import tempfile
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -21,7 +22,7 @@ from monai.data import MetaTensor
 from monai.data.image_writer import NibabelWriter
 
 from monailabel.utils.others.detection import create_slicer_detection_json
-from monailabel.utils.others.generic import file_ext
+from monailabel.utils.others.generic import UnsafeRequestError, file_ext
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 
 logger = logging.getLogger(__name__)
@@ -198,6 +199,16 @@ class Writer:
         write_to_file = data.get(self.key_write_to_file, True)
 
         ext = data.get(self.key_extension) if data.get(self.key_extension) else ext
+        # both can come from the client: the extension becomes part of the output file name, the dtype of astype()
+        if ext and not (isinstance(ext, str) and re.fullmatch(r"(\.[A-Za-z0-9]{1,8}){1,3}", ext)):
+            raise UnsafeRequestError(f"Invalid value for '{self.key_extension}': a file extension is expected")
+        if dtype is not None:
+            try:
+                numeric = np.dtype(dtype).kind in "biuf"
+            except Exception:
+                numeric = False
+            if not numeric:
+                raise UnsafeRequestError(f"Invalid value for '{self.key_dtype}': a numeric dtype is expected")
         write_to_file = write_to_file if ext else False
         logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}; dtype: {dtype}")
 

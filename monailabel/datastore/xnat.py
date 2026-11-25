@@ -24,7 +24,7 @@ from requests.auth import HTTPBasicAuth
 
 from monailabel.datastore.utils.convert import nifti_to_dicom_seg
 from monailabel.interfaces.datastore import Datastore
-from monailabel.utils.others.generic import md5_digest
+from monailabel.utils.others.generic import is_plain_filename, md5_digest
 
 logger = logging.getLogger(__name__)
 xnat_ns = {"xnat": "http://nrg.wustl.edu/xnat"}
@@ -102,6 +102,7 @@ class XNATDatastore(Datastore):
         info = {}
 
         project, subject, experiment, scan = self._id_to_fields(image_id)
+        self._check_project(project)
         url = "{}/data/projects/{}/subjects/{}/experiments/{}/scans/{}?format=xml".format(
             self.api_url,
             quote_plus(project),
@@ -175,6 +176,7 @@ class XNATDatastore(Datastore):
 
         # save the nii.gz segmentation into Xnat
         project, subject, experiment, scan = self._id_to_fields(image_id)
+        self._check_project(project)  # the upload url has no project part, so it is not checked by XNAT either
         nameAtXnat = f"pat_{subject}_exp_{experiment}_S_{scan}_AI_{aiaa_model_name}.nii.gz"
         self._request_put_file(
             experiment, scan, name_at_xnat=nameAtXnat, file2send=label_filename, ai_model_name=aiaa_model_name
@@ -223,8 +225,12 @@ class XNATDatastore(Datastore):
             ele = tree.find('.//xnat:file[@label="DICOM"]', namespaces=xnat_ns)
             path = ele.get("URI") if ele is not None else ""
             if path:
-                dicom_dir = os.path.dirname(os.path.join(self.asset_path, path.replace("/data/xnat/archive/", "")))
-                if os.path.exists(dicom_dir) and len(os.listdir(dicom_dir)) > 0:
+                # the uri is reported by the XNAT server: it has to stay inside the asset path
+                root = os.path.realpath(self.asset_path)
+                relative = path.replace("/data/xnat/archive/", "").lstrip("/")
+                dicom_dir = os.path.realpath(os.path.dirname(os.path.join(root, relative)))
+                inside = os.path.commonpath([dicom_dir, root]) == root
+                if inside and os.path.exists(dicom_dir) and len(os.listdir(dicom_dir)) > 0:
                     return dicom_dir
 
         return ""
@@ -290,11 +296,15 @@ class XNATDatastore(Datastore):
 
     def _id_to_fields(self, image_id):
         fields = image_id.split("/")
-        project = fields[0]
-        subject = fields[1]
-        experiment = fields[2]
-        scan = fields[3]
+        if len(fields) != 4 or not all(is_plain_filename(f) for f in fields):
+            # the fields are joined into the local cache path (and the request url), so they can not be paths
+            raise ValueError(f"Invalid XNAT image id: {image_id!r}; expected project/subject/experiment/scan")
+        project, subject, experiment, scan = fields
         return project, subject, experiment, scan
+
+    def _check_project(self, project):
+        if self.projects and project not in self.projects:
+            raise ValueError(f"Access to Project: {project} is restricted;  Allowed: {self.projects}")
 
     def _login_xnat(self):
         # Get CSRF token
@@ -401,9 +411,9 @@ def main():
     # http://127.0.0.1/data/services/tokens/issue
     ds = XNATDatastore(
         api_url="http://127.0.0.1",
-        username="admin",  # "a8a73c8d-a0bd-44d1-87af-244476072af4",
-        password="admin",  # "wGdawXhqo9Fhsh5p1pd6nGRloF99mxXYvvBGjCtTl1A9zYkk4mlaQJuvJQUcXL62",
-        asset_path="/localhome/sachi/Projects/xnat-docker-compose/xnat-data/archive",
+        username="admin",
+        password="admin",
+        asset_path="xnat-docker-compose/xnat-data/archive",
         project="Test",
     )
 

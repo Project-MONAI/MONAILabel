@@ -13,7 +13,7 @@ from typing import List, Sequence, Union
 
 import jwt
 import requests
-from cachetools import cached
+from cachetools import TTLCache, cached
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
@@ -33,7 +33,8 @@ class Token(BaseModel):
     token_type: str
 
 
-@cached(cache={})
+# re-fetched hourly, so a rotated or revoked realm key does not stay trusted until the server restarts
+@cached(cache=TTLCache(maxsize=8, ttl=3600))
 def get_public_key(realm_uri) -> str:
     logger.info(f"Fetching public key for: {realm_uri}")
     r = requests.get(url=realm_uri, timeout=settings.MONAI_LABEL_AUTH_TIMEOUT)
@@ -85,6 +86,7 @@ def from_token(token: str):
         "verify_signature": True,
         "verify_aud": False,
         "verify_exp": True,
+        "require": ["exp"],  # a token without an expiry would be valid forever
     }
 
     # PyJWT >= 2 requires the accepted algorithms. The realm key is an RSA public key, so only the RSA
@@ -120,6 +122,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme) if settings.MONAI
     except InvalidTokenError as e:
         logger.error(e)
         raise credentials_exception
+
+
+def can_annotate(user: User) -> bool:
+    """True if the user may write labels (the role required by ``PUT /datastore/label``); always True without auth."""
+    return not settings.MONAI_LABEL_AUTH_ENABLE or settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR in user.roles
 
 
 class RBAC:

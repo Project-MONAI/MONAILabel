@@ -20,6 +20,8 @@ from monai.networks.blocks import CRF
 from monai.transforms import Transform
 from scipy.special import softmax
 
+from monailabel.utils.others.generic import int_in_range
+
 from .utils import make_iseg_unary, make_likelihood_image_gmm, make_likelihood_image_histogram, maxflow
 
 logger = logging.getLogger(__name__)
@@ -188,7 +190,7 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
         d = dict(data)
 
         # attempt to fetch algorithmic parameters from app if present
-        self.num_bins = d.get("num_bins", self.num_bins)
+        self.num_bins = int_in_range(d.get("num_bins", self.num_bins), 2, 4096, "num_bins")
 
         # load scribbles idx from labels_info (if available)
         self._set_scribbles_idx_from_labelinfo(d)
@@ -243,7 +245,8 @@ class MakeLikelihoodFromScribblesGMMd(InteractiveSegmentationTransform):
         d = dict(data)
 
         # attempt to fetch algorithmic parameters from app if present
-        self.num_mixtures = d.get("num_mixtures", self.num_mixtures)
+        # it becomes a compile-time define of MONAI's GMM extension (compiler command line): a small number only
+        self.num_mixtures = int_in_range(d.get("num_mixtures", self.num_mixtures), 1, 64, "num_mixtures")
 
         # load scribbles idx from labels_info (if available)
         self._set_scribbles_idx_from_labelinfo(d)

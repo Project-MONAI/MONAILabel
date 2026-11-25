@@ -12,6 +12,7 @@
 import logging
 import os
 import pathlib
+import re
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -21,9 +22,18 @@ import numpy as np
 from PIL import Image
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
-from monailabel.utils.others.generic import md5_digest
+from monailabel.interfaces.exception import ImageNotFoundException
+from monailabel.utils.others.generic import is_plain_filename, md5_digest
 
 logger = logging.getLogger(__name__)
+
+# Girder ids. An id is put into the REST path that is requested with the server's own token, so nothing else
+# (e.g. "../user/me") may get there.
+OBJECT_ID = re.compile(r"[0-9a-f]{24}")
+
+
+def is_object_id(value) -> bool:
+    return isinstance(value, str) and OBJECT_ID.fullmatch(value) is not None
 
 
 class DSADatastore(Datastore):
@@ -81,8 +91,19 @@ class DSADatastore(Datastore):
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
         return image_id
 
+    def _item_id(self, image_id: str) -> str:
+        """Girder item id for an item id or an item name (raises ImageNotFoundException for anything else)."""
+        return image_id if is_object_id(image_id) else self._name_to_id(image_id)[0]
+
+    @staticmethod
+    def _local_name(name: str) -> str:
+        """Item names come from the DSA server and are used as file names in the local cache."""
+        if not is_plain_filename(name):
+            raise ValueError(f"Invalid item name: {name!r} can not be used as a file name")
+        return name
+
     def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
-        image_id, name = self._name_to_id(image_id)
+        image_id = self._item_id(image_id)
 
         data = self.gc.get(f"annotation/item/{image_id}", parameters={"limit": 0})
         result: Dict[str, Dict[str, List]] = {}
@@ -106,10 +127,8 @@ class DSADatastore(Datastore):
         return result
 
     def get_image(self, image_id: str, params=None) -> Any:
-        try:
-            name = self.get_image_info(image_id)["name"]
-        except girder_client.HttpError:
-            image_id, name = self._name_to_id(image_id)
+        image_id = self._item_id(image_id)
+        name = self._local_name(self.get_image_info(image_id)["name"])
 
         location = params.get("location", [0, 0])
         size = params.get("size", [0, 0])
@@ -151,25 +170,29 @@ class DSADatastore(Datastore):
         for d in data:
             if d.get("largeImage") and d["name"] == name or Path(d["name"]).stem == name:
                 return d["_id"], d["name"]
-        # If we fail to find the item, the best we can do is return the name
-        return name, name
+        raise ImageNotFoundException(f"Image {name!r} not found")
 
     def get_image_uri(self, image_id: str) -> str:
         try:
-            info = self.get_image_info(image_id)
-            name = info["name"]
-            file_id = info.get("largeImage", {}).get("fileId")
-        except girder_client.HttpError:
-            image_id, name = self._name_to_id(image_id)
-            file_id = None
+            image_id = self._item_id(image_id)
+        except ImageNotFoundException:
+            return ""
+        info = self.get_image_info(image_id)
+        name = self._local_name(info["name"])
+        file_id = info.get("largeImage", {}).get("fileId")
 
         if self.asset_store_path:
             if file_id is None:
                 data = self.gc.get(f"item/{image_id}/files", parameters={"limit": 0})
                 file_id = data[0]["_id"]
+            if not is_object_id(file_id):
+                raise ValueError(f"Invalid file id: {file_id!r}")
             f = self.gc.get(f"resource/{file_id}?type=file")
-            if "path" in f and os.path.exists(os.path.join(self.asset_store_path, f["path"])):
-                return str(os.path.join(self.asset_store_path, f["path"]))
+            # the path is reported by the DSA server: it has to stay inside the asset store
+            root = os.path.realpath(self.asset_store_path)
+            path = os.path.realpath(os.path.join(root, f["path"])) if f.get("path") else ""
+            if path and os.path.commonpath([path, root]) == root and os.path.exists(path):
+                return str(path)
         else:
             cached = os.path.join(self.cache_path, name)
             if os.path.exists(cached):
@@ -178,13 +201,13 @@ class DSADatastore(Datastore):
         return f"{self.api_url}/item/{image_id}"
 
     def get_label(self, label_id: str, label_tag: str, params=None) -> Any:
-        return self.gc.get(f"annotation/item/{label_id}")
+        return self.gc.get(f"annotation/item/{self._item_id(label_id)}")
 
     def get_label_uri(self, label_id: str, label_tag: str) -> str:
         return f"{self.api_url}/annotation/item/{label_id}"
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
-        return self.gc.getItem(image_id)  # type: ignore
+        return self.gc.getItem(self._item_id(image_id))  # type: ignore
 
     def get_label_info(self, label_id: str, label_tag: str) -> Dict[str, Any]:
         return {}

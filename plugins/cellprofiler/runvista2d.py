@@ -622,7 +622,9 @@ class MONAILabelUtils:
     def save_result(files, tmpdir):
         for name in files:
             data = files[name]
-            result_file = os.path.join(tmpdir, name)
+            # the name is chosen by the server: only its file name part is used, so the file stays inside tmpdir
+            safe_name = os.path.basename(str(name).replace("\\", "/")).lstrip(".") or "result"
+            result_file = os.path.join(tmpdir, safe_name)
 
             logging.debug(f"Saving {name} to {result_file}; Size: {len(data)}")
             dir_path = os.path.dirname(os.path.realpath(result_file))

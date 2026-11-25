@@ -283,7 +283,8 @@ class Main:
             args.studies = os.path.realpath(args.studies)
 
         for arg in vars(args):
-            logger.info(f"USING:: {arg} = {getattr(args, arg)}")
+            value = getattr(args, arg)
+            logger.info(f"USING:: {arg} = {'*****' if arg == 'ssl_keyfile_password' and value else value}")
 
         sensitive = [
             "MONAI_LABEL_DICOMWEB_PASSWORD",
@@ -312,7 +313,8 @@ class Main:
                 os.makedirs(d)
 
         os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
-        os.environ["PYTHONPATH"] = os.environ.get("PYTHONPATH", "") + os.pathsep + os.path.join(args.app)
+        # an empty entry would put the current working directory (possibly the studies folder) on the module path
+        os.environ["PYTHONPATH"] = os.pathsep.join(p for p in (os.environ.get("PYTHONPATH"), args.app) if p)
 
         if args.dryrun:
             export_key = "set " if any(platform.win32_ver()) else "export "

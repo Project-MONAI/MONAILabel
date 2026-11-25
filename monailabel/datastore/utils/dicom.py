@@ -18,9 +18,17 @@ from dicomweb_client import DICOMwebClient
 from pydicom.dataset import Dataset
 from pydicom.filereader import dcmread
 
-from monailabel.utils.others.generic import md5_digest, run_command
+from monailabel.utils.others.generic import is_plain_filename, md5_digest, run_command
 
 logger = logging.getLogger(__name__)
+
+
+def _instance_file_id(uid) -> str:
+    """The SOPInstanceUID is reported by the DICOM server and becomes a local file name."""
+    uid = str(uid)
+    if not is_plain_filename(uid):
+        raise ValueError(f"Invalid SOPInstanceUID: {uid!r} can not be used as a file name")
+    return uid
 
 
 def generate_key(patient_id: str, study_id: str, series_id: str):
@@ -79,14 +87,14 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
     if not frame_fetch:
         instances = client.retrieve_series(study_id, series_id)
         for instance in instances:
-            instance_id = str(instance["SOPInstanceUID"].value)
+            instance_id = _instance_file_id(instance["SOPInstanceUID"].value)
             file_name = os.path.join(save_dir, f"{instance_id}.dcm")
             instance.save_as(file_name)
     else:
         # TODO:: This logic (combining meta+pixeldata) needs improvement
         def save_from_frame(m):
             d = Dataset.from_json(m)
-            instance_id = str(d["SOPInstanceUID"].value)
+            instance_id = _instance_file_id(d["SOPInstanceUID"].value)
 
             # Hack to merge Info + RawData
             d.is_little_endian = True

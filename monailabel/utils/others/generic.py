@@ -23,6 +23,7 @@ import sys
 import tempfile
 import time
 from typing import Dict
+from urllib.parse import unquote, urlparse
 
 import torch
 from monai.apps import download_url
@@ -372,6 +373,132 @@ def path_to_uri(path) -> str:
 def path_to_sqlite_uri(path) -> str:
     """SQLAlchemy URI of a SQLite database file, e.g. for MLflow (its file store backend is no longer supported)."""
     return "sqlite:///" + pathlib.Path(path).absolute().as_posix()
+
+
+def is_plain_filename(name) -> bool:
+    """True if ``name`` is a file name only: no directory part, so joining it to a folder stays inside that folder."""
+    # ":" covers Windows drive-relative names ("D:model.pt" leaves the folder it is joined to) and NTFS streams
+    return isinstance(name, str) and name not in ("", ".", "..") and not re.search(r"[/\\:\x00]", name)
+
+
+def is_googleapis_url(url) -> bool:
+    """True if the host of ``url`` is googleapis.com or one of its sub domains (e.g. healthcare.googleapis.com)."""
+    host = (urlparse(url or "").hostname or "").lower()
+    return host == "googleapis.com" or host.endswith(".googleapis.com")
+
+
+def has_path_traversal(path: str) -> bool:
+    """True if a URL path (possibly percent-encoded more than once) has a ``.`` or ``..`` segment or a NUL character."""
+    for _ in range(4):  # a client can encode more than once; stop when decoding no longer changes anything
+        decoded = unquote(path)
+        if decoded == path:
+            break
+        path = decoded
+    return "\x00" in path or any(segment in (".", "..") for segment in re.split(r"[/\\]", path))
+
+
+class UnsafeRequestError(ValueError):
+    """A client-supplied value or file is rejected because of what the server would do with it (HTTP 400)."""
+
+
+class UnsafeConfigValueError(UnsafeRequestError):
+    """A client-supplied value would be interpreted as MONAI bundle config syntax instead of plain data."""
+
+
+class UnsafeImageFileError(UnsafeRequestError):
+    """An image file whose header makes the reader load the pixel data from another file on the server."""
+
+
+def int_in_range(value, low: int, high: int, name: str = "value") -> int:
+    """Return ``value`` as int if it is a whole number in ``[low, high]``; client numbers must not be anything else."""
+    try:
+        whole = not isinstance(value, bool) and isinstance(value, (int, float)) and int(value) == value
+    except (OverflowError, ValueError):  # inf, nan
+        whole = False
+    if not whole:
+        raise UnsafeRequestError(f"Invalid value for '{name}': a whole number is expected")
+    if not low <= value <= high:
+        raise UnsafeRequestError(f"Invalid value for '{name}': it must be between {low} and {high}")
+    return int(value)
+
+
+_HEADER_LIMIT = 1024 * 1024
+_HDF5_SIGNATURE = b"\x89HDF\r\n\x1a\n"
+_NRRD_DATA_FILE = re.compile(rb"^[ \t]*data[ \t]*file[ \t]*:", re.IGNORECASE | re.MULTILINE)
+_META_DATA_FILE = re.compile(rb"^[ \t]*ElementDataFile[ \t]*=[ \t]*([^\r\n]*)", re.IGNORECASE | re.MULTILINE)
+
+
+def check_image_file(path, name: str = "image"):
+    """Return ``path`` unchanged unless it is an image file that points the reader at another file.
+
+    NRRD (``data file:``), MetaImage (``ElementDataFile``) and HDF5/MINC2 (external storage) headers can name any
+    file on the server as the pixel data; such an upload would turn the image loader into a file reader.
+    Anything that is not an existing regular file (ids, directories, non-string inputs) is returned as is.
+
+    Raises:
+        UnsafeImageFileError: for a detached-data header, or a header too large to be checked.
+    """
+    if not isinstance(path, str) or not os.path.isfile(path):
+        return path
+
+    with open(path, "rb") as fp:
+        head = fp.read(_HEADER_LIMIT)
+        offset = 512
+        hdf5 = head.startswith(_HDF5_SIGNATURE)
+        while not hdf5 and offset < len(head):  # the signature may follow a user block of 512, 1024, 2048 ... bytes
+            hdf5 = head[offset : offset + len(_HDF5_SIGNATURE)] == _HDF5_SIGNATURE
+            offset *= 2
+    if hdf5:
+        raise UnsafeImageFileError(f"Invalid {name}: HDF5 based image files are not accepted")
+
+    lower = path.lower()
+    if head.startswith(b"NRRD") or lower.endswith((".nrrd", ".nhdr")):
+        ends = [i for i in (head.find(b"\n\n"), head.find(b"\r\n\r\n")) if i >= 0]
+        if not ends and len(head) >= _HEADER_LIMIT:
+            raise UnsafeImageFileError(f"Invalid {name}: NRRD header is too large")
+        header = head[: min(ends)] if ends else head
+        if _NRRD_DATA_FILE.search(header):
+            raise UnsafeImageFileError(f"Invalid {name}: NRRD files with a detached data file are not accepted")
+
+    meta = _META_DATA_FILE.search(head)
+    if lower.endswith((".mha", ".mhd")) and not meta:
+        raise UnsafeImageFileError(f"Invalid {name}: MetaImage header has no ElementDataFile entry")
+    if meta and meta.group(1).strip().upper() != b"LOCAL":
+        raise UnsafeImageFileError(f"Invalid {name}: MetaImage files with a detached data file are not accepted")
+    return path
+
+
+# MONAI's ConfigParser treats a string starting with "$" as a Python expression (it is eval()'ed), one starting with
+# "%" as a macro that is replaced by the content of another (any) config file, and a string that is exactly "@id"
+# as a reference. A mapping with a "_target_" key is instantiated (it can name any importable callable); the other
+# "_xxx_" keys (_args_, _requires_, _mode_ ...) are reserved for the same machinery, "+" merges into an existing entry.
+_CONFIG_STRING_PREFIXES = ("$", "@", "%")
+_CONFIG_KEY_PREFIXES = ("_", "+") + _CONFIG_STRING_PREFIXES
+
+
+def check_config_value(value, name: str = "value"):
+    """Return ``value`` unchanged if it is safe to put into a MONAI bundle config, else raise.
+
+    Values received from a client (request parameters) must be plain data. Anything that ``ConfigParser`` would
+    evaluate, resolve or instantiate (see above) would run attacker-chosen code in the server process, so strings,
+    mapping keys and nested list/dict content are checked recursively.
+
+    Raises:
+        UnsafeConfigValueError: for a string/key that starts with ``$``, ``@`` or ``%``, or a mapping key
+            starting with ``_`` or ``+``. ``name`` is used in the message (the value itself is not echoed).
+    """
+    if isinstance(value, str):
+        if value.lstrip().startswith(_CONFIG_STRING_PREFIXES):
+            raise UnsafeConfigValueError(f"Invalid value for '{name}': it must not start with '$', '@' or '%'")
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            if isinstance(k, str) and k.lstrip().startswith(_CONFIG_KEY_PREFIXES):
+                raise UnsafeConfigValueError(f"Invalid key in '{name}': it must not start with '_', '+', '$', '@', '%'")
+            check_config_value(v, name)
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            check_config_value(v, name)
+    return value
 
 
 def handle_torch_linalg_multithread(req):

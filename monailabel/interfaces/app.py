@@ -50,8 +50,10 @@ from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.train.bundle import BundleTrainTask
 from monailabel.utils.async_tasks.task import AsyncTask
 from monailabel.utils.others.generic import (
+    check_image_file,
     file_checksum,
     handle_torch_linalg_multithread,
+    is_googleapis_url,
     is_openslide_supported,
     name_to_device,
     strtobool,
@@ -160,7 +162,7 @@ class MONAILabelApp:
         logger.info(f"Using DICOM WEB: {self.studies}")
 
         dw_session = None
-        if "googleapis.com" in self.studies:
+        if is_googleapis_url(self.studies):
             logger.info("Creating DICOM Credentials for Google Cloud")
             dw_session = create_session_from_gcp_credentials()
             dw_client = DICOMwebClient(url=self.studies, session=dw_session)
@@ -296,8 +298,11 @@ class MONAILabelApp:
                 logger.info("Input is a Directory; Consider it as DICOM")
 
             logger.debug(f"Image => {request['image']}")
+            # uploads, session files and datastore images all arrive here as a file path
+            check_image_file(request["image"], "image")
         else:
             request["save_label"] = False
+        check_image_file(request.get("label"), "label")
 
         if self._infers_threadpool:
 

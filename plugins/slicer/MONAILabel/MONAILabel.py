@@ -1301,8 +1301,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.info(sample)
             image_id = sample["id"]
             image_file = sample.get("path")
-            image_name = sample.get("name", image_id)
-            node_name = sample.get("PatientID", sample.get("name", image_id))
+            # "name" and "PatientID" come from the server; the name becomes the local file name of the download,
+            # so only its file name part is used, and the node name is never empty (the volume has to be loaded)
+            image_name = os.path.basename(str(sample.get("name") or image_id).replace("\\", "/")).lstrip(".") or "image"
+            node_name = str(sample.get("PatientID") or image_name)
             checksum = sample.get("checksum")
             local_exists = image_file and os.path.exists(image_file)
 

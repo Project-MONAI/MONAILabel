@@ -26,10 +26,10 @@ from requests_toolbelt import MultipartEncoder
 from monailabel.config import RBAC_USER, settings
 from monailabel.datastore.dicom import DICOMWebDatastore
 from monailabel.datastore.utils.convert import binary_to_image, nifti_to_dicom_seg
-from monailabel.endpoints.user.auth import RBAC, User
+from monailabel.endpoints.user.auth import RBAC, User, can_annotate
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
-from monailabel.utils.others.generic import get_mime_type, remove_file
+from monailabel.utils.others.generic import UnsafeRequestError, get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +122,7 @@ def run_inference(
     file: UploadFile = File(None),
     label: UploadFile = File(None),
     output: Optional[ResultType] = None,
+    can_save_label: bool = True,
 ):
     request = {"model": model, "image": image}
 
@@ -160,6 +161,10 @@ def run_inference(
     p = json.loads(params) if params else {}
     request.update(p)
 
+    # saving the result as a label of the image is a datastore write: same role as PUT /datastore/label
+    if not can_save_label:
+        request["save_label"] = False
+
     if session_id:
         session = instance.sessions().get_session(session_id)
         if session:
@@ -167,7 +172,10 @@ def run_inference(
             request["session"] = session.to_json()
 
     logger.info(f"Infer Request: {request}")
-    result = instance.infer(request)
+    try:
+        result = instance.infer(request)
+    except UnsafeRequestError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
 
@@ -201,4 +209,4 @@ async def api_run_inference(
     output: Optional[ResultType] = None,
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
-    return run_inference(background_tasks, model, image, session_id, params, file, label, output)
+    return run_inference(background_tasks, model, image, session_id, params, file, label, output, can_annotate(user))

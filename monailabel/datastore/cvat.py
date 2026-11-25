@@ -135,6 +135,11 @@ class CVATDatastore(LocalDatastore):
         logger.debug(f"Using Task ID: {task_id}; Task Name: {task_name}")
         return task_id, task_name
 
+    def _same_server(self, url) -> bool:
+        """URLs reported by CVAT are requested with the credentials, so they have to point at the CVAT server."""
+        a, b = urllib.parse.urlsplit(str(url)), urllib.parse.urlsplit(self.api_url)
+        return (a.scheme, a.hostname, a.port) == (b.scheme, b.hostname, b.port)
+
     def task_status(self):
         """
         Fetches the status of a CVAT task based on the state of its jobs.
@@ -165,6 +170,10 @@ class CVATDatastore(LocalDatastore):
         jobs_url = task_data.get("jobs", {}).get("url")
         if not jobs_url:
             return None  # No jobs URL found for the task
+
+        if not self._same_server(jobs_url):
+            logger.error(f"Ignoring jobs url (not on the CVAT server): {jobs_url}")
+            return None
 
         # Fetch jobs for the task
         jobs_response = requests.get(jobs_url, auth=self.auth)
@@ -269,6 +278,9 @@ class CVATDatastore(LocalDatastore):
         if not result_url:
             logger.error("Export process finished but no result_url was provided.")
             return None
+        if not self._same_server(result_url):
+            logger.error(f"Ignoring result url (not on the CVAT server): {result_url}")
+            return None
 
         # Step 4: Download the ZIP file from the result_url.
         tmp_folder = tempfile.TemporaryDirectory().name
@@ -328,9 +340,9 @@ def main():
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
     settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.png", "*.jpg", "*.jpeg", ".xml"]
     settings.MONAI_LABEL_DATASTORE = "cvat"
-    settings.MONAI_LABEL_DATASTORE_URL = "http://10.117.19.88:8080"
-    settings.MONAI_LABEL_DATASTORE_USERNAME = "sachi"
-    settings.MONAI_LABEL_DATASTORE_PASSWORD = "sachi"
+    settings.MONAI_LABEL_DATASTORE_URL = "http://127.0.0.1:8080"
+    settings.MONAI_LABEL_DATASTORE_USERNAME = "<username>"
+    settings.MONAI_LABEL_DATASTORE_PASSWORD = "<password>"
 
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")

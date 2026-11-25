@@ -15,11 +15,12 @@ import time
 import google.auth
 import google.auth.transport.requests
 import requests
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 from monailabel.config import settings
-from monailabel.endpoints.user.auth import RBAC, User
+from monailabel.endpoints.user.auth import RBAC, User, can_annotate
+from monailabel.utils.others.generic import has_path_traversal, is_googleapis_url
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,21 @@ router = APIRouter(
 )
 
 
-async def proxy_dicom(request: Request, op: str, path: str):
+# request headers that are passed on to the DICOMweb server; everything else (Host, Authorization, Cookie,
+# Transfer-Encoding ...) is set by this server, which also adds its own credentials
+FORWARD_HEADERS = ("content-type", "accept")
+
+
+async def proxy_dicom(request: Request, op: str, path: str, user: User):
+    # a POST (e.g. STOW-RS) writes to the DICOM server with the server's credentials: same role as saving a label
+    if request.method == "POST" and not can_annotate(user):
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # The request is sent with the server's own DICOMweb credentials; "../" would let a client leave the configured
+    # DICOMweb endpoint (e.g. reach other stores in the same cloud project).
+    if has_path_traversal(path):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
     auth = (
         (settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD)
         if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD
@@ -38,7 +53,7 @@ async def proxy_dicom(request: Request, op: str, path: str):
     )
 
     headers = {}
-    if "googleapis.com" in settings.MONAI_LABEL_STUDIES:
+    if is_googleapis_url(settings.MONAI_LABEL_STUDIES):
         google_credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
         auth_req = google.auth.transport.requests.Request()
         google_credentials.refresh(auth_req)
@@ -70,7 +85,7 @@ async def proxy_dicom(request: Request, op: str, path: str):
     logger.debug(f"Proxy connecting to /dicom/{op}/{path} => {proxy_path}")
     start = time.time()
     if request.method == "POST":
-        headers.update(request.headers)
+        headers.update({k: v for k, v in request.headers.items() if k.lower() in FORWARD_HEADERS})
         rp_resp = requests.post(
             f"{server}/{proxy_path}",
             auth=auth,
@@ -101,7 +116,7 @@ async def proxy_wado(
     path: str,
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
-    return await proxy_dicom(request, "wado", path)
+    return await proxy_dicom(request, "wado", path, user)
 
 
 @router.get("/dicom/qido/{path:path}", include_in_schema=False)
@@ -111,7 +126,7 @@ async def proxy_qido(
     path: str,
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
-    return await proxy_dicom(request, "qido", path)
+    return await proxy_dicom(request, "qido", path, user)
 
 
 @router.get("/dicom/stow/{path:path}", include_in_schema=False)
@@ -121,7 +136,7 @@ async def proxy_stow(
     path: str,
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
-    return await proxy_dicom(request, "stow", path)
+    return await proxy_dicom(request, "stow", path, user)
 
 
 # https://fastapi.tiangolo.com/tutorial/path-params/#order-matters
@@ -132,4 +147,4 @@ async def proxy(
     path: str,
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
-    return await proxy_dicom(request, "", path)
+    return await proxy_dicom(request, "", path, user)

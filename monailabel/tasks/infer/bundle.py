@@ -25,7 +25,7 @@ from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 from monailabel.transform.pre import LoadImageTensord
 from monailabel.utils.others.class_utils import unload_module
-from monailabel.utils.others.generic import strtobool
+from monailabel.utils.others.generic import check_config_value, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -184,15 +184,17 @@ class BundleInferTask(BasicInferTask):
         return i
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
-        # Update bundle parameters based on user's option
+        # Update bundle parameters based on user's option; the values come from the client and the bundle config
+        # parser evaluates "$..." as Python, so they have to be plain data
         for k in self.const.key_displayable_configs():
             if self.bundle_config.get(k):
-                self.bundle_config[k].update({c: data[c] for c in self.displayable_configs.keys()})
+                options = {c: check_config_value(data[c], c) for c in self.displayable_configs.keys()}
+                self.bundle_config[k].update(options)
                 self.bundle_config.parse()
 
+        self._update_device(data)
         sys.path.insert(0, self.bundle_path)
         unload_module("scripts")
-        self._update_device(data)
 
         pre: list[Callable[..., Any]] = []
         for k in self.const.key_preprocessing():
@@ -219,9 +221,9 @@ class BundleInferTask(BasicInferTask):
         return pre
 
     def inferer(self, data=None) -> Inferer:
+        self._update_device(data)
         sys.path.insert(0, self.bundle_path)
         unload_module("scripts")
-        self._update_device(data)
 
         i = None
         for k in self.const.key_inferer():
@@ -233,9 +235,9 @@ class BundleInferTask(BasicInferTask):
         return i if i is not None else SimpleInferer()
 
     def detector(self, data=None) -> Optional[Callable]:
+        self._update_device(data)
         sys.path.insert(0, self.bundle_path)
         unload_module("scripts")
-        self._update_device(data)
 
         d = None
         for k in self.const.key_detector():
@@ -253,9 +255,9 @@ class BundleInferTask(BasicInferTask):
         return d
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
+        self._update_device(data)
         sys.path.insert(0, self.bundle_path)
         unload_module("scripts")
-        self._update_device(data)
 
         post: list[Callable[..., Any]] = []
         for k in self.const.key_postprocessing():
@@ -299,9 +301,11 @@ class BundleInferTask(BasicInferTask):
         return res
 
     def _update_device(self, data):
+        # called first, so that a rejected client value does not leave bundle_path in sys.path
         k_device = self.const.key_device()
         device = data.get(k_device) if data else None
         if device:
+            check_config_value(device, k_device)
             self.bundle_config.config.update({k_device: device})  # type: ignore
             if self.bundle_config.ref_resolver.items.get(k_device):
                 self.bundle_config.ref_resolver.items[k_device] = ConfigItem(config=device, id=k_device)

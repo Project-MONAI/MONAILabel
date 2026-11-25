@@ -13,7 +13,7 @@ import os
 import pathlib
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -37,9 +37,15 @@ from monailabel.endpoints import (
     train,
     wsi_infer,
 )
+from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.utils.app import app_instance, clear_cache
 
-origins = [str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS] if settings.MONAI_LABEL_CORS_ORIGINS else ["*"]
+# browsers send the Origin without a trailing slash; pydantic's url type adds one, which would never match
+origins = (
+    [str(origin).rstrip("/") for origin in settings.MONAI_LABEL_CORS_ORIGINS]
+    if settings.MONAI_LABEL_CORS_ORIGINS
+    else ["*"]
+)
 print(f"Allow Origins: {origins}")
 
 
@@ -112,6 +118,6 @@ async def favicon():
 
 
 @app.post("/reload", include_in_schema=False)
-def reload():
+def reload(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
     clear_cache()
     return {}

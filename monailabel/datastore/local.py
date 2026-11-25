@@ -30,7 +30,7 @@ from watchdog.observers.polling import PollingObserver
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
-from monailabel.utils.others.generic import file_ext, remove_file
+from monailabel.utils.others.generic import file_ext, is_plain_filename, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +227,29 @@ class LocalDatastore(Datastore):
 
     def _filename(self, id: str, ext: str) -> str:
         return id + ext
+
+    @staticmethod
+    def _check_info(info, max_depth: int = 16) -> None:
+        """Client supplied image/label info is stored in the datastore file: it has to be readable again.
+
+        Deeply nested values and strings that are not valid UTF-8 (lone surrogates) can be written but not parsed,
+        which would leave the datastore unusable for every task and for the next server start.
+        """
+        stack = [(info, 0)]
+        while stack:
+            value, depth = stack.pop()
+            if depth > max_depth:
+                raise ValueError("Invalid info: too deeply nested")
+            if isinstance(value, dict):
+                stack.extend((k, depth + 1) for k in value.keys())
+                stack.extend((v, depth + 1) for v in value.values())
+            elif isinstance(value, (list, tuple)):
+                stack.extend((v, depth + 1) for v in value)
+            elif isinstance(value, str):
+                try:
+                    value.encode("utf-8")
+                except UnicodeEncodeError:
+                    raise ValueError("Invalid info: text is not valid unicode")
 
     @staticmethod
     def _confine_path(dest: str, allowed_base: str) -> str:
@@ -457,7 +480,13 @@ class LocalDatastore(Datastore):
 
         logger.info(f"Adding Image: {image_id} => {image_filename}")
         name = self._filename(image_id, image_ext)
+        if not is_plain_filename(name):
+            raise ValueError(f"Invalid image id: {image_id!r}")
         dest = self._confine_path(os.path.join(self._datastore.image_path(), name), self._datastore.image_path())
+        # e.g. the id "labels" with a file without extension: an "image" that is a folder of the datastore
+        if os.path.isdir(dest):
+            raise ValueError(f"Invalid image id: {image_id!r} is an existing directory")
+        self._check_info(image_info)
 
         with FileLock(self._lock_file):
             logger.debug("Acquired the lock!")
@@ -511,6 +540,7 @@ class LocalDatastore(Datastore):
         label_id = image_id
 
         logger.info(f"Adding Label: {image_id} => {label_tag} => {label_filename}")
+        self._check_info(label_info)
         label_path = self._datastore.label_path(label_tag)
         # Confine the label directory itself as well as the final file path, so
         # a crafted label tag cannot redirect the write outside the labels dir.
@@ -553,6 +583,7 @@ class LocalDatastore(Datastore):
         if not obj:
             raise ImageNotFoundException(f"Image {image_id} not found")
 
+        self._check_info(info)
         obj.image.info.update(info)
         self._update_datastore_file()
 
@@ -568,6 +599,7 @@ class LocalDatastore(Datastore):
         if not label:
             raise LabelNotFoundException(f"Label: {label_id} Tag: {label_tag} not found")
 
+        self._check_info(info)
         label.info.update(info)
         self._update_datastore_file()
 
@@ -707,8 +739,10 @@ class LocalDatastore(Datastore):
         def _write_to_file():
             logger.debug("+++ Datastore is updated...")
             self._ignore_event_config = True
+            # serialize first: a failure must not leave a truncated datastore file behind
+            content = json.dumps(self._datastore.model_dump(exclude={"base_path"}), indent=2, default=str)
             with open(self._datastore_config_path, "w") as f:
-                f.write(json.dumps(self._datastore.model_dump(exclude={"base_path"}), indent=2, default=str))
+                f.write(content)
             self._config_ts = os.stat(self._datastore_config_path).st_mtime
 
         if lock:

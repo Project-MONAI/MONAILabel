@@ -27,7 +27,14 @@ from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.utils.app import app_instance
-from monailabel.utils.others.generic import file_checksum, get_mime_type, remove_file
+from monailabel.utils.others.generic import (
+    UnsafeRequestError,
+    check_image_file,
+    file_checksum,
+    get_mime_type,
+    is_plain_filename,
+    remove_file,
+)
 
 logger = logging.getLogger(__name__)
 train_tasks: List = []
@@ -58,6 +65,33 @@ def datastore(output: Optional[ResultType] = None):
     return d.status()
 
 
+# image file types accepted by PUT /datastore/image, in addition to MONAI_LABEL_DATASTORE_FILE_EXT
+IMAGE_EXTENSIONS = (
+    ".nii.gz",
+    ".nii",
+    ".nrrd",
+    ".mha",
+    ".dcm",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".svs",
+    ".ndpi",
+    ".npy",
+)
+
+
+def _check_upload(path: str, name: str):
+    try:
+        check_image_file(path, name)
+    except UnsafeRequestError as e:
+        remove_file(path)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 def add_image(
     background_tasks: BackgroundTasks,
     image: Optional[str] = None,
@@ -69,17 +103,20 @@ def add_image(
     file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
 
     image_id = image if image else os.path.basename(file.filename).replace(file_ext, "")
-    # Normalize a caller-supplied image ID to a plain file name
-    # (no directory components) before it is used to build a path.
-    if image:
-        image_id = os.path.basename(image_id)
-        if not image_id or image_id in (".", "..") or image_id.startswith("."):
-            raise HTTPException(status_code=400, detail="Invalid image ID")
+    # The image ID (given, or taken from the file name) and the extension become the file name in the datastore:
+    # a plain, visible name with one of the datastore's image extensions (never e.g. ".env" or "x.py").
+    image_id = os.path.basename(image_id)
+    if not is_plain_filename(image_id) or image_id.startswith("."):
+        raise HTTPException(status_code=400, detail="Invalid image ID")
+    allowed = tuple(e.lstrip("*").lower() for e in settings.MONAI_LABEL_DATASTORE_FILE_EXT) + IMAGE_EXTENSIONS
+    if not f"{image_id}{file_ext}".lower().endswith(allowed):
+        raise HTTPException(status_code=400, detail=f"Invalid image file extension: {file_ext!r}")
     image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 
     with open(image_file, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         background_tasks.add_task(remove_file, image_file)
+    _check_upload(image_file, "image")
 
     instance: MONAILabelApp = app_instance()
     save_params: Dict[str, Any] = json.loads(params) if params else {}
@@ -112,6 +149,7 @@ def save_label(
     with open(label_file, "wb") as buffer:
         shutil.copyfileobj(label.file, buffer)
         background_tasks.add_task(remove_file, label_file)
+    _check_upload(label_file, "label")
 
     instance: MONAILabelApp = app_instance()
     save_params: Dict[str, Any] = json.loads(params) if params else {}
@@ -208,11 +246,13 @@ def update_label_info(label: str, tag: str, info: str = Form("{}"), user: Option
     return instance.datastore().update_label_info(label, tag, i)
 
 
-def download_dataset(limit_cases: Optional[int] = None):
+def download_dataset(background_tasks: BackgroundTasks, limit_cases: Optional[int] = None):
     instance: MONAILabelApp = app_instance()
     path = instance.datastore().get_dataset_archive(limit_cases)
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="ZIP archive NOT Found")
+    # the archive is a temporary copy of the whole dataset: remove it once it has been sent
+    background_tasks.add_task(remove_file, path)
     return FileResponse(path, media_type=get_mime_type(path), filename="dataset.zip")
 
 
@@ -326,7 +366,8 @@ async def api_update_label_info(
 
 @router.get("/dataset", summary=f"{RBAC_ANNOTATOR}Download full dataset as ZIP archive")
 async def api_download_dataset(
+    background_tasks: BackgroundTasks,
     limit_cases: Optional[int] = None,
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
 ):
-    return download_dataset(limit_cases)
+    return download_dataset(background_tasks, limit_cases)

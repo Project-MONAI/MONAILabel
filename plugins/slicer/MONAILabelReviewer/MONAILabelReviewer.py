@@ -1702,8 +1702,13 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         logging.info(f"{self.getCurrentTime()}: Image segmentation is stored temoparily in: {destination}")
         return destination
 
+    @staticmethod
+    def toFileName(name: str, default: str) -> str:
+        """Names come from the server: only the file name part is used for local files."""
+        return os.path.basename(str(name).replace("\\", "/")).lstrip(".") or default
+
     def getPathToStore(self, segmentationFileName: str, tempDirectory: str) -> str:
-        return tempDirectory + "/" + segmentationFileName
+        return tempDirectory + "/" + self.toFileName(segmentationFileName, "segmentation.nrrd")
 
     def displaySegmention(self, destination: str):
         """
@@ -1713,7 +1718,10 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
 
     def requestDicomImage(self, image_id: str, image_name: str, node_name: str):
         download_uri = self.imageDataController.getDicomDownloadUri(image_id)
-        SampleData.SampleDataLogic().downloadFromURL(nodeNames=node_name, fileNames=image_name, uris=download_uri)
+        image_name = self.toFileName(image_name, "image")
+        SampleData.SampleDataLogic().downloadFromURL(
+            nodeNames=str(node_name) or image_name, fileNames=image_name, uris=download_uri
+        )
 
     def setTempFolderDir(self):
         """

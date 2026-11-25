@@ -107,8 +107,7 @@ class MONAILabelClient:
             )
 
         response = bytes_to_str(response)
-        logger.debug(f"Response: {response}")
-        return json.loads(response)
+        return json.loads(response)  # the access token: not logged
 
     def auth_valid_token(self) -> bool:
         selector = "/auth/token/valid"
@@ -586,7 +585,8 @@ class MONAILabelUtils:
     def save_result(files, tmpdir):
         for name in files:
             data = files[name]
-            result_file = os.path.join(tmpdir, name)
+            # the name is chosen by the server: only its file name part is used, so the file stays inside tmpdir
+            result_file = os.path.join(tmpdir, os.path.basename(str(name).replace("\\", "/")).lstrip(".") or "result")
 
             logging.debug(f"Saving {name} to {result_file}; Size: {len(data)}")
             dir_path = os.path.dirname(os.path.realpath(result_file))

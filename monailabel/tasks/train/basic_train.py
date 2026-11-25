@@ -56,7 +56,13 @@ from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import device_list, name_to_device, path_to_sqlite_uri, remove_file
+from monailabel.utils.others.generic import (
+    device_list,
+    is_plain_filename,
+    name_to_device,
+    path_to_sqlite_uri,
+    remove_file,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -438,6 +444,9 @@ class BasicTrainTask(TrainTask):
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
         req["run_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # how the workers find each other is decided here (see below), never by the client
+        req.pop("distributed_backend", None)
+        req.pop("distributed_url", None)
 
         device = name_to_device(req.get("device", "cuda"))
         req["device"] = device
@@ -515,8 +524,7 @@ class BasicTrainTask(TrainTask):
         context.dataset_type = request["dataset"]
         context.dataloader_type = request["dataloader"]
 
-        name = request["name"]
-        context.output_dir = os.path.join(self._model_dir, name)
+        context.output_dir = self.get_output_dir(request)
         context.cache_dir = os.path.join(context.output_dir, f"cache_{context.run_id}")
         context.events_dir = os.path.join(context.output_dir, f"events_{context.run_id}")
         logger.info(f"Run/Output Path: {context.output_dir}")
@@ -604,10 +612,16 @@ class BasicTrainTask(TrainTask):
     def pre_process(self, request, datastore: Datastore):
         return datastore.datalist()
 
+    def get_output_dir(self, request):
+        # "name" can be set by the client; it has to stay a single folder inside the model dir
+        name = request["name"]
+        if not is_plain_filename(name):
+            raise ValueError(f"Invalid name: {name!r} must be a folder name, not a path")
+        return os.path.join(self._model_dir, name)
+
     def get_cache_dir(self, request):
         run_id = request["run_id"]
-        output_dir = os.path.join(self._model_dir, request["name"])
-        return os.path.join(output_dir, f"cache_{run_id}")
+        return os.path.join(self.get_output_dir(request), f"cache_{run_id}")
 
     def cleanup(self, request):
         logger.info("Running cleanup...")

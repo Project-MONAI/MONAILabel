@@ -179,7 +179,7 @@ class Sessions(dict):
         start = time.time()
         logger.debug(f"Load Data from: {data_file}")
 
-        session_id = session_id if session_id else str(uuid.uuid1()).lower()
+        session_id = session_id if session_id else str(uuid.uuid4()).lower()
         path = self._session_path(session_id)
         if path is None:
             raise ValueError(f"Invalid session-id: {session_id!r}")

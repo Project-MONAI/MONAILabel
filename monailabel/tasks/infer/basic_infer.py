@@ -27,7 +27,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
-from monailabel.utils.others.generic import device_list, device_map, name_to_device, strtobool
+from monailabel.utils.others.generic import device_list, device_map, is_plain_filename, name_to_device, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -435,7 +435,7 @@ class BasicInferTask(InferTask):
             model_filename = data.get("model_filename")
             model_filename = model_filename if isinstance(model_filename, str) else model_filename[0]
             user_path = os.path.join(os.path.dirname(self.path[0]), model_filename)
-            if user_path and os.path.exists(user_path):
+            if is_plain_filename(model_filename) and os.path.exists(user_path):
                 path = user_path
                 logger.info(f"Using <User> provided model_file: {user_path}")
             else:

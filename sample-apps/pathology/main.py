@@ -104,8 +104,8 @@ class MyApp(MONAILabelApp):
         """
         -s http://0.0.0.0:8080/api/v1
         -c dsa_folder 621e94e2b6881a7a4bef5170
-        -c dsa_api_key OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ
-        -c dsa_asset_store_path /localhome/sachi/Projects/digital_slide_archive/devops/dsa/assetstore
+        -c dsa_api_key <api key>
+        -c dsa_asset_store_path <digital_slide_archive>/devops/dsa/assetstore
         """
 
         logger.info(f"Using DSA Server: {self.studies}")
