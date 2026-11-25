@@ -86,12 +86,15 @@ class HeuristicPlanner:
         # This should return an image according to the free gpu memory available
         # Equation obtained from curve fitting using table:
         # https://tinyurl.com/tableGPUMemory
-        gpu_mem = gpu_memory_map()[0]
+        gpu_mem = gpu_memory_map().get(0, 4300)
         # Get a number in base 2 close to the mean depth
         depth_base_2 = int(2 ** np.ceil(np.log2(target_img_size[2])))
         # Get the maximum width according available GPU memory
         # This equation roughly estimates the image size that fits in the available GPU memory using DynUNet
         width = (gpu_mem - 2000) / (0.5 * depth_base_2)
+        if width <= 0:
+            logger.info(f"Insufficient free GPU memory ({gpu_mem} MB); falling back to target size {target_img_size}")
+            return [int(target_img_size[0]), int(target_img_size[1]), depth_base_2]
         width_base_2 = int(2 ** np.round(np.log2(width)))
         if width_base_2 < np.maximum(target_img_size[0], target_img_size[1]):
             return [width_base_2, width_base_2, depth_base_2]
