@@ -369,6 +369,11 @@ def path_to_uri(path) -> str:
     return pathlib.Path(path).absolute().as_uri()
 
 
+def path_to_sqlite_uri(path) -> str:
+    """SQLAlchemy URI of a SQLite database file, e.g. for MLflow (its file store backend is no longer supported)."""
+    return "sqlite:///" + pathlib.Path(path).absolute().as_posix()
+
+
 def handle_torch_linalg_multithread(req):
     try:
         if torch.cuda.is_available():

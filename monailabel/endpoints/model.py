@@ -112,7 +112,7 @@ async def api_update_model(
     background_tasks: BackgroundTasks,
     model: str,
     file: UploadFile,
-    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN)),
 ):
     return update_model(background_tasks, model, file)
 
@@ -120,6 +120,6 @@ async def api_update_model(
 @router.delete("/{model}", summary=f"{RBAC_ADMIN}Delete Model File")
 async def api_delete_model(
     model: str,
-    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN)),
 ):
     return delete_model(model)

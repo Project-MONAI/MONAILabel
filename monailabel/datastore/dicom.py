@@ -74,9 +74,23 @@ class DICOMWebDatastore(LocalDatastore):
                 return file.replace(extension, ""), extension
         return super()._to_id(file)
 
+    def _series_dir(self, root: str, series_id: str) -> str:
+        """Cache directory of a series: a single directory name directly inside ``root``.
+
+        Series ids come from the client, so the id is checked before anything is read from the
+        directory or downloaded into it. Raises :class:`ValueError` otherwise.
+        """
+        if not series_id or series_id in (".", "..") or os.path.basename(series_id) != series_id:
+            raise ValueError(f"Invalid id: {series_id!r} is not a plain series id")
+
+        path = self._confine_path(os.path.join(root, series_id), root)
+        if path == os.path.realpath(root):
+            raise ValueError(f"Invalid id: {series_id!r} does not name a directory inside {root!r}")
+        return path
+
     def get_image_uri(self, image_id: str) -> str:
         logger.info(f"Image ID: {image_id}")
-        image_dir = os.path.realpath(os.path.join(self._datastore.image_path(), image_id))
+        image_dir = self._series_dir(self._datastore.image_path(), image_id)
         logger.info(f"Image Dir (cache): {image_dir}")
 
         if not os.path.exists(image_dir) or not os.listdir(image_dir):
@@ -85,7 +99,9 @@ class DICOMWebDatastore(LocalDatastore):
         if not self._convert_to_nifti:
             return image_dir
 
-        image_nii_gz = os.path.realpath(os.path.join(self._datastore.image_path(), f"{image_id}.nii.gz"))
+        image_nii_gz = self._confine_path(
+            os.path.join(self._datastore.image_path(), f"{image_id}.nii.gz"), self._datastore.image_path()
+        )
         if not os.path.exists(image_nii_gz):
             image_nii_gz = dicom_to_nifti(image_dir)
             super().add_image(image_id, image_nii_gz, self._dicom_info(image_id))
@@ -97,7 +113,7 @@ class DICOMWebDatastore(LocalDatastore):
             return super().get_label_uri(label_id, label_tag)
 
         logger.info(f"Label ID: {label_id} => {label_tag}")
-        label_dir = os.path.realpath(os.path.join(self._datastore.label_path(label_tag), label_id))
+        label_dir = self._series_dir(self._datastore.label_path(label_tag), label_id)
         logger.info(f"Label Dir (cache): {label_dir}")
 
         if not os.path.exists(label_dir) or not os.listdir(label_dir):
@@ -190,7 +206,7 @@ class DICOMWebDatastore(LocalDatastore):
 
         # Support DICOM-SEG uploading only final version
         if label_tag == DefaultLabelTag.FINAL:
-            image_dir = os.path.realpath(os.path.join(self._datastore.image_path(), image_id))
+            image_dir = self._series_dir(self._datastore.image_path(), image_id)
             label_file = nifti_to_dicom_seg(image_dir, label_filename, label_info.get("label_info"))
 
             label_series_id = dicom_web_upload_dcm(label_file, self._client)

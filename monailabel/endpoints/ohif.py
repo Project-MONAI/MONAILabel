@@ -28,12 +28,27 @@ router = APIRouter(
 )
 
 
+OHIF_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static", "ohif")
+
+
+def _ohif_file(ohif_dir: str, path: str) -> str:
+    """Existing file inside ``ohif_dir`` for the requested path, else the viewer's index page (client-side routes)."""
+    index = os.path.join(ohif_dir, "index.html")
+    if not path:
+        return index
+
+    try:
+        candidate = os.path.realpath(os.path.join(ohif_dir, path))
+        inside = os.path.commonpath([candidate, ohif_dir]) == ohif_dir
+    except ValueError:
+        # e.g. embedded null byte, or a different drive on Windows
+        return index
+    return candidate if inside and os.path.isfile(candidate) else index
+
+
 def get_ohif(path: str):
-    ohif_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static", "ohif")
-    file = os.path.join(ohif_dir, "index.html")
-    if path:
-        path = os.path.join(ohif_dir, path.replace("/", os.pathsep))
-        file = path if os.path.exists(path) else file
+    ohif_dir = os.path.realpath(OHIF_DIR)
+    file = _ohif_file(ohif_dir, path)
 
     if not os.path.exists(file):
         logger.info(file)

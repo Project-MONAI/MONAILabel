@@ -33,7 +33,10 @@ class AsyncTask:
         params = params if params is not None else {}
         request.update(params)
 
-        # Support bundle/scripts over windows
+        # The bundle path is added to the PYTHONPATH of the task process (see utils._task_func), so it must
+        # only ever come from the server. Drop anything the client put in the request or the params, then
+        # set it for registered bundle trainers (also supports bundles/scripts over windows).
+        request.pop("bundle_path", None)
         bundle_path = instance.bundle_path(request.get("model"))
         if bundle_path:
             request["bundle_path"] = bundle_path

@@ -56,7 +56,7 @@ from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import device_list, name_to_device, path_to_uri, remove_file
+from monailabel.utils.others.generic import device_list, name_to_device, path_to_sqlite_uri, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -523,7 +523,8 @@ class BasicTrainTask(TrainTask):
 
         tracking_uri = request.get("tracking_uri", self._tracking_uri)
         if not tracking_uri:
-            tracking_uri = path_to_uri(os.path.join(context.output_dir, "mlruns"))
+            # MLflow >= 3.13 (and MONAI's MLFlowHandler) no longer accept the file store, so use SQLite
+            tracking_uri = path_to_sqlite_uri(os.path.join(context.output_dir, "mlruns.db"))
         experiment_name = request.get("tracking_experiment_name")
         experiment_name = experiment_name if experiment_name else request.get("model")
         run_name = request.get("tracking_run_name")

@@ -136,6 +136,17 @@ def remove_label(id: str, tag: str, user: Optional[str] = None):
     return {}
 
 
+CHECKSUM_ALGORITHMS = ("SHA256", "SHA512", "MD5")
+
+
+def parse_checksum(check_sum: str):
+    """Split ``[ALGO:]HEXDIGEST`` (default algorithm SHA256) into ``(ALGO, hexdigest)``, as written by file_checksum."""
+    algo, sep, digest = check_sum.strip().partition(":")
+    if not sep:
+        algo, digest = "SHA256", algo
+    return algo.upper(), digest.lower()
+
+
 def download_image(image: str, check_only=False, check_sum=None):
     instance: MONAILabelApp = app_instance()
     image = instance.datastore().get_image_uri(image)
@@ -146,10 +157,10 @@ def download_image(image: str, check_only=False, check_sum=None):
 
     if check_only:
         if check_sum:
-            fields = check_sum.split(":")
-            algo = "SHA256" if len(fields) == 1 else fields[0]
-            digest = check_sum.lstrip(algo + ":") if len(fields) > 1 else check_sum
-            if digest != file_checksum(image, algo=algo):
+            algo, digest = parse_checksum(check_sum)
+            if algo not in CHECKSUM_ALGORITHMS:
+                raise HTTPException(status_code=400, detail=f"Unsupported checksum algorithm: {algo}")
+            if file_checksum(image, algo=algo) != f"{algo}:{digest}":
                 raise HTTPException(status_code=404, detail="Image NOT Found (checksum failed)")
         return {}
     return FileResponse(image, media_type=get_mime_type(image), filename=os.path.basename(image))

@@ -87,8 +87,10 @@ def from_token(token: str):
         "verify_exp": True,
     }
 
+    # PyJWT >= 2 requires the accepted algorithms. The realm key is an RSA public key, so only the RSA
+    # signature algorithms are accepted (never "none" or the HMAC ones, which would take that key as a secret).
     key = get_public_key(settings.MONAI_LABEL_AUTH_REALM_URI)
-    payload = jwt.decode(token, key, options=options)
+    payload = jwt.decode(token, key, algorithms=["RS256", "RS384", "RS512"], options=options)
 
     username: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_USERNAME)
     email: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_EMAIL)
