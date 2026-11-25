@@ -206,6 +206,15 @@ def _highdicom_nifti_to_dicom_seg(
             # Default type code
             type_code = Code("78961009", "SCT", name)
 
+        # Same color source the ITK/dcmqi path uses (_itk_nifti_to_dicom_seg
+        # above): an explicit per-segment color from label_info, falling back
+        # to GENERIC_ANATOMY_COLORS by name. Without this, highdicom leaves
+        # RecommendedDisplayCIELabValue unset and every segment renders in
+        # whatever default/arbitrary palette the viewer picks -- the same
+        # user-visible symptom as #1751, just via this code path instead.
+        rgb = list(info.get("color", GENERIC_ANATOMY_COLORS.get(name, (255, 0, 0))))[0:3]
+        rgb = [int(x) for x in rgb]
+
         # Create highdicom segment description
         # Use sequential segment numbers (1, 2, 3...) to match remapped pixel array
         seg_desc = hd.seg.SegmentDescription(
@@ -217,6 +226,7 @@ def _highdicom_nifti_to_dicom_seg(
                 name="MONAILABEL", family=codes.DCM.ArtificialIntelligence, version=model_name
             ),
             algorithm_type="AUTOMATIC",
+            display_color=hd.color.CIELabColor.from_rgb(*rgb),
         )
         segment_descriptions.append(seg_desc)
 
